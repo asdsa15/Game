@@ -448,5 +448,47 @@ ok(missCount === 0, '普攻不再出现「未中」', missCount);
 ok(zeroDmg === 0, '每次出手都有伤害或明确的卸力/压制说明', zeroDmg);
 ok(atkRounds > 0, '确实打出了若干回合（' + atkRounds + ' 次出手）', atkRounds);
 
+/* ==================== 11. 奇遇分支：全部能走通 ==================== */
+console.log('=== 11. 奇遇 ===');
+/* 每条奇遇的每个选项都必须有对应 case。
+   写了数据忘了写分支，只会表现为「点了变成什么也没发生」，不报错、不崩溃，
+   最难查——所以这里把 25 条 × 3 个选项全跑一遍。 */
+let encTotal = 0, encBad = [], encNoLog = [];
+/* 这几项无日志是合理的：
+   ruined:rebuild 要香火 300、storm:pill 要身上有丹；
+   cave:deep / jade:open / debtor:host 一掷不中就进门开打（return 之前不写日志）。
+   都不是漏写，所以从「必须有结果文本」里豁免。 */
+const ENC_PRE = ['ruined:rebuild', 'storm:pill', 'cave:deep', 'jade:open', 'debtor:host'];
+setup('xian', { stones: 3000 });
+G.D.ENCOUNTERS.forEach(function (e) {
+  e.opts.forEach(function (o) {
+    encTotal++;
+    const sub = (o.act || '').split(':')[2];
+    setup('xian', { stones: 3000 });
+    const logLen = S.log.length;
+    try {
+      G.ACT.do_enc(e.id, sub);
+    } catch (err) {
+      encBad.push(e.id + ':' + sub + '（' + err.message + '）');
+      return;
+    }
+    const got = S.log.length > logLen;
+    if (!got && ENC_PRE.indexOf(e.id + ':' + sub) < 0) encNoLog.push(e.id + ':' + sub);
+  });
+});
+ok(encBad.length === 0, '全部奇遇分支不抛错（' + encTotal + ' 个）', encBad.join('、'));
+ok(encNoLog.length === 0, '全部奇遇分支都有结果文本', encNoLog.join('、'));
+ok(G.D.ENCOUNTERS.length >= 25, '奇遇不少于 25 处（现 ' + G.D.ENCOUNTERS.length + '）', G.D.ENCOUNTERS.length);
+
+/* 结仇要真的结上：否认三十年前的旧账 → 仇家入册 */
+setup('xian', { stones: 3000 });
+G.ACT.do_enc('oldDebt', 'refuse');
+ok(S.enemy === true, '否认旧账会结下仇家', S.enemy);
+
+/* 文本表验：诗词与道书都已接入 */
+ok(G.D.VERSES.breakXian.length >= 20, '破境诗不少于 20 首（现 ' + G.D.VERSES.breakXian.length + '）', G.D.VERSES.breakXian.length);
+ok(G.D.DAOSHU.length >= 7, '道书不少于 7 部（现 ' + G.D.DAOSHU.length + '）', G.D.DAOSHU.length);
+ok(G.D.NPC_POOL.length >= 12, 'NPC 不少于 12 人（现 ' + G.D.NPC_POOL.length + '）', G.D.NPC_POOL.length);
+
 console.log('\n结果：' + pass + ' 通过 / ' + fail + ' 失败');
 process.exit(fail ? 1 : 0);

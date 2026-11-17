@@ -171,7 +171,33 @@ function countChars(v) {
   return n;
 }
 const dataText = countChars(D);
-ok(dataText >= 44000, '数据层文本不少于 4.4 万字（现 ' + dataText + '）', dataText);
+ok(dataText >= 55000, '数据层文本不少于 5.5 万字（现 ' + dataText + '）', dataText);
+
+/* ---------- 7. 文风密度：不许写回白话 ----------
+   「了」与「的」是白话的骨架。文言里这两个字用得极少。
+   实测：纯白话 3.5~4%，浅文言 1% 上下。
+   这里卡在 2.5%——高于它就是又写白了，低于则说明可能过于简省。 */
+console.log('=== 7. 文风密度 ===');
+let allText = '';
+(function walk(x) {
+  if (typeof x === 'string') allText += x;
+  else if (Array.isArray(x)) x.forEach(walk);
+  else if (x && typeof x === 'object') Object.values(x).forEach(walk);
+})(D);
+const nLiao = (allText.match(/了/g) || []).length;
+const nDe = (allText.match(/的/g) || []).length;
+const dens = nLiao / Math.max(1, allText.length);
+ok(dens < 0.025, '「了」密度低于 2.5%（浅文言）', (dens * 100).toFixed(2) + '%（' + nLiao + ' 字）');
+ok(nDe / Math.max(1, allText.length) < 0.025, '「的」密度低于 2.5%',
+  (nDe / allText.length * 100).toFixed(2) + '%（' + nDe + ' 字）');
+/* 破折号只禁在诗里。散文里偶用可作语气，古体诗里则断气口。 */
+let verseText = '';
+(function walk(x) {
+  if (typeof x === 'string') verseText += x;
+  else if (Array.isArray(x)) x.forEach(walk);
+  else if (x && typeof x === 'object') Object.values(x).forEach(walk);
+})(D.VERSES || {});
+ok(!/——/.test(verseText), '诗词里不用破折号', '诗库内 ' + (verseText.match(/——/g) || []).length + ' 处');
 
 console.log('\n结果：' + pass + ' 通过 / ' + fail + ' 失败');
 process.exit(fail ? 1 : 0);

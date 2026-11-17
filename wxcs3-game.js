@@ -1586,13 +1586,18 @@
     return 'winter';
   }
   function scenePlace() {
-    if (S.inDongtian) return 'temple';
+    /* 洞天是独立地点：旧版把它并进 temple，人在洞天里读到的却是庙前的雪。
+       SCENES.dongtian 已经按素材补了八条（影子比人先动、石的墨迹未干）。 */
+    if (S.inDongtian) return 'dongtian';
     if (isShen()) return 'temple';
     if (S.clan && S.place === 'qingyue' && Math.random() < 0.2) return 'cave';
     const p = S.place || 'qingyue';
-    // 坊市 / 山野 / 宗门 / 洞府，按所在地与状态轮换
     if (S.phase === 'combat') return 'wild';
     if (S.cultPlace === 'market') return 'market';
+    /* 宗门场景写了四十条，但旧版这里从来没返回过 'sect'——
+       入了宗门的人读到的还是「洞府」与「山野」。
+       入了宗门且不在别处，就该看见宗门。 */
+    if (S.sect && S.xRealm >= 1 && Math.random() < 0.5) return 'sect';
     return (S.xRealm >= 1 ? 'cave' : 'wild');
   }
   function scene() {
@@ -5237,8 +5242,18 @@
   function eventSlot(roll) {
     /* v8.0：按事件表长度均分 1~100，以后往 EVENTS 里加事件不必再改这张表。
        旧版是写死的十二区间，加一条事件就要同时改数据和这里，漏改的那条永远抽不到。 */
-    const list = D.EVENTS || [];
-    if (!list.length) return 'pilgrim';
+    const all = D.EVENTS || [];
+    if (!all.length) return 'pilgrim';
+    /* 按道途筛池子。旧版 22 条事件里 12 条是神道专属（上香、香火、庙会），
+       仙道玩家抽到只会觉得「这不是我的事」——名义上有事件，其实没有内容。 */
+    const shen = isShen(), xian = isXian(), both = isBoth();
+    const list = all.filter(function (e) {
+      if (!e.path) return true;
+      if (e.path === 'shen') return shen || both;
+      if (e.path === 'xian') return xian || both;
+      return true;
+    });
+    if (!list.length) return all[0].id;
     const idx = clamp(Math.floor((roll - 1) * list.length / 100), 0, list.length - 1);
     return list[idx].id;
   }
@@ -5550,7 +5565,7 @@
     S.pendingTx = t.id;
     let b = '';
     if (t.poem) b += '<div class="poem" style="font-size:15px;line-height:1.95;padding:2px 0 10px">' +
-      esc(t.poem).replace(/，/, '，<br>') + '</div>';
+      poemHtml(t.poem) + '</div>';
     b += '<div class="liturgy">' + esc(t.verse) + '</div>';
     b += divider() + '<div class="small muted">' + esc(t.hint) + '</div>';
     b += '<ul class="opts">';
@@ -5701,10 +5716,31 @@
     return v.line;
   }
 
+  /* 诗句排版：两句一行。
+     ------------------------------------------------------------
+     旧写法 `esc(poem).replace(/，/, '，<br>')` 只断第一处，
+     七言四句会被切成 1+3 两行，长短悬殊，气口全乱。
+     古体诗一行两句才对——这里先按句读切开，再两两拼回。 */
+  function poemHtml(s) {
+    const t = String(s || '');
+    const parts = [];
+    let cur = '';
+    for (let i = 0; i < t.length; i++) {
+      const ch = t[i];
+      cur += ch;
+      if ('，。；！？'.indexOf(ch) >= 0) { parts.push(cur); cur = ''; }
+    }
+    if (cur) parts.push(cur);
+    if (parts.length < 3) return esc(t);   // 一句或两行的短诗不用断
+    const lines = [];
+    for (let i = 0; i < parts.length; i += 2) lines.push(parts[i] + (parts[i + 1] || ''));
+    return lines.map(function (x) { return esc(x); }).join('<br>');
+  }
+
   /* 破境/失败的独立诗窗。破境是全局最重的节点之一，用一行 logLine 带过太轻了。 */
   function openVersePop(title, poem, rows, opt) {
     opt = opt || {};
-    let b = '<div class="poem">' + esc(poem).replace(/，/, '，<br>') + '</div>';
+    let b = '<div class="poem">' + poemHtml(poem) + '</div>';
     if (opt.sub) b += '<div class="poemnote">' + esc(opt.sub) + '</div>';
     if (rows && rows.length) {
       b += divider();
@@ -5866,7 +5902,7 @@
     if (S.currentScene === 'save') bump('saveAndKill');
     let b = '';
     if (e.poem) b += '<div class="poem" style="font-size:14.5px;line-height:1.9;padding:2px 0 9px">' +
-      esc(e.poem).replace(/，/, '，<br>') + '</div>';
+      poemHtml(e.poem) + '</div>';
     b += '<div class="small">' + esc(e.text) + '</div>';
     b += divider() + '<ul class="opts">';
     e.opts.forEach(function (o, i) {
@@ -6042,6 +6078,269 @@
         } else if (opt === 'trade') {
           S.fame += 15; S.stones += 200; msg = '你以一枚旧玉换了残页，摊主还倒贴 200 灵石。声望 +15。'; cls = 'good';
         } else { S.stats.insight = clamp(S.stats.insight + 2, 1, 20); msg = '你默记半句，悟性 +2。'; cls = 'good'; }
+        break;
+      /* ====== 2026-11-17 素材增补：十五处奇遇 ======
+         每处三个选项，没有唯一正解。有的给东西，有的给明白，有的给一笔债。
+         文字取白描，不替玩家下判断。 */
+      /* 残符石门 */
+      case 'stoneGate':
+        if (opt === 'push') {
+          addMat('huanShi', 1); S.karma += 2;
+          msg = '门后是一间废丹房，炉冷百年。炉膛里结一枚废丹，色黑，你取走了。夜里梦见有人立在门内，朝你点头。';
+          cls = 'good';
+        } else if (opt === 'leave') {
+          S.stats.heart = clamp(S.stats.heart + 1, 1, 20);
+          msg = '你把残符揭下，按回原位。转身下山，身后山风停了一瞬。有些门不是用来开的，是用来记得的。';
+          cls = 'good';
+        } else {
+          gainXiuwei(40); S.karma += 5;
+          msg = '火符烧了残符，石门自开。门后空无一物，满地符灰排成一个「谢」字。你不知道那个字是说给谁的。';
+          cls = 'danger';
+        }
+        break;
+      /* 断剑 */
+      case 'brokenSword':
+        if (opt === 'keep') {
+          addMat('tieMu', 1); S.stats.insight = clamp(S.stats.insight + 1, 1, 20);
+          msg = '你以灵气养它三月。锈下露出第二行小字：斩过不该斩的。';
+          cls = 'good';
+        } else if (opt === 'back') {
+          S.stats.fate = clamp(S.stats.fate + 2, 1, 20);
+          msg = '你把断剑插回滩泥。三日后再过，剑没了，滩上多一丛芦苇，长得极直。';
+          cls = 'good';
+        } else {
+          S.stones += 80;
+          msg = '拿去铁匠铺熔了。铁匠打出一把锄头，硬得离谱，转手卖了八十灵石。剑系的人听说，看你的眼神淡了。';
+          cls = '';
+        }
+        break;
+      /* 夜半授业 */
+      case 'nightTeach':
+        if (opt === 'learn') {
+          gainXiuwei(50); S.stats.insight = clamp(S.stats.insight + 1, 1, 20);
+          msg = '那一式上手极快，快得不像初学。你练了三日，忽然想起：教得这样准的人，必是看过你出手。';
+          cls = 'good';
+        } else if (opt === 'refuse') {
+          S.stats.heart = clamp(S.stats.heart + 2, 1, 20);
+          msg = '不知来路的东西，不用。当夜风很大，你睡得很稳。';
+          cls = 'good';
+        } else {
+          S.stats.fate = clamp(S.stats.fate + 3, 1, 20);
+          S.lifeMax = Math.max(20, (S.lifeMax || 0) - 5);
+          msg = '以梅花小占逆推，算出一座废观的方向。卦金折在寿数上，去了五年。';
+          cls = '';
+        }
+        break;
+      /* 义庄老尸 */
+      case 'corpseHall':
+        if (opt === 'stay') {
+          S.stats.heart = clamp(S.stats.heart + 2, 1, 20);
+          msg = '三更，棺中传出抓挠声。你坐得离棺很近，抓挠声慢慢停了。看门人送你一页《镇魂贴》残篇。';
+          cls = 'good';
+        } else if (opt === 'burn') {
+          S.karma += 10; S.stones += 120;
+          msg = '火起时棺里的人坐了起来，没有打你，只是看着火，看了很久。灰里得一枚尸丹，转手卖了。';
+          cls = 'danger';
+        } else {
+          S.stones += 60;
+          msg = '你收了双倍酒钱。出门时他说：明年今日，这酒还温着。';
+          cls = '';
+        }
+        break;
+      /* 落难仙子 */
+      case 'fallenFairy':
+        if (opt === 'save') {
+          S.fame += 6; S.karma += 3;
+          msg = '救下才知她不是仙子，是魔门放出来的人材，她自己。黑衣人临走看了你一眼，记住了你的脸。';
+          cls = 'good';
+        } else if (opt === 'report') {
+          S.fame += 5; S.stones += 30;
+          msg = '官差到时人已散了，只余半地血迹与一枚耳环。官府记你一档，赏了三十灵石。';
+          cls = '';
+        } else {
+          S.stats.heart = clamp(S.stats.heart - 2, 1, 20);
+          S.karma += 3;
+          msg = '你看了全程，没动。最后她自己断了经脉，黑衣人抬走的是尸首。你记住了他们腰间的铜牌。';
+          cls = 'danger';
+        }
+        break;
+      /* 井中月 */
+      case 'wellMoon':
+        if (opt === 'reach') {
+          S.stats.insight = clamp(S.stats.insight + 2, 1, 20);
+          S.lifeMax = Math.max(20, (S.lifeMax || 0) - 3);
+          msg = '指尖触影那刻，井底传来一声很轻的「唉」。此后每逢月圆，你总觉得手是凉的。';
+          cls = '';
+        } else if (opt === 'incense') {
+          S.piety = clamp((S.piety || 1) + 0.1, 0.5, 2.0);
+          S.followers += 30;
+          msg = '香沉下去，井水影里的月圆了七分。此后月圆之夜，井水可取一盏月露。';
+          cls = 'good';
+        } else {
+          S.stats.heart = clamp(S.stats.heart + 3, 1, 20);
+          S.karma = Math.max(0, S.karma - 2);
+          msg = '以符纸封了井口。封前对着井说：过路功德，不敢受用。';
+          cls = 'good';
+        }
+        break;
+      /* 贩书人 */
+      case 'bookSeller':
+        if (opt === 'buy') {
+          if (S.stones < 30) { toast('灵石不足'); return render(); }
+          S.stones -= 30;
+          S.stats.insight = clamp(S.stats.insight + 1, 1, 20);
+          msg = '买一本错版《炼气心法》。回家细读，错的那一行，恰好是你一直修岔的地方。';
+          cls = 'good';
+        } else if (opt === 'ask') {
+          S.stats.insight = clamp(S.stats.insight + 2, 1, 20);
+          msg = '问他为何只在雨天出摊。他说：晴天卖的是字，雨天卖的是漏。';
+          cls = 'good';
+        } else {
+          S.stones += 50; S.karma += 5;
+          msg = '报给坊市巡查。摊位连同摊主，一夜消失，巡查署赏了五十灵石。此后雨天，你总觉得街角少点什么。';
+          cls = 'danger';
+        }
+        break;
+      /* 故人之账 */
+      case 'oldDebt':
+        if (opt === 'pay') {
+          if (S.stones < 30) { toast('灵石不足'); return render(); }
+          S.stones -= 30; S.merit += 15;
+          msg = '补他三十灵石与一炉新丹。老人只收丹，不收钱。功德 +15。';
+          cls = 'good';
+        } else if (opt === 'proof') {
+          S.stats.heart = clamp(S.stats.heart - 1, 1, 20);
+          gainXiuwei(30);
+          msg = '他真拿出凭据，一张三十年前的赊账单，字迹确实像。你从笔迹里看出师父早期的手法。';
+          cls = '';
+        } else {
+          S.karma += 3; S.enemy = true; S.enemyName = '那个老人的后人';
+          msg = '「三十年前的账，利息也该涨到头了。」老人笑了：「好，涨到头了。」';
+          cls = 'danger';
+        }
+        break;
+      /* 妖物认亲 */
+      case 'foxCub':
+        if (opt === 'keep') {
+          addMat('mudanYao', 1); S.karma += 2;
+          msg = '幼狐入袋那刻，远处山头一声长嚎，应了一声。它在你怀里睡了一路，爪子一直攥着你的衣襟。';
+          cls = '';
+        } else if (opt === 'return') {
+          S.stats.heart = clamp(S.stats.heart + 2, 1, 20);
+          msg = '送到嚎声来处。母狐在崖上看着，没下来。此后你在那片山采药，野兽不袭。';
+          cls = 'good';
+        } else {
+          S.stones += 88; S.karma += 8;
+          S.stats.heart = clamp(S.stats.heart - 2, 1, 20);
+          msg = '卖了八十八灵石。回家当夜，三只眼睛的图案出现在梦里，一直看着你。';
+          cls = 'danger';
+        }
+        break;
+      /* 前人洞府 */
+      case 'oldCave':
+        if (opt === 'take') {
+          gainXiuwei(60);
+          if ((S.books || []).indexOf('taiyin') < 0) { S.books = S.books || []; S.books.push('taiyin'); }
+          msg = '只取丹药与书。丹三瓶，两瓶完好；书一册，《太阴吐纳养轮经·注本》。';
+          cls = 'good';
+        } else if (opt === 'occupy') {
+          S.lingqiUp = Math.max(S.lingqiUp || 0, (D.LINGQI.length - 1));
+          if (typeof syncLingqi === 'function') syncLingqi();
+          msg = '连洞府一起占了。搬进去那晚，蒲团还是温的。';
+          cls = 'good';
+        } else {
+          S.sect = S.sect || null;
+          if (S.sect) S.sect.contrib = (S.sect.contrib || 0) + 200;
+          else S.stones += 100;
+          msg = '报给宗门。宗门清点后分你三成，另记大功一次。';
+          cls = 'good';
+        }
+        break;
+      /* 雪夜借宿 */
+      case 'snowLodge':
+        if (opt === 'pay') {
+          S.stones = Math.max(0, S.stones - 2);
+          S.stats.heart = clamp(S.stats.heart + 1, 1, 20);
+          msg = '猎户不收，说雪夜留人，天经地义。你把钱压在碗底。次年春，他家孩子送来一双新毡靴。';
+          cls = 'good';
+        } else if (opt === 'tale') {
+          S.stats.insight = clamp(S.stats.insight + 1, 1, 20);
+          msg = '你讲了一夜修仙界的段子，猎户笑了半宿。能把修行讲成段子，是另一种悟。';
+          cls = 'good';
+        } else {
+          gainXiuwei(20); S.karma += 2;
+          msg = '你运功到天明。猎户家的狗叫了一夜，第二日他眼里有血丝，什么也没说。';
+          cls = '';
+        }
+        break;
+      /* 断香的名号 */
+      case 'noNameStele':
+        if (opt === 'incense') {
+          S.stats.heart = clamp(S.stats.heart + 2, 1, 20);
+          S.stats.insight = clamp(S.stats.insight + 1, 1, 20);
+          msg = '补上三支香。香点着后，碑面浮出一行水痕字：知者不必名。';
+          cls = 'good';
+        } else if (opt === 'carve') {
+          S.fame += 3;
+          S.stats.fate = clamp(S.stats.fate - 1, 1, 20);
+          msg = '在碑上刻自己的名号。刻完，碑角崩了一小块。碑不欠你什么，是你欠了碑。';
+          cls = '';
+        } else {
+          addMat('fuZhi', 3);
+          msg = '拓印碑文带走。拓完才发觉碑上无字，拓的是风磨的纹路，纹路自成一篇符文。';
+          cls = 'good';
+        }
+        break;
+      /* 河伯娶亲 */
+      case 'riverBride':
+        if (opt === 'lift') {
+          S.karma = Math.max(0, S.karma - 5);
+          S.fame = Math.max(0, S.fame - 5);
+          S.merit += 20;
+          msg = '你掀了轿，新娘是个十二岁的孩子。村中长老跪下来求你：河要吃人，不吃就涨水。功德 +20，村里人记恨。';
+          cls = 'good';
+        } else if (opt === 'sham') {
+          S.stones += 40; S.followers += 40;
+          msg = '你收了主婚钱，夜里让花轿「自己漂走了」。村民以为河伯收了礼，香火转投了你。';
+          cls = 'danger';
+        } else {
+          S.stats.heart = clamp(S.stats.heart - 1, 1, 20);
+          msg = '你走得很远，还是听见河声涨了一寸。有些账，看见了就成了共谋。';
+          cls = 'danger';
+        }
+        break;
+      /* 官道截杀 */
+      case 'escortRaid':
+        if (opt === 'help') {
+          S.stones += 120; S.fame += 8;
+          msg = '助镖师退敌。事后镖头要分你镖银，你拿了一份，另讨了一面旧镖旗。祀部档案记你一笔协防。';
+          cls = 'good';
+        } else if (opt === 'loot') {
+          S.stones += 150; S.karma += 10;
+          msg = '截杀者与镖师两败俱伤，你捡了三箱散落的官香，转手换了灵石。祀部的通缉画像上，多了一张脸。';
+          cls = 'danger';
+        } else {
+          S.merit += 15; S.fame += 5;
+          msg = '你把两边受伤的都拖开。最后两头都欠你人情，也都有人觉得你多管闲事。';
+          cls = 'good';
+        }
+        break;
+      /* 镜湖照影 */
+      case 'mirrorLake':
+        if (opt === 'sit') {
+          S.stats.insight = clamp(S.stats.insight + 2, 1, 20);
+          S.stats.heart = clamp(S.stats.heart + 1, 1, 20);
+          msg = '与影对坐一夜。天亮时影先起身，替你把火堆踩灭了。';
+          cls = 'good';
+        } else if (opt === 'break') {
+          S.stones += 200;
+          msg = '以雷法轰湖，湖水散尽，湖底是一整面古镜，镜背刻满倒写的经文。你把镜子卖了。';
+          cls = '';
+        } else {
+          S.stats.heart = clamp(S.stats.heart + 1, 1, 20);
+          msg = '走出十里，身后「扑通」一声，像有人落水。不回头不是错，只是会一直想。';
+          cls = '';
+        }
         break;
       default: msg = '什么也没发生。';
     }
@@ -7677,6 +7976,9 @@
     if (nd.insight && st('insight') < nd.insight) return false;
     if (nd.heart && st('heart') < nd.heart) return false;
     if (nd.realm && S.xRealm < nd.realm) return false;
+    /* 神道道书按柱位开门。旧版只有悟性/道心/境界三种门槛，
+       邪注本这种「读到第几柱才看得懂」的书就没法写。 */
+    if (nd.pillar && (S.pillar || 0) < nd.pillar) return false;
     return true;
   }
   ACT.openDaoshu = () => {
@@ -7694,7 +7996,13 @@
       });
       b += '</ul>';
     } else b += '<div class="small muted">还没得到任何道书。坊市有卖的，奇遇里也捡得到。</div>';
-    const available = (D.DAOSHU || []).filter(function (bk) { return owned.indexOf(bk.id) < 0; });
+    /* 道书按道途分架：邪注本讲的是香火与神位，摆在仙道修士的坊市里不合情理。 */
+    const available = (D.DAOSHU || []).filter(function (bk) {
+      if (owned.indexOf(bk.id) >= 0) return false;
+      if (bk.path === 'shen') return isShen() || isBoth();
+      if (bk.path === 'xian') return isXian() || isBoth();
+      return true;
+    });
     if (available.length) {
       b += divider() + '<div class="small muted">可购道书</div><ul class="opts">';
       available.forEach(function (bk) {
@@ -7742,8 +8050,19 @@
     if (S.phase !== 'play') { render(); return; }
     // 应用收益
     const gain = layer.gain || '';
+    /* 收益兑现：文本里写什么，账上就得有什么。
+       旧版只认「道心 +N」和「阅历」，其余全是空话——
+       写着「悟性 +1」「寿元 +20」却什么都不发生，那本书就是骗人的。 */
     const heartGain = gain.match(/道心\s*\+\s*(\d+)/);
     if (heartGain) S.stats.heart = clamp(S.stats.heart + parseInt(heartGain[1], 10), 1, 20);
+    const insGain = gain.match(/悟性\s*\+\s*(\d+)/);
+    if (insGain) S.stats.insight = clamp(S.stats.insight + parseInt(insGain[1], 10), 1, 20);
+    const qualGain = gain.match(/资质\s*\+\s*(\d+)/);
+    if (qualGain) S.stats.qualify = clamp(S.stats.qualify + parseInt(qualGain[1], 10), 1, 20);
+    const lifeGain = gain.match(/寿元\s*\+\s*(\d+)/);
+    if (lifeGain) S.lifeMax = (S.lifeMax || 0) + parseInt(lifeGain[1], 10);
+    const xiuGain = gain.match(/修为\s*\+\s*(\d+)/);
+    if (xiuGain) gainXiuwei(parseInt(xiuGain[1], 10));
     if (/阅历/.test(gain)) S.insightXp = (S.insightXp || 0) + 1;
     logLine('读 ' + bk.name + ' 第 ' + (rc + 1) + ' 层：' + gain, 'good');
     let b = '<div class="daoshu">';
