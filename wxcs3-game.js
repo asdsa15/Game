@@ -4843,15 +4843,12 @@
 
   /* ---------- P2-17 事件表：1d100 十二区间 ---------- */
   function eventSlot(roll) {
-    // 1~100 十二区间，对应设定表
-    const t = [
-      { max: 8, id: 'pilgrim' }, { max: 16, id: 'drought' }, { max: 24, id: 'plague' },
-      { max: 32, id: 'neighbor' }, { max: 40, id: 'prefect' }, { max: 48, id: 'donor' },
-      { max: 56, id: 'wander' }, { max: 64, id: 'demon' }, { max: 72, id: 'draft' },
-      { max: 80, id: 'theft' }, { max: 88, id: 'spirit' }, { max: 100, id: 'storm' }
-    ];
-    for (const s of t) if (roll <= s.max) return s.id;
-    return 'pilgrim';
+    /* v8.0：按事件表长度均分 1~100，以后往 EVENTS 里加事件不必再改这张表。
+       旧版是写死的十二区间，加一条事件就要同时改数据和这里，漏改的那条永远抽不到。 */
+    const list = D.EVENTS || [];
+    if (!list.length) return 'pilgrim';
+    const idx = clamp(Math.floor((roll - 1) * list.length / 100), 0, list.length - 1);
+    return list[idx].id;
   }
 
   /* ---------- P2-18 舆图：真实移动 ---------- */
@@ -6358,6 +6355,15 @@
       }
     }
     S.famine = false; S.neighborBetter = false;
+    /* v8.0：事件效果改成数据驱动。
+       旧版这里是一张 12 个 case 的硬编码表，加一条事件要动两处代码，
+       而且十二条几乎全是神道向（信众/香火/香客）——仙道玩家一个月看一次「无事」。
+       现在 events 可以直接在数据里写 eff，复用自由行动那套效果结算。 */
+    if (ev.eff) {
+      const notes = applyIntentEff(ev.eff);
+      if (notes.length) logLine(notes.join('，') + '。', '');
+      return;
+    }
     switch (ev.id) {
       case 'pilgrim': {
         const g = ev.followers || 20;

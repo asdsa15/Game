@@ -142,8 +142,25 @@ places.forEach(function (p) {
 ok(combos >= 120, '地点×季节文本不少于 120 条（现 ' + combos + '）', combos);
 ok(shortScene.length === 0, '场景文本都不少于 12 字', shortScene.slice(0, 3).join('；'));
 
-/* ---------- 5. 文本总量 ---------- */
-console.log('=== 6. 文本总量 ===');
+/* ---------- 5. 随机事件 ---------- */
+console.log('=== 6. 随机事件 ===');
+const EV = D.EVENTS || [];
+ok(EV.length >= 20, '事件不少于 20 条（现 ' + EV.length + '）', EV.length);
+const evBad = [];
+EV.forEach(function (e) {
+  if (!e.id || !e.name || !e.text) evBad.push((e.id || '?') + ' 缺字段');
+  if ((e.text || '').length < 30) evBad.push(e.id + ' 正文过短');
+  if (!e.after) evBad.push(e.id + ' 缺 after（收束句）');
+});
+ok(evBad.length === 0, '事件正文与收束句俱全', evBad.slice(0, 3).join('；'));
+/* 每个事件都必须抽得到：旧版 slot 表写死十二条，新加的永远抽不到 */
+const slotSrc = gcode.match(/function eventSlot[\s\S]*?\n  \}/);
+ok(!!slotSrc && !/max:\s*\d+/.test(slotSrc[0]), '事件抽取不再依赖写死的区间表');
+const effN = EV.filter(function (e) { return e.eff; }).length;
+ok(effN >= 10, '至少 10 条事件用数据驱动效果（现 ' + effN + '）', effN);
+
+/* ---------- 6. 文本总量 ---------- */
+console.log('=== 7. 文本总量 ===');
 function countChars(v) {
   let n = 0;
   (function walk(x) {
