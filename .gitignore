@@ -1,0 +1,21 @@
+# 大型参考素材，不属于运行源码
+小说参考/
+
+# 临时素材与手工备份
+_backup/
+_shots/
+
+# 可由构建脚本重新生成
+mobile/dist/
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 历史误操作副本与备份
+xcs3-*
+*.bak*
+
+# 系统文件
+.DS_Store
+Thumbs.db

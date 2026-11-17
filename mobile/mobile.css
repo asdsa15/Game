@@ -1,0 +1,177 @@
+/* ==========================================================================
+   问道长生 · 移动端补丁  v1.0
+   适用：问道长生v6.html（v6.2 双栏对战版）
+   注入方式：由 build.py 自动插到 style 结束标签之前；也可手动粘贴到 style 末尾。
+   注意：注释里不要出现 style 的结束标签原文，否则会提前闭合样式块。
+   原则：全部写在「触屏」或「窄屏」条件下，PC 端表现一个像素都不变。
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. 三类移动端"手感故障"的根因修复
+   -------------------------------------------------------------------------- */
+html{
+  -webkit-text-size-adjust:100%;      /* iOS 横竖屏切换时不再自动放大字号 */
+  overscroll-behavior-y:none;         /* 到顶下拉不回弹，避免误触"刷新"丢档 */
+  touch-action:manipulation;          /* 消除 300ms 点击延迟 */
+}
+body{
+  padding-bottom:env(safe-area-inset-bottom);   /* iPhone 底部横条留白 */
+}
+
+/* --------------------------------------------------------------------------
+   2. 触屏设备：触控目标 ≥44px，关掉会"粘住"的 hover
+   -------------------------------------------------------------------------- */
+@media (hover:none),(pointer:coarse){
+  .opt{min-height:44px;padding:12px 14px}
+  .opt .key{width:30px;height:30px;line-height:30px;font-size:13px}
+  .opt:hover{background:#fff;border-color:#E5DFCF;transform:none}
+  .opt:active{background:#EAF5F1;border-color:var(--jade);transform:scale(.995)}
+
+  .btn{min-height:40px;padding:9px 18px}
+  .chip{min-height:38px;padding:8px 12px}
+
+  .dockbtn:hover{transform:none;box-shadow:none}
+  .dockbtn:active{transform:scale(.96)}
+
+  .sysbtn-top{min-height:40px;padding:8px 14px}   /* 36px 仍低于 40px 的下限 */
+  .sysbtn-top:hover{background:#fff;border-color:var(--edge);color:var(--ink)}
+}
+
+/* 按钮类元素不参与长按选中，避免误拖出蓝底 */
+.opt,.btn,.chip,.dockbtn,.sysbtn-top{-webkit-user-select:none;user-select:none}
+
+/* --------------------------------------------------------------------------
+   3. 输入框：字号必须 ≥16px，否则 iOS 聚焦时会把整页放大
+   -------------------------------------------------------------------------- */
+@media(max-width:900px){
+  input,select,textarea{font-size:16px}
+}
+
+/* --------------------------------------------------------------------------
+   4. 视口单位：手机地址栏会伸缩，100vh 会导致跳动 → 优先 dvh
+   -------------------------------------------------------------------------- */
+@supports (height:100dvh){
+  .logbox{max-height:calc(100dvh - 300px)}
+  .modal .box{max-height:86dvh}
+}
+
+/* --------------------------------------------------------------------------
+   5. 顶栏：窄屏压缩成一行，并避开刘海
+   -------------------------------------------------------------------------- */
+@supports (padding:max(0px)){
+  .topbar{padding-top:max(12px,env(safe-area-inset-top))}
+}
+@media(max-width:640px){
+  .topbar{padding:9px 14px;gap:8px;backdrop-filter:none}  /* 安卓 webview 上 blur 掉帧 */
+  .topbar h1{font-size:16px;letter-spacing:2px}
+  .topbar .author{display:none}
+  .topbar .clock{margin-left:auto;font-size:11px;letter-spacing:0;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .topbar .sysbtn-top{margin-left:8px;padding:6px 12px;font-size:12px;flex:0 0 auto}
+}
+
+/* --------------------------------------------------------------------------
+   6. 单列顺序：手机上先给「剧情＋选项」，纪事与状态往后放
+   -------------------------------------------------------------------------- */
+@media(max-width:880px){
+  /* :not(.stage-fight) —— 否则会把对战的「敌左我右」顺序也打乱 */
+  .stage:not(.stage-fight){grid-template-columns:1fr;gap:12px;padding:12px 12px 96px}
+  .stage:not(.stage-fight) > .col:nth-of-type(2){order:1}   /* 叙事＋选项（最先看到） */
+  /* 指令坞排第二：手机上它才是主操作区。旧顺序把它放在纪事与状态之后，
+     常用指令（功法/坊市）要先滚过两栏才够得着。 */
+  .stage:not(.stage-fight) > .dockrow{order:2}
+  .stage:not(.stage-fight) > .col:nth-of-type(1){order:3}   /* 天时·纪事 */
+  .stage:not(.stage-fight) > .col:nth-of-type(3){order:4}   /* 状态 */
+  .stage:not(.stage-fight) .logbox{max-height:220px}
+}
+
+/* --------------------------------------------------------------------------
+   7. 对战：手机上保持左右并排，不竖排（对峙感优先，也省高度）
+   -------------------------------------------------------------------------- */
+@media(max-width:880px){
+  .stage.stage-fight{grid-template-columns:1fr 1fr;gap:10px;padding:10px 10px 90px}
+  .stage.stage-fight .fighter .fname{font-size:15px;letter-spacing:1px}
+  .stage.stage-fight .fighter .fsub{font-size:11px}
+  .stage.stage-fight .fighter .frow{font-size:12px;gap:6px;padding:4px 0}
+  .stage.stage-fight .fighter .frow .k{flex:0 0 2.2em}
+  .stage.stage-fight .fighter .stance{font-size:10.5px;padding:1px 6px}
+  .stage.stage-fight .panel .pb{padding:10px 11px 12px}
+  .stage.stage-fight .panel .ph{font-size:12px;padding:7px 11px}
+  .stage.stage-fight .barnum{font-size:10.5px}
+  .stage.stage-fight .vsline{font-size:11.5px;gap:6px}
+  /* 六键的说明不再用省略号截断：宁可多一行，也别让玩家看不到「符 2 张 · 丹」 */
+  .stage.stage-fight .fightacts .opt{flex-wrap:wrap;row-gap:1px;padding:8px 10px}
+  .stage.stage-fight .fightacts .opt .note{flex:1 1 100%;max-width:none;margin-left:0;
+    text-align:right;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35}
+  /* 战况：底部那块空白不如放最近四条，打完不用翻纪事 */
+  .fightlog{margin-top:10px;padding-top:8px;border-top:1px dotted #E6E0D2;
+    font-size:11.5px;line-height:1.7;color:var(--muted);max-height:7em;overflow:hidden}
+  .fightlog .fl{padding:1px 0}
+  .fightlog .fl.danger{color:var(--cinnabar)}
+  .fightlog .fl.good{color:var(--merit)}
+}
+@media(max-width:400px){
+  .stage.stage-fight{gap:8px}
+  .stage.stage-fight .fighter .fname{font-size:14px}
+  .stage.stage-fight .fighter .frow .k{flex:0 0 2em}
+}
+
+/* --------------------------------------------------------------------------
+   8. 弹窗：底部弹起式，拇指够得到；不再垂直居中留大片空
+   -------------------------------------------------------------------------- */
+@media(max-width:640px){
+  .modal{padding:10px;align-items:flex-end}
+  .modal .box{max-height:88dvh;padding:18px 16px;
+    border-radius:10px 10px 8px 8px}
+  .modal h3{font-size:15px}
+}
+
+/* --------------------------------------------------------------------------
+   9. 底部指令区与小屏密度
+   -------------------------------------------------------------------------- */
+/* 手机上指令坞 13~15 个按钮，容易占掉小半屏。
+   560 以下压高度：缩小内边距、图标与字号，副标题只留一行省略号。 */
+@media(max-width:560px){
+  /* 15 个入口排 5 列 = 3 行，比 4 列少一行（约 55px），手机上少滚一截 */
+  .dock{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+  .dockbtn{padding:7px 2px 6px;gap:1px}
+  .dockbtn .dk{width:22px;height:22px;line-height:22px;font-size:12px}
+  .dockbtn .dt{font-size:11px;letter-spacing:0}
+  .dockbtn .ds{font-size:9px;max-width:100%;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap}
+}
+
+/* iOS 在 font-size < 16px 的输入框上聚焦会自动放大整页；自由输入是手机上最常用的入口 */
+@media(max-width:880px){
+  .freebar input{font-size:16px;padding:10px 12px}
+  .freebar .btn{min-width:62px;min-height:44px}
+  .toast{bottom:calc(24px + env(safe-area-inset-bottom));max-width:86vw}
+  /* 创角的姓名/年龄/相貌同样别触发 iOS 缩放 */
+  #in-name,#in-age,#in-look{font-size:16px}
+  /* 顶部「系统」与弹窗页签也给够手指高度（原来只有 29px） */
+  .sysbtn-top{min-height:40px;padding:8px 14px}
+  .shop-tab{min-height:38px;display:inline-flex;align-items:center}
+  .chip{min-height:36px}
+}
+
+/* 创角：主修三选一在窄屏变成通栏卡片后，「神道」会被挤成竖排 */
+@media(max-width:640px){
+  .selgrid .chip{align-items:flex-start;line-height:1.5}
+  .selgrid .chip b{flex:0 0 auto;white-space:nowrap}
+}
+@media(max-width:360px){
+  .dockbtn .ds{display:none}     /* 极窄屏才彻底去掉副标题 */
+}
+
+/* --------------------------------------------------------------------------
+   10. 创角页与正文可读性
+   -------------------------------------------------------------------------- */
+@media(max-width:640px){
+  .stage-create{padding:14px 12px 110px}
+  .selgrid{gap:7px}
+  body{font-size:15.5px;line-height:1.7}
+  .scene{font-size:15.5px;line-height:1.85}
+  .small,.muted{font-size:13px}
+  .opt .note{font-size:12px}
+  .hint{font-size:12.5px}
+}
