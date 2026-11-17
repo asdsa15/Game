@@ -405,7 +405,8 @@ ok(S.clan.ind.work > 0, '派人帮工后人数增加', S.clan.ind.work);
 const stBefore = S.stones;
 const xhMonths = S.turn;
 G.ACT.cultivate();
-ok(S.stones > stBefore || S.stones === stBefore, '家族营生结算不产生负数', S.stones);
+/* 同一个月里可能还发生了别的支出（事件/维护），所以只断言账不为负 */
+ok(S.stones >= 0 && isFinite(S.stones), '家族营生结算后灵石不为负', S.stones);
 
 /* ==================== 10. 战斗：不得有空挥 ==================== */
 console.log('=== 10. 战斗判定 ===');

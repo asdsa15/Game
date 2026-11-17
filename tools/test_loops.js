@@ -244,8 +244,75 @@ restore();
 ok(!!S.guowei && S.xRealm === 4, '证位成功得果位', S.guowei ? S.guowei.n : '无');
 ok(S.jinxing === true, '结丹得金性', S.jinxing);
 
-/* ==================== 6. 源码守卫 ==================== */
-console.log('=== 6. 接线守卫 ===');
+/* ==================== 6. 破境准备 ==================== */
+console.log('=== 6. 破境准备 ===');
+function rateNow() {
+  document.getElementById('modals').innerHTML = '';
+  G.ACT.openBreak();
+  const html = document.getElementById('modals').innerHTML || '';
+  const m = html.match(/(\d+)%/);
+  return m ? Number(m[1]) : -1;
+}
+
+setup();
+S.lingqi = 2;
+S.prep = { place: 'wild', pill: null, guard: null };
+const rWild = rateNow();
+S.prep = { place: 'cave', pill: null, guard: null };
+const rCave = rateNow();
+ok(rCave > rWild, '洞府内破境比荒野稳', rCave + '% vs ' + rWild + '%');
+
+setup();
+S.lingqi = 2;
+S.bag = { xiaoPo: 1 };
+S.prep = { place: 'wild', pill: null, guard: null };
+const rNoPill = rateNow();
+G.ACT.do_prep('pill', 'xiaoPo');
+const rPill = rateNow();
+ok(rPill > rNoPill, '备药抬高成功率', rPill + '% vs ' + rNoPill + '%');
+ok(S.prep.pill === 'xiaoPo', '药已选中', S.prep.pill);
+
+setup();
+S.lingqi = 2;
+S.bag = { xiaoPo: 1 };
+S.xRealm = 2; S.xStage = 0; S.xiuwei = 300;
+S.prep = { place: 'cave', pill: 'xiaoPo', guard: null };
+fix(0.99);
+G.ACT.do_xbreak();
+restore();
+ok((S.bag.xiaoPo || 0) === 0, '开坛后丹药被吃掉', S.bag.xiaoPo);
+ok(S.prep === null, '开坛后准备清空', S.prep);
+
+setup();
+S.lingqi = 2;
+S.npcs = { guqingxuan: { fav: 70, met: true, alive: true, since: 0 } };
+S.prep = { place: 'wild', pill: null, guard: null };
+const rNoGuard = rateNow();
+G.ACT.do_prep('guard', 'guqingxuan');
+const rGuard = rateNow();
+ok(rGuard > rNoGuard, '有护法成功率更高', rGuard + '% vs ' + rNoGuard + '%');
+
+setup();
+S.lingqi = 2;
+S.npcs = { guqingxuan: { fav: 70, met: true, alive: true, since: 0 } };
+S.xRealm = 2; S.xStage = 0; S.xiuwei = 300;
+S.prep = { place: 'wild', pill: null, guard: 'guqingxuan' };
+fix(0.99);
+G.ACT.do_xbreak();
+restore();
+ok(S.npcs.guqingxuan.fav === 55, '护法的代价是欠 15 好感', S.npcs.guqingxuan.fav);
+
+/* 没有好感 60 的人，就请不到护法 */
+setup();
+S.npcs = { guqingxuan: { fav: 30, met: true, alive: true, since: 0 } };
+S.prep = { place: 'wild', pill: null, guard: null };
+document.getElementById('modals').innerHTML = '';
+G.ACT.openBreak();
+ok(!/do;prep:guard:guqingxuan/.test(document.getElementById('modals').innerHTML || ''),
+  '好感不足 60 请不到护法');
+
+/* ==================== 7. 源码守卫 ==================== */
+console.log('=== 7. 接线守卫 ===');
 const gcode = fs.readFileSync(path.join(ROOT, 'wxcs3-game.js'), 'utf8');
 ok(/S\.enemySect/.test(gcode) && (gcode.match(/S\.enemySect/g) || []).length >= 3,
   'enemySect 有写入也有读取（不再是一句死话）', (gcode.match(/S\.enemySect/g) || []).length);

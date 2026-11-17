@@ -138,6 +138,7 @@
       npcCall: null,      // 待处理的 NPC 主动事件 {id, kind}
       tutStep: 0,         // 新手引导进度（到 TUTORIAL_STEPS.length 即结束）
       hdRate: 0,          // 心魔劫：本次破境的原成功率
+      prep: null,         // 破境准备：{place, pill, guard}
       pendingVengeance: false,   // 仇家已上门，等一个处理时机
       dying: null,        // 临终状态 {reason}
       dyingUsed: false,   // 一局只给一次临终选择
@@ -1730,6 +1731,51 @@
     openModal('功法所限 · ' + capInfo.to, b);
   }
 
+  /* ============================================================
+     v8.0 破境准备：把「掷骰子」变成「布置」
+     ------------------------------------------------------------
+     旧版破境只有一个 rate，玩家能做的只有「等修为满，然后点一下」。
+     丹药要先去背包吃、地点在哪都一样、没人护法这回事——
+     结果就是所有准备系统的意义都停留在文案上。
+     现在把三件事摆到破境面板里，每一件都要付代价：
+       择地（洞府灵气／宗门禁地／荒野）
+       备药（破境类丹药，吃了就没）
+       护法（一个交情过 60 的人，代价是欠他一次人情）
+     三样都不是免费的，所以「准备到什么程度」本身是个决策。
+     ============================================================ */
+  function prepState() {
+    if (!S.prep || typeof S.prep !== 'object') S.prep = { place: 'wild', pill: null, guard: null };
+    if (S.prep.place === undefined) S.prep.place = 'wild';
+    return S.prep;
+  }
+  function prepPlaceBonus() {
+    const pl = prepState().place;
+    if (pl === 'cave') return 0.03 + 0.015 * (S.lingqi || 1);   // 洞府越深越稳
+    if (pl === 'sect') return S.sect ? 0.05 : 0;
+    return 0;
+  }
+  function prepPillBonus() {
+    const id = prepState().pill;
+    if (!id) return 0;
+    const it = D.PILL_EXT.find(function (x) { return x.id === id; });
+    return it ? (it.v || 0) : 0;
+  }
+  function prepGuardBonus() { return prepState().guard ? 0.08 : 0; }
+  function prepBonus() { return prepPlaceBonus() + prepPillBonus() + prepGuardBonus(); }
+  function prepGuardCandidates() {
+    return Object.keys(S.npcs || {}).filter(function (id) {
+      const r = S.npcs[id];
+      return r && r.met && r.alive !== false && (r.fav || 0) >= 60;
+    }).slice(0, 4);
+  }
+  function prepPillCandidates() {
+    return Object.keys(S.bag || {}).filter(function (id) {
+      if ((S.bag[id] || 0) < 1) return false;
+      const it = D.PILL_EXT.find(function (x) { return x.id === id; });
+      return it && it.type === 'break';
+    }).slice(0, 4);
+  }
+
   function xianBreakRate() {
     // 文档：胎息/练气门槛低，越往上越渺茫
     const baseByRealm = [0.72, 0.62, 0.50, 0.36, 0.22];
@@ -1746,6 +1792,7 @@
     if (daoyinPaired()) r += 0.06;
     // 破境丹类加成（新表：小破障/筑基/大破障/凝婴）
     r += (S.breakBonus || 0);
+    r += prepBonus();   // v8.0 择地／备药／护法三项准备的合计加成
     if (S.hp / S.hpMax < 0.33) r -= 0.15;
     if (S.hp / S.hpMax < 0.66) r -= 0.06;
     if (hasDebuff('karma_tangle')) r -= 0.08;   // 因果缠身
@@ -1754,27 +1801,93 @@
 
   function openXianBreak() {
     const r = xianBreakRate();
+    const p = prepState();
     const next = xrealm().stages[S.xStage + 1] || '下一境';
+    const pct = function (v) { return (v > 0 ? '+' : '') + Math.round(v * 100) + '%'; };
     let b = `<div class="small">${esc(realmName())} → ${esc(next)}</div>`;
-    b += `<div class="row"><span class="lab">成功率</span><b style="color:${r > .6 ? 'var(--merit)' : 'var(--cinnabar)'}">${Math.round(r * 100)}%</b><span class="muted small">道心 ${st('heart')} · 悟性 ${st('insight')}</span></div>`;
-    if (S.bag.zhuji > 0) b += `<div class="small good">持有筑基丹：成功率 +10</div>`;
-    b += `<div class="hint">失败：修为跌回 70%，气血逆冲；练气期六轮退回气海，需重修三年才能再试。</div>`;
-    b += `<div style="margin-top:10px"><button class="btn" data-act="do;xbreak">破境</button>
+    b += `<div class="row"><span class="lab">合计成功率</span><b style="color:${r > .6 ? 'var(--merit)' : 'var(--cinnabar)'}">${Math.round(r * 100)}%</b><span class="muted small">道心 ${st('heart')} · 悟性 ${st('insight')}</span></div>`;
+    b += divider();
+
+    /* 择地 */
+    b += `<div class="statline"><span class="k">择地</span><span class="v">${pct(prepPlaceBonus())}</span></div>`;
+    b += `<div class="row" style="gap:6px;flex-wrap:wrap;margin:2px 0 8px">`;
+    b += `<span class="chip${p.place === 'cave' ? ' on' : ''}" data-act="do;prep:place:cave">洞府内</span>`;
+    b += `<span class="chip${p.place === 'sect' ? ' on' : ''}" data-act="do;prep:place:sect"${S.sect ? '' : ' style="opacity:.4"'}>宗门禁地</span>`;
+    b += `<span class="chip${p.place === 'wild' ? ' on' : ''}" data-act="do;prep:place:wild">荒野</span>`;
+    b += `</div>`;
+
+    /* 备药 */
+    const pills = prepPillCandidates();
+    b += `<div class="statline"><span class="k">备药</span><span class="v">${pct(prepPillBonus())}</span></div>`;
+    b += `<div class="row" style="gap:6px;flex-wrap:wrap;margin:2px 0 8px">`;
+    if (!pills.length) b += `<span class="chip" style="opacity:.45">囊中无破境丹</span>`;
+    pills.forEach(function (id) {
+      const it = D.PILL_EXT.find(function (x) { return x.id === id; });
+      b += `<span class="chip${p.pill === id ? ' on' : ''}" data-act="do;prep:pill:${id}">` +
+        esc(it.name) + ` ×${S.bag[id]}</span>`;
+    });
+    if (p.pill) b += `<span class="chip" data-act="do;prep:pill:none">不服药</span>`;
+    b += `</div>`;
+
+    /* 护法 */
+    const guards = prepGuardCandidates();
+    b += `<div class="statline"><span class="k">护法</span><span class="v">${pct(prepGuardBonus())}</span></div>`;
+    b += `<div class="row" style="gap:6px;flex-wrap:wrap;margin:2px 0 8px">`;
+    if (!guards.length) b += `<span class="chip" style="opacity:.45">无可托之人（需好感 60）</span>`;
+    guards.forEach(function (id) {
+      const n = D.NPC_POOL.find(function (x) { return x.id === id; }) || { name: id };
+      b += `<span class="chip${p.guard === id ? ' on' : ''}" data-act="do;prep:guard:${id}">` +
+        esc(n.name) + `（好感 ${S.npcs[id].fav}）</span>`;
+    });
+    if (p.guard) b += `<span class="chip" data-act="do;prep:guard:none">不必护法</span>`;
+    b += `</div>`;
+
+    b += `<div class="hint">准备要花东西：丹药吃了就没，护法欠一次人情。择地只在这一次管用。</div>`;
+    b += `<div class="hint danger">失败：修为跌回 ${S.jinxing ? '88' : '70'}%，气血逆冲。</div>`;
+    b += `<div style="margin-top:10px"><button class="btn" data-act="do;xbreak">开坛破境</button>
       <button class="btn ghost" data-act="act:screen" style="margin-left:6px">再等等</button></div>`;
     openModal('破境 · ' + xrealm().name, b, true);
   }
+
+  ACT.do_prep = (kind, val) => {
+    const p = prepState();
+    if (kind === 'place') p.place = (['cave', 'sect', 'wild'].indexOf(val) >= 0 ? val : 'wild');
+    else if (kind === 'pill') p.pill = (val === 'none' ? null : val);
+    else if (kind === 'guard') p.guard = (val === 'none' ? null : val);
+    openXianBreak();
+  };
 
   ACT.do_xbreak = () => {
     closeModal();
     // 破障丹加成只影响「这一次」破境；筑基丹的 +15 也要真的加进去。
     // 旧代码 breakBonus 只加不减、consumeBreakBonus 从未被调用，
     // 吃一颗小破障丹等于此后每次破境永久 +12%。
-    let rate = xianBreakRate();
-    if (S.bag.zhuji > 0) {
-      S.bag.zhuji--;
-      const zhuji = D.PILL_EXT.find(function (p) { return p.id === 'zhuji'; });
-      rate = clamp(rate + (zhuji ? zhuji.v : 0.10), 0.05, 0.95);
+    const rate = xianBreakRate();
+    /* —— 准备在这里兑现：丹药扣掉、人情欠下、地方用掉。
+       旧版这里有一段「手里有筑基丹就自动吃」的特判，
+       等于玩家连吃药这一步都不用想。现在药要自己选，选了才吃。 */
+    const p = prepState();
+    if (p.pill) {
+      if ((S.bag[p.pill] || 0) < 1) {
+        toast('那颗丹药已经不在了');
+        S.prep = null;
+        render();
+        return;
+      }
+      S.bag[p.pill]--;
+      consumeQuality(p.pill);
+      const pit = D.PILL_EXT.find(function (x) { return x.id === p.pill; });
+      logLine('服下' + (pit ? pit.name : '丹药') + '，气机一沉。', '');
     }
+    if (p.guard) {
+      const gr = S.npcs[p.guard];
+      const gn = D.NPC_POOL.find(function (x) { return x.id === p.guard; });
+      if (gr) {
+        gr.fav = clamp((gr.fav || 0) - 15, 0, 120);
+        logLine((gn ? gn.name : '护法者') + '在关外守了一夜。这份人情记下了。', '');
+      }
+    }
+    S.prep = null;
     S.breakBonus = 0;
     S.cultBonus = 1;
     /* ============================================================
@@ -4103,6 +4216,7 @@
     /* 寻仇是瞬态：读档时清掉，下次按月重新掷 */
     out.pendingVengeance = false;
     out.hdRate = 0;
+    out.prep = null;   // 破境准备是临场的，读档重置
     /* 临终状态要留：不然在读档时把「还有一口气」吞掉，等于白送一条命 */
     out.dying = st.dying || null;
     if (out.phase === 'dying' && !out.dying) out.phase = 'over';
