@@ -137,6 +137,7 @@
 
       npcCall: null,      // 待处理的 NPC 主动事件 {id, kind}
       tutStep: 0,         // 新手引导进度（到 TUTORIAL_STEPS.length 即结束）
+      freeLog: [],        // 最近做过的闲事（意图 id），用于避免连着做同一件
       dying: null,        // 临终状态 {reason}
       dyingUsed: false,   // 一局只给一次临终选择
       legacyPact: null,   // 临终所托：pass / daotong，带到来世
@@ -3717,46 +3718,157 @@
     render();
   };
 
-  /* ---------- 自由输入 ---------- */
+  /* ============================================================
+     v8.0 自由行动 · 意图引擎
+     ------------------------------------------------------------
+     旧版这里是 if/else 六条正则：打坐、显圣、偷、杀、救、练功，
+     其余全部落到 else——「做了一月，没落下什么」。
+     玩家写「去后山采药」和写「今天想睡个懒觉」得到同一句话，
+     等于在告诉他：你打的字不算数。
+     ------------------------------------------------------------
+     现在：30 类意图 × 3~4 种结果 × 境界分层。
+     匹配用「最长关键词优先」，所以「采药」不会被「药」字抢走。
+     认不出来的输入也不打发人：会照他写的字回一句话。
+     ============================================================ */
+  function matchIntent(txt) {
+    const t = String(txt || '');
+    let best = null, bestScore = 0;
+    for (const it of (D.INTENTS || [])) {
+      /* 完整词优先：长度越具体分越高，句首再加权 */
+      for (const k of it.keys) {
+        const at = t.indexOf(k);
+        if (at < 0) continue;
+        const sc = k.length * 10 + (at === 0 ? 6 : 0);
+        if (sc > bestScore) { bestScore = sc; best = it; }
+      }
+      /* 单字软匹配：只用来兜「喝点酒」「写首诗」这类说法，
+         分值固定很低，绝不会盖过任何完整词 */
+      for (const k of (it.soft || [])) {
+        if (t.indexOf(k) < 0) continue;
+        const sc = 5 + (t.indexOf(k) === 0 ? 1 : 0);
+        if (sc > bestScore) { bestScore = sc; best = it; }
+      }
+    }
+    return best;
+  }
+
+  function pickIntentOutcome(it) {
+    const tier = myRealmIdx();
+    let pool = it.outs.filter(function (o) {
+      return o.minT == null || tier >= o.minT;
+    });
+    if (!pool.length) pool = it.outs.slice();
+    let total = 0;
+    pool.forEach(function (o) { total += (o.w || 1); });
+    let r = Math.random() * total;
+    for (const o of pool) {
+      r -= (o.w || 1);
+      if (r <= 0) return o;
+    }
+    return pool[pool.length - 1];
+  }
+
+  /* 把意图效果的数值落地，返回给玩家看的一串短记 */
+  function applyIntentEff(eff) {
+    if (!eff) return [];
+    const out = [];
+    const add = function (label, n) { if (n) out.push(label + (n > 0 ? ' +' : ' ') + n); };
+    if (eff.xiuweiMul && (isXian() || S.cultivation === 'both')) {
+      const g = Math.round(monthXiuwei() * eff.xiuweiMul);
+      if (g > 0) { S.xiuwei += g; add('修为', g); }
+    }
+    if (eff.stones) {
+      S.stones = Math.max(0, S.stones + eff.stones);
+      add('灵石', eff.stones);
+      ledgerAdd(eff.stones > 0 ? 'in' : 'out', '闲事', Math.abs(eff.stones));
+    }
+    if (eff.hp) {
+      S.hp = clamp(S.hp + eff.hp, 0, S.hpMax);
+      add('气血', eff.hp);
+    }
+    if (eff.hpPct) {
+      const d = Math.round(S.hpMax * eff.hpPct);
+      S.hp = clamp(S.hp + d, 0, S.hpMax);
+      add('气血', d);
+    }
+    if (eff.xh) {
+      S.xianghuo = Math.max(0, S.xianghuo + eff.xh);
+      add('香火', eff.xh);
+    }
+    if (eff.followers) {
+      S.followers = Math.max(0, Math.min(followLimit(), S.followers + eff.followers));
+      add('信众', eff.followers);
+    }
+    if (eff.piety) {
+      S.piety = clamp(S.piety + eff.piety, 0.5, 2.0);
+      out.push('虔诚 ' + (eff.piety > 0 ? '+' : '') + eff.piety);
+    }
+    if (eff.merit) { S.merit = Math.max(0, S.merit + eff.merit); add('功德', eff.merit); }
+    if (eff.karma) { S.karma = Math.max(0, S.karma + eff.karma); add('业力', eff.karma); }
+    if (eff.fame) { S.fame = Math.max(0, S.fame + eff.fame); add('声望', eff.fame); }
+    if (eff.insightXp) { S.insightXp = (S.insightXp || 0) + eff.insightXp; add('悟道', eff.insightXp); }
+    ['heart', 'insight', 'qualify', 'fate', 'sense', 'speed'].forEach(function (k) {
+      if (eff[k]) {
+        const nm = { heart: '道心', insight: '悟性', qualify: '资质', fate: '机缘', sense: '神识', speed: '身法' }[k];
+        S.stats[k] = clamp((S.stats[k] || 8) + eff[k], 1, 20);
+        add(nm, eff[k]);
+      }
+    });
+    if (eff.mat) {
+      const it = D.MATERIAL_EXT.find(function (x) { return x.id === eff.mat[0]; });
+      addMat(eff.mat[0], eff.mat[1] || 1);
+      out.push('得' + (it ? it.name : eff.mat[0]) + '×' + (eff.mat[1] || 1));
+    }
+    if (eff.fav) {
+      const met = Object.keys(S.npcs || {}).filter(function (k) {
+        return S.npcs[k] && S.npcs[k].met && S.npcs[k].alive !== false;
+      });
+      if (met.length) {
+        const id = pick(met);
+        const r = npcRec(id);
+        r.fav = clamp((r.fav || 0) + eff.fav, -100, 120);
+        const n = D.NPC_POOL.find(function (x) { return x.id === id; });
+        out.push((n ? n.name : '故人') + '好感 ' + (eff.fav > 0 ? '+' : '') + eff.fav);
+      }
+    }
+    return out;
+  }
+
+  /* 认不出来的输入：也要照着他写的字回一句，而不是一句「没落下什么」 */
+  const FREE_FALLBACK = [
+    '一月过去。这件事没有做成，但你也说不清是为什么没做成。',
+    '你以为这事很简单。做起来才发现，它只是不难，不是简单。',
+    '没有人拦你。你把这件事做完了，只是没有人知道，也没有人需要知道。',
+    '做到一半就停了。停下来的理由，你后来自己也记不清。',
+    '这一个月就这么过去了。山里的日子一向如此，做与不做，日头都照常落。'
+  ];
+
   ACT.do_free = () => {
     const el = document.getElementById('in-free');
     const txt = el ? el.value.trim() : '';
     if (!txt) { toast('写下你想做的事'); return; }
     closeModal();
+    const it = matchIntent(txt);
     advanceMonth(1);
     if (S.phase !== 'play') return render();
-    const r = rnd100();
-    let msg = '', cls = '';
-    if (/打坐|采气|闭关|修炼/.test(txt)) {
-      // 自由输入只对本次结算生效，绝不留到下一次。
-      // 旧代码置 true 后永不复位，等于此后所有行动都按闭关 ×2 结算。
-      S.meditate = true;
-      const g = Math.round(monthXiuwei()); S.xiuwei += g;
-      S.meditate = false;
-      msg = `闭关一月，修为 +${g}`; cls = 'good';
-    } else if (/显圣|求雨|治病|驱邪/.test(txt) && isShen()) {
-      const qb = currentQuanbing().scope;
-      const hit = txt.split('').some(c => qb.includes(c)) || Math.random() < 0.5;
-      if (hit) { const g = 20 + rnd(80); S.followers += g; msg = `显圣合于权柄，信众 +${g}`; cls = 'good'; }
-      else { S.piety = Math.max(0.5, S.piety - 0.1); msg = '所求不在你的权柄里——神迹不显。'; cls = 'danger'; }
-    } else if (/偷|夜探|潜入|摸进/.test(txt)) {
-      if (r <= 40 + st('fate')) { S.stones += 120; S.xiuwei += 15; msg = '得手，灵石 +120，修为 +15'; cls = 'good'; }
-      else { S.karma += 6; S.fame -= 5; msg = '被人撞破，狼狈脱身'; cls = 'danger'; }
-    } else if (/杀人|夺宝|劫|抢/.test(txt)) {
-      S.karma += 12; S.stones += 200;
-      msg = '你动了手，血溅衣袍，业力 +12'; cls = 'danger';
-      if (r <= 15) { startCombat(false); return; }
-    } else if (/救|济|施药|善/.test(txt)) {
-      S.merit += 8; S.fame += 6; msg = '救人一命，功德 +8，声望 +6'; cls = 'good';
-    } else if (/练功|参悟|研习/.test(txt)) {
-      if (r <= 50 + st('insight')) { S.stats.insight++; msg = '参悟有得，悟性 +1'; cls = 'good'; }
-      else msg = '参了一月，不得其门。';
-    } else {
-      if (r <= 30 + st('fate')) { const g = 10 + rnd(25); S.xiuwei += g; msg = `似有所得，修为 +${g}`; }
-      else msg = '做了一月，没落下什么。';
+
+    if (!it) {
+      const line = '你' + txt + '。' + pick(FREE_FALLBACK);
+      maybeEvent();
+      logLine(line, '');     // 记在随机事件之上：玩家做的事要看得见
+      return render();
     }
-    logLine(msg, cls);
-    maybeEvent(); render();
+    const o = pickIntentOutcome(it);
+    const notes = applyIntentEff(o.eff);
+    const cls = o.cls || (notes.some(function (n) { return /\+/.test(n); }) ? 'good' : '');
+    /* 正文 + 小字记账：正文负责味道，括号负责让玩家知道发生了什么 */
+    const line = o.text + (notes.length ? '（' + notes.join('，') + '）' : '');
+    S.freeLog = (S.freeLog || []).concat([{ m: S.turn, i: it.id }]).slice(-12);
+    /* 先让随机事件记账，再把玩家的行动记到最上面——
+       否则一进事件流，自己做的事就被一件不相干的事压下去了 */
+    maybeEvent();
+    logLine(line, cls);
+    render();
   };
 
   /* ---------- 存档：本地槽位 + 导入导出 ---------- */
@@ -5800,7 +5912,6 @@
      玩家不再是赌命中，而是在「打得动多少」之间做选择。
      ============================================================ */
   function deflectOf(c, side) {
-    /* side: 'foe' = 敌人卸我的力；'me' = 我卸敌人的力 */
     const gap = combatGap(c);
     let d = 0.15;
     if (side === 'foe') {
@@ -5812,6 +5923,12 @@
       d += clamp(-gap * 0.05, -0.10, 0.15);         // 你位格越高，越扛得住
     }
     return clamp(d, 0.05, 0.55);
+  }
+
+  /* 战斗描写：字负责画面，数字由调用处接在后面 */
+  function combatLine(kind) {
+    const p = (D.COMBAT_TEXT || {})[kind];
+    return p && p.length ? pick(p) : '';
   }
 
   function renderCombat() {
@@ -5966,7 +6083,6 @@
        而不是像旧版那样只挨打、看不出自己的防御有什么用。 */
     const myDefl = deflectOf(c, 'me');
     dmg *= (1 - myDefl);
-    if (myDefl >= 0.25) logLine('你卸去了这一击的大半。', 'good');
     if (c.defending) {
       let red = 0.5;
       if (c.talShield) red -= c.talShield;
@@ -5982,11 +6098,15 @@
         return true;
       }
       S.combat = null; S.phase = 'play';
-      logLine(c.foe.name + '见势不妙，遁走了。', '');
+      logLine(combatLine('foeFlee') + '　' + c.foe.name + '遁走了。', '');
       advanceMonth(1); render(); return false;
     }
     dmg = Math.round(dmg);
     S.hp = Math.max(0, S.hp - dmg);
+    /* v8.1：敌方回合以前只扣血、不报数，玩家看不见自己挨了多少。
+       现在给一句画面 + 一个数字，卸力成功时换一种写法。 */
+    logLine((myDefl >= 0.25 ? combatLine('fDefl') : combatLine('fHit')) +
+      '　气血 −' + dmg + (myDefl >= 0.25 ? '（卸去 ' + Math.round(myDefl * 100) + '%）' : ''), 'danger');
     c.defending = false;
     if (S.hp <= 0) {
       if (Math.random() < 0.4) { die(`被${c.foe.name}当场击杀，血溅当场。`); return false; }
@@ -6033,8 +6153,9 @@
       raw *= (1 - defl);
       if (c.observed) raw *= 1.6;
       dmg = Math.round(raw * (0.94 + Math.random() * 0.12));
-      if (c.observed) note = '看破破绽';
-      else if (defl >= 0.20) note = '对方卸去 ' + Math.round(defl * 100) + '%';
+      if (c.observed) note = '看破了破绽，' + combatLine('pHit');
+      else if (defl >= 0.20) note = combatLine('pDefl') + '（卸去 ' + Math.round(defl * 100) + '%）';
+      else note = combatLine('pHit');
       c.observed = false;
     } else if (sub === 'skill') {
       const nm = decodeURIComponent(arg || '');
@@ -6135,7 +6256,7 @@
         advanceMonth(1); render(); return;
       }
       note = '他不信你';
-    } else if (sub === 'defend') { c.defending = true; note = '守势'; }
+    } else if (sub === 'defend') { c.defending = true; note = combatLine('guard') + '（守势）'; }
     else if (sub === 'flee') {
       if (S.preBuff && S.preBuff.escape) { S.preBuff.escape = false; 
         S.combat = null; S.phase = 'play'; logLine('破宝锥开路，你从容遁走。', 'good'); advanceMonth(1); render(); return; }
@@ -6146,7 +6267,7 @@
         advanceMonth(1); render(); return;
       }
       note = '走不脱';
-    } else if (sub === 'observe') { c.observed = true; note = '看破破绽'; }
+    } else if (sub === 'observe') { c.observed = true; note = combatLine('observe') + '（看破了破绽）'; }
     else if (sub === 'pill') {
       const p = D.PILL_EXT.find(function (x) { return x.id === arg; }) ||
         D.PILL_EXT.find(function (x) { return (S.bag[x.id] || 0) > 0 && ['hp','hpPct','hpFull','cure','mp','mpPct','mpFull'].includes(x.type); });
@@ -6178,6 +6299,7 @@
       S.combat = null; S.phase = 'play';
       const loot = 100 + c.foe.rank * 200;
       S.stones += loot; S.fame += 5;
+      logLine(combatLine('kill') + '。', 'danger');
       logLine(isShen() ? `散去对方的香火，得灵石 ${loot}。` : `一剑了结${c.foe.name}，得灵石 ${loot}。`, 'danger');
       // 生死之间有一线明悟：打赢同一境的对手，不该只值几块灵石
       const insight = Math.max(1, Math.round(c.foe.power * 0.35));
