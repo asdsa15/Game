@@ -65,9 +65,11 @@ const sandbox = {
   Math, Object, Array, JSON, Number, String
 };
 vm.runInNewContext(
-  ['miaoUpCount', 'xiangBuyCap', 'xiangOutCap', 'maxXianghuo', 'monthXianghuo', 'shenStoneIncome']
+  ['miaoUpCount', 'dArtRaw', 'dArtLv', 'dArtSealMul',
+    'xiangBuyCap', 'xiangOutCap', 'maxXianghuo', 'monthXianghuo', 'shenStoneIncome']
     .map(grab).join('\n') +
-  '\nthis.miaoUpCount=miaoUpCount;this.xiangBuyCap=xiangBuyCap;this.xiangOutCap=xiangOutCap;' +
+  '\nthis.miaoUpCount=miaoUpCount;this.dArtRaw=dArtRaw;this.dArtLv=dArtLv;this.dArtSealMul=dArtSealMul;' +
+  'this.xiangBuyCap=xiangBuyCap;this.xiangOutCap=xiangOutCap;' +
   'this.maxXianghuo=maxXianghuo;this.monthXianghuo=monthXianghuo;this.shenStoneIncome=shenStoneIncome;',
   sandbox);
 

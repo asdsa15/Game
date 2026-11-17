@@ -324,18 +324,18 @@
 
   /* ====== 法器 / 法宝（扩充） ====== */
   const ARTIFACT_EXT = [
-    { id: 'qingyezhou', name: '青叶舟',     price: 400,   tier: 'huang', slot: 'move',  eff: '遁走成功率 +10，赶路不耗灵力' },
-    { id: 'guixibao',   name: '护身玉符',   price: 600,   tier: 'huang', slot: 'body',  eff: '斗法减伤 8%（常驻）' },
-    { id: 'duzuo',      name: '破宝锥',     price: 1200,  tier: 'xuan',  slot: 'once',  eff: '一次性：无视境界压制，必然切开一条生路（可遁走）' },
-    { id: 'wanyePiu',    name: '百魂幡',     price: 2400,  tier: 'xuan',  slot: 'atk',   eff: '斗法时伤害 +15%，消耗气血 5' },
-    { id: 'jiuzhuan',    name: '九转飞剑',   price: 3200,  tier: 'di',    slot: 'atk',   eff: '本命飞剑，攻击 +25%' },
-    { id: 'taiyinBao',   name: '太阴宝鉴',   price: 4600,  tier: 'di',    slot: 'body',  eff: '照见虚妄，命中 +10，看破幻术' },
-    { id: 'huoyuyuan',   name: '火云符',     price: 180,   tier: 'huang', slot: 'once',  eff: '一次性符箓：斗法首击火伤 +60%' },
-    { id: 'jinchuan',    name: '传音符',     price: 90,    tier: 'huang', slot: 'once',  eff: '一次性：向任意认识的人传讯，好感 +5' },
-    { id: 'wanlingfan',  name: '万灵幡',     price: 8600,  tier: 'tian',  slot: 'atk',   eff: '万灵归幡，斗法伤害 +40%，可收妖物' },
-    { id: 'wuyun',       name: '五雷符',     price: 520,   tier: 'xuan',  slot: 'once',  eff: '一次性：斗法首击必定命中且 +80% 伤害' },
-    { id: 'hanhuo',      name: '祈雨符箓',   price: 160,   tier: 'huang', slot: 'once',  eff: '神道：一场显圣不耗香火' },
-    { id: 'juxian',      name: '拘仙敕神符', price: 2800,  tier: 'di',    slot: 'body',  eff: '神道：位格压制 +1 档，限一场' }
+    { id: 'qingyezhou', name: '青叶舟',     price: 400,   tier: 'huang', slot: 'move', bonus: { move: 0.10 }, eff: '遁走成功率 +10，赶路不耗灵力' },
+    { id: 'guixibao',   name: '护身玉符',   price: 600,   tier: 'huang', slot: 'body', bonus: { body: 0.08 }, eff: '斗法减伤 8%（常驻）' },
+    { id: 'duzuo',      name: '破宝锥',     price: 1200,  tier: 'xuan',  slot: 'once', eff: '一次性：无视境界压制，必然切开一条生路（可遁走）' },
+    { id: 'wanyePiu',    name: '百魂幡',     price: 2400,  tier: 'xuan',  slot: 'atk', bonus: { atk: 0.15, hpCost: 5 }, eff: '斗法时伤害 +15%，消耗气血 5' },
+    { id: 'jiuzhuan',    name: '九转飞剑',   price: 3200,  tier: 'di',    slot: 'atk', bonus: { atk: 0.25 }, eff: '本命飞剑，攻击 +25%' },
+    { id: 'taiyinBao',   name: '太阴宝鉴',   price: 4600,  tier: 'di',    slot: 'body', bonus: { hit: 0.10 }, eff: '照见虚妄，命中 +10，看破幻术' },
+    { id: 'huoyuyuan',   name: '火云符',     price: 180,   tier: 'huang', slot: 'once', eff: '一次性符箓：斗法首击火伤 +60%' },
+    { id: 'jinchuan',    name: '传音符',     price: 90,    tier: 'huang', slot: 'once', eff: '一次性：向任意认识的人传讯，好感 +5' },
+    { id: 'wanlingfan',  name: '万灵幡',     price: 8600,  tier: 'tian',  slot: 'atk', bonus: { atk: 0.40 }, eff: '万灵归幡，斗法伤害 +40%，可收妖物' },
+    { id: 'wuyun',       name: '五雷符',     price: 520,   tier: 'xuan',  slot: 'once', eff: '一次性：斗法首击必定命中且 +80% 伤害' },
+    { id: 'hanhuo',      name: '祈雨符箓',   price: 160,   tier: 'huang', slot: 'once', eff: '神道：一场显圣不耗香火' },
+    { id: 'juxian',      name: '拘仙敕神符', price: 2800,  tier: 'di',    slot: 'once', eff: '神道：位格压制 +1 档，限一场' }
   ];
 
   /* ====== 炼器 / 炼丹材料 ====== */
@@ -891,10 +891,10 @@
     { n: '大海水', gz: '壬戌·癸亥', img: '万流归处，深不可测', rank: '至尊' }
   ];
   const GUOWEI_RANK = {
-    '闰位': { mul: 2.5, power: 3750,  rate: 60, cost: '每年「行泆」一次' },
-    '余位': { mul: 4,   power: 6000,  rate: 40, cost: '正位一唤必到' },
-    '正统': { mul: 7,   power: 10500, rate: 20, cost: '一举一动皆为天心' },
-    '至尊': { mul: 15,  power: 22500, rate: 5,  cost: '天下共抢' }
+    '闰位': { mul: 2.5, power: 2000, rate: 60, cost: '每年「行泆」一次' },
+    '余位': { mul: 4,   power: 3000, rate: 40, cost: '正位一唤必到' },
+    '正统': { mul: 7,   power: 4200, rate: 20, cost: '一举一动皆为天心' },
+    '至尊': { mul: 15,  power: 5400, rate: 5,  cost: '天下共抢' }
   };
 
   /* ====== 锚（v6.2 核心：无寿元者靠锚） ====== */
@@ -1292,6 +1292,56 @@
       }
     }
   ];
+  NPC_POOL.push(
+    {
+      id: 'shenzhiyue', name: '沈知月', gender: '女', role: '游方丹师', age: 27, zodiac: '蛇',
+      look: '青灰药囊不离身，指尖常留朱砂', likes: ['药膳', '古籍', '旧雨'], approach: '替她寻药、守丹炉',
+      taboo: '厌恶拿人命试药', realm: 2, inner: '先救能救的人，再问值不值得',
+      meet: ['她在破庙里煎药，窗纸漏风，炉火却稳。', '「坐远些。」她没抬头，「你身上的血气，会惊了药性。」'],
+      stages: [
+        { min: 0, lines: ['「药钱可以欠，医嘱不能不听。」'] },
+        { min: 20, lines: ['「你上回那块伤，还疼不疼？别只说没事。」', '她把诊金写在纸背面，字很小。'] },
+        { min: 40, lines: ['「这一炉你替我守半夜。火小了叫我，火大了也叫我。」'] },
+        { min: 70, lines: ['「我见过太多人死在丹成以前。」她收好药囊，「你别来做下一个。」'] }
+      ],
+      ctx: {
+        break: ['她送来一剂护脉汤，只留一句：「破境不是拿命去赌。」'],
+        hurt: ['她看完伤口，先骂了一句，再把最苦的那碗药推过来。'],
+        part: ['「雨季前回来。」她把药囊补满，「过季的药，我不给你留。」'],
+        birthday: ['她煮了一碗没有药味的面，「今天只吃饭，不诊病。」'],
+        together: ['你出手时她总在后头，炉上温着一锅止血汤。']
+      },
+      ask: { q: '若只能救一个人，你救亲者，还是救病重者？', opts: [
+        { t: '「救亲者。人总有私。」', reply: '她点头：「承认有私，才配谈医者。」', fav: 5 },
+        { t: '「救病重者。医者只看病情。」', reply: '「话说得正。」她看着你，「真到那一天，你别后悔。」', fav: 4 },
+        { t: '「先想法子让两个人都活。」', reply: '她笑了：「这才是最难、也最该做的事。」', fav: 8 }
+      ] }
+    },
+    {
+      id: 'luoyin', name: '洛隐', gender: '男', role: '退役天机刺客', age: 34, zodiac: '鼠',
+      look: '粗布短打，袖中藏一截无光薄刃', likes: ['沉默', '旧地图', '热酒'], approach: '守信、替他收尾',
+      taboo: '不问旧主，不拿弱者作饵', realm: 3, inner: '杀过很多人，如今只想过能说真话的日子',
+      meet: ['茶棚里他独自坐在最暗的一桌，面前两张地图，一张官道，一张死路。', '「你看了我三次。」他折起地图，「有事便说。」'],
+      stages: [
+        { min: 0, lines: ['「名字是假的，酒钱是真的。你请哪一样？」'] },
+        { min: 20, lines: ['「你的脚步比上次轻了。」他没有夸人，只把靠背的位子让给你。'] },
+        { min: 40, lines: ['「这一页地图送你。红圈别进，不是宝，是坟。」'] },
+        { min: 70, lines: ['「我若哪天不认路了，你提醒我一声。」他顿了顿，「只提醒，不替我选。」'] }
+      ],
+      ctx: {
+        break: ['他远远抬了抬酒碗，没有靠近，「活着登高，才算本事。」'],
+        hurt: ['他替你把伤口重新扎了一遍，「仇家的名字，等你伤好再告诉我。」'],
+        part: ['「走官道。」他把另一张地图收回袖里，「这回别学我。」'],
+        birthday: ['他叫你吃了一顿热酒，「今日不杀人，也不谈旧事。」'],
+        together: ['他总在你侧后方三步，灯影落不到他的刀上。']
+      },
+      ask: { q: '一条错路，走了很多年，要不要回头？', opts: [
+        { t: '「要。错了便停。」', reply: '「说得容易。」他把酒杯放下，「但你说得对。」', fav: 6 },
+        { t: '「不回头。走完才知道。」', reply: '「像从前的我。」他没有笑，「这答案不算好。」', fav: 2 },
+        { t: '「先问路上还有没有要护的人。」', reply: '他沉默很久：「这句话，我十年前该听见。」', fav: 8 }
+      ] }
+    }
+  );
   const FAVOR_TIERS = [
     { min: 0, max: 19, name: '陌生' }, { min: 20, max: 39, name: '相识' },
     { min: 40, max: 59, name: '知己' }, { min: 60, max: 79, name: '暧昧' },
@@ -2308,6 +2358,36 @@
         refuse: { karma: 20, hpPct: -0.2, debuff: 'debt_weight' } } }
   ];
 
+  /* ====== v8.0 神道神器 / 愿物 / 家族产业 / 新手引导 ====== */
+  const DIVINE_ARTIFACTS = [
+    { id: 'staff', name: '摄心神杖', price: 1200, max: 3, upkeep: 60,
+      eff: '显圣所得信众每级 +20%', desc: '杖头悬一枚旧铃，响时只让愿听的人听见。' },
+    { id: 'mirror', name: '照愿法镜', price: 1800, max: 3, upkeep: 80,
+      eff: '显圣香火消耗每级 −8%，并照见来访者来意', desc: '镜面不照人，只照人跪在蒲团上时想的那件事。' },
+    { id: 'seal', name: '牧土神印', price: 2600, max: 3, upkeep: 110,
+      eff: '香火上限每级 +15%，权柄斗法每级 +12%', desc: '印面刻山川河道，落印之处，便是你要担的责。' }
+  ];
+  const VOTIVE_ITEMS = [
+    { id: 'xiangHui', name: '净香灰', price: 8, out: 3, stones: 5, xianghuo: 20, mats: {},
+      eff: '平安符的底料，也可直接卖给香客', desc: '取晨课时第一炉冷灰，筛去木骨。' },
+    { id: 'fuShui', name: '清净符水', price: 24, out: 2, stones: 12, xianghuo: 40, mats: {},
+      eff: '香客求去小病小灾；每卖一份另积功德 1', desc: '符纸化在水中，澄清三次，只留一点淡金。' },
+    { id: 'pingAn', name: '平安符', price: 42, out: 2, stones: 18, xianghuo: 55, mats: { xiangHui: 1 },
+      eff: '香客最常求的小物，不沾染黑市业力', desc: '不写真君全号，只写一个「安」字，免得凡人受不住。' }
+  ];
+  const CLAN_INDUSTRIES = [
+    { id: 'farm', name: '药圃', eff: '每 40 人每月产蓝幽草 1，守旧族老增产两成' },
+    { id: 'work', name: '帮工', eff: '每人月产灵石 1，并为四艺提供助力' },
+    { id: 'trade', name: '跑商', eff: '每人月产灵石 2，贪利族老增产五成，但可能损族运' },
+    { id: 'study', name: '修行', eff: '每 20 人每月为家族后辈积累悟道 1' }
+  ];
+  const TUTORIAL_STEPS = [
+    { id: 'cultivate', name: '先活过第一年', text: 'A 打坐推进一月。修为满后，B 会变成破境；所有行动都要花岁月。' },
+    { id: 'goal', name: '看清下一步', text: '境界条下的「道途」会告诉你当前目标和奖励。点开可看完整路线。' },
+    { id: 'craft', name: '让资源转起来', text: '坊市买材料，四艺做丹符，再到坊市「卖出」。也可只采集自用于战斗。' },
+    { id: 'save', name: '给自己留退路', text: '系统里有五个存档位和 JSON 导出。浏览器清缓存前，请先导出文件。' }
+  ];
+
   /* ====== 导出 ====== */
   G.WXCS3_DATA = {
     STATS, CULTIVATION,
@@ -2331,6 +2411,7 @@
     SCENES, SCENES_SPECIAL, DAOSHU, VERSES,
     ACH_TIERS, ACHIEVEMENTS, ACH_MEMORY,
     HOOK_DEBUFF, HOOKS,
+    DIVINE_ARTIFACTS, VOTIVE_ITEMS, CLAN_INDUSTRIES, TUTORIAL_STEPS,
     ZHENJUN
   };
 })(window);

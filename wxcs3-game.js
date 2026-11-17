@@ -121,6 +121,20 @@
       // —— v6.6 功过格（只记，不算，不参与任何公式） ——
       ach: {}, tally: tallyInit(), achTab: 'gong', legacyMemory: null, bloodDebt: 0,
 
+      // —— v8.0 神道神器 / 愿物 ——
+      dArt: { staff: 0, mirror: 0, seal: 0 },  // 神器等级 0~3
+      dArtIdle: 0,        // 连续停供月数（付不起维护时加成失效）
+      votive: {},         // 愿物库存 { 物品id: 件数 }
+      votMade: 0,         // 本月已制作次数
+      votSold: 0,         // 本月已售出件数
+
+      // —— v8.0 拍卖会 ——
+      aucSell: [],        // 本场寄存的拍品 [{kind,id,q,n,base,qMul}]
+      aucYear: 0,         // 已进场的年份（一年只进一次）
+      aucFloor: 'mid',    // 底价档 low/mid/high
+      aucLot: null,       // 本场客籍拍品 id
+      aucLotWon: null,    // 已拍得的客籍拍品名
+
       // —— v6.7 恩义·钩子 ——
       hooks: [],          // 你欠别人的（可能被收割）
       hooksGiven: [],     // 别人欠你的（可以讨，但可能赖账）
@@ -169,6 +183,7 @@
     if (S.lu && S.lu.name === '行气吞灵') v *= 1.2;
     if (S.cultivation === 'both') v *= 0.8;   // 未定：前两阶 −20%
     if (S.meditate) v *= 2;                   // 闭关 ×2
+    if (S.cultBonus && S.cultBonus > 1) v *= S.cultBonus; // 日月玄浆：本月有效
     if (hasDebuff('borrowed_luck')) v *= 1.2;  // 借来的运：快，但会走火
     return v;
   }
@@ -198,7 +213,42 @@
   function maxXianghuo() {
     const load = S.root ? D.ROOTS[S.root].load : 1;
     const base = pillar().need * (load >= 1.5 ? 2.5 : 2);
-    return Math.round(base * (1 + 0.3 * miaoUpCount('di')));   // 庙地契：每张 +30%
+    /* 庙地契 +30%/张；牧土神印 +15%/级（v8.0） */
+    return Math.round(base * (1 + 0.3 * miaoUpCount('di')) * dArtSealMul());
+  }
+
+  /* ============ v8.0 神道神器 ============
+     三件神器都只加「已有的东西」：显圣信众、显圣耗香、香火上限与权柄斗法。
+     不做新的资源，也不碰仙道；断了灵石供奉就集体失效——这是它们唯一的下限。 */
+  function dArtRaw(id) { return (S.dArt && S.dArt[id]) || 0; }
+  /* 停供期间等级还在，但一切加成都当 0 用；补上维护就立刻恢复。 */
+  function dArtLv(id) { return (S.dArtIdle ? 0 : dArtRaw(id)); }
+  function dArtUpkeep() {
+    let sum = 0;
+    for (const a of D.DIVINE_ARTIFACTS) sum += a.upkeep * dArtRaw(a.id);
+    return sum;
+  }
+  /* 摄心神杖：显圣所得信众 ×(1+20%/级) */
+  function dArtStaffMul() { return 1 + 0.20 * dArtLv('staff'); }
+  /* 照愿法镜：显圣耗香 −8%/级（与法铃叠乘，合计最低留四成） */
+  function dArtMirrorCut() { return clamp(0.08 * dArtLv('mirror'), 0, 0.6); }
+  /* 牧土神印：香火上限 +15%/级；权柄斗法 +12%/级 */
+  function dArtSealMul() { return 1 + 0.15 * dArtLv('seal'); }
+  function dArtSealPower() { return 1 + 0.12 * dArtLv('seal'); }
+
+  /* ============ v8.0 愿物 ============
+     香火 → 灵石的第二条闸门。坊市的「化香火钱」按月只出 2~5 石，
+     愿物则把香火做成香客要买的东西：能换更多灵石，但要先垫灵石成本、
+     且受信众数量限制（没人来买，做出来只能压仓）。两条渠道各走各的，不互通。 */
+  function votItem(id) { return D.VOTIVE_ITEMS.find(function (v) { return v.id === id; }) || null; }
+  function votHave(id) { return (S.votive && S.votive[id]) || 0; }
+  /* 有信众才有人来求；庙再大，没人上门也做不成生意。 */
+  function votCraftCap() { return clamp(1 + Math.floor((S.followers || 0) / 800), 1, 4); }
+  function votSellCap() { return clamp(1 + Math.floor((S.followers || 0) / 400), 1, 5); }
+  function votStockTotal() {
+    let n = 0;
+    for (const v of D.VOTIVE_ITEMS) n += votHave(v.id);
+    return n;
   }
 
   /* 买香只能补到本柱需求的八成——余下两成须得真信众来烧 */
@@ -243,6 +293,7 @@
       // 新的一月：清空收支账本（上个月的已在左栏看过）
       ledgerReset();
       S.dishes = { dan: 0, qi: 0, fu: 0, zhen: 0 };
+      S.votMade = 0; S.votSold = 0;   // 愿物按月重置制作/售出次数
       S.xiangExchangeMonth = 0;      // 香火钱箱按月清空额度
 
       // —— 仙道结算
@@ -325,6 +376,20 @@
           }
         }
       }
+      // —— v8.0 神器维护：灵石供奉断了，加成本月全失效（等级不降，补上即恢复）
+      const artUp = dArtUpkeep();
+      if (artUp > 0) {
+        if (S.stones >= artUp) {
+          S.stones -= artUp;
+          ledgerAdd('out', '神器维护', artUp);
+          if (S.dArtIdle) logLine('神器重新供上了，铃又响了。', 'good');
+          S.dArtIdle = 0;
+        } else {
+          S.dArtIdle = (S.dArtIdle || 0) + 1;
+          logLine('灵石断了供奉，神器一间间静下来。', 'danger');
+        }
+      } else if (S.dArtIdle) { S.dArtIdle = 0; }
+
       // —— 宗门月俸
       if (S.sect && S.sect.rank > 0) {
         const pay = D.SECT.ranks[S.sect.rank].pay;
@@ -502,8 +567,12 @@
     return true;
   }
   function followLimit() {
-    const map = [0, 0, 1, 1, 2, 2, 3, 3, 4];
-    return D.FOLLOW_LIMIT[Math.min(4, map[S.pillar])].max;
+    // 在两柱之间按对数平滑增长，不再从镇上限突然跳到城上限。
+    const t = clamp((S.pillar + S.pos / 3) / 2, 0, D.FOLLOW_LIMIT.length - 1);
+    const lo = Math.floor(t), hi = Math.min(D.FOLLOW_LIMIT.length - 1, lo + 1);
+    if (lo === hi) return D.FOLLOW_LIMIT[lo].max;
+    const a = D.FOLLOW_LIMIT[lo].max, b = D.FOLLOW_LIMIT[hi].max;
+    return Math.round(a * Math.pow(b / a, t - lo));
   }
 
   /* ============ 战力 ============ */
@@ -517,7 +586,8 @@
       if (S.templeBroken) stMul *= 0.8;
       let sd = 0.8 + S.shenTong.length * 0.05;
       sd = clamp(sd, 0.8, 2.0);
-      const base = p.power * posMul * stMul * sd;
+      /* 牧土神印：权柄斗法 +12%/级 */
+      const base = p.power * posMul * stMul * sd * dArtSealPower();
       // 锚定影响
       const as = anchorStatus();
       let am = 1;
@@ -1082,6 +1152,26 @@
     } else {
       list.push({ k: '市', t: '坊市', s: '灵石 ' + fmtNum(S.stones), act: 'act:openShop' });
       if (isBoth()) list.push({ k: '庙', t: '庙市', s: '香火 ' + fmtNum(Math.round(S.xianghuo)), act: 'act:openMiaoMarket' });
+    }
+    /* 拍卖会只在开场的年份出现在常驻区——平时不占位置，开了就一眼看得见 */
+    if (auctionOpen() && !aucUsed()) {
+      list.push({ k: '拍', t: '拍卖会', s: '三年一场 · 今日开场', act: 'act:openAuction' });
+    }
+    /* 神器与愿物是神道专属的两条经济线：一条养战力，一条把香火换成灵石。
+       只在神道/双修时出现，仙道不显示，免得占常驻区。 */
+    if (usesShenLine()) {
+      const artN = (S.dArt ? (S.dArt.staff || 0) + (S.dArt.mirror || 0) + (S.dArt.seal || 0) : 0);
+      list.push({
+        k: '器', t: '神器',
+        s: artN ? (artN + ' 级 ·' + (S.dArtIdle ? '停供' : '维护 ' + dArtUpkeep()))
+          : '未请',
+        act: 'act:openDivineArts'
+      });
+      list.push({
+        k: '愿', t: '愿物',
+        s: votStockTotal() ? ('存 ' + votStockTotal() + ' 件') : '未做',
+        act: 'act:openVotive'
+      });
     }
     /* 四艺紧跟坊市：坊市买料、四艺用料，逻辑上是连着的一步。
        旧版它排在第 12 位，手机上要往下滚两屏才看得到——玩家根本不知道有四艺。 */
@@ -1910,7 +2000,8 @@
   /* ---------- 显圣 ---------- */
   function xsCost(lv) {
     const base = { small: 50, mid: 200, big: 1000 }[lv] || 50;
-    return Math.round(base * (miaoUpCount('ling') ? 0.8 : 1));   // 法铃：耗香 −20%
+    /* 法铃 −20%，照愿法镜 −8%/级，两者叠乘 */
+    return Math.round(base * (miaoUpCount('ling') ? 0.8 : 1) * (1 - dArtMirrorCut()));
   }
   ACT.openXiansheng = () => {
     const qb = currentQuanbing();
@@ -1928,15 +2019,19 @@
 
   ACT.do_xs = (lv) => {
     closeModal();
-    const cost = xsCost(lv);
+    const free = !!(S.preBuff && S.preBuff.freeXiansheng);
+    const cost = free ? 0 : xsCost(lv);
     if (S.xianghuo < cost) { toast('香火不足'); return; }
     S.xianghuo -= cost;
+    if (free) { S.preBuff.freeXiansheng = false; logLine('祈雨符箓化作青烟，此次显圣不耗香火。', 'good'); }
     advanceMonth(1);
     if (S.phase !== 'play') return render();
     let base = { small: 0.75, mid: 0.6, big: 0.42 }[lv] + st('fate') * 0.015;
     if (S.benmingQuanbing.length) base += 0.05;
     if (Math.random() < clamp(base, 0.15, 0.95)) {
-      const gain = { small: 20 + rnd(80), mid: 120 + rnd(380), big: 600 + rnd(1400) }[lv];
+      /* 摄心神杖：显圣所得信众 ×(1+20%/级)，只放大「灵验」那一半的收获 */
+      const raw = { small: 20 + rnd(80), mid: 120 + rnd(380), big: 600 + rnd(1400) }[lv];
+      const gain = Math.round(raw * dArtStaffMul());
       S.followers = Math.min(followLimit(), S.followers + gain);
       S.piety = Math.min(2.0, S.piety + (lv === 'big' ? 0.2 : 0.1));
       logLine(`显圣灵验，信众 +${gain}`, 'good');
@@ -1949,6 +2044,129 @@
       toast('不灵');
     }
     maybeEvent(); render();
+  };
+
+  /* ---------- v8.0 神道神器 ---------- */
+  function dArtPrice(a) { return Math.round(a.price * Math.pow(1.6, dArtRaw(a.id))); }
+
+  ACT.openDivineArts = () => {
+    if (!usesShenLine()) { toast('神器只认香火，仙道用不上'); return; }
+    let b = `<div class="small">神器不靠香火养，靠灵石养。断了供奉，它们只是三件旧物——等级还在，加成不在。</div>`;
+    b += `<div class="statline"><span class="k">每月维护</span><span class="v"><b>${fmtNum(dArtUpkeep())} 灵石</b></span></div>`;
+    if (S.dArtIdle) {
+      b += `<div class="small danger">已停供 ${S.dArtIdle} 个月，三件神器全部失效。灵石一补上就恢复。</div>`;
+    }
+    b += divider() + '<ul class="opts">';
+    const keys = ['A', 'B', 'C'];
+    D.DIVINE_ARTIFACTS.forEach(function (a, i) {
+      const lv = dArtRaw(a.id);
+      const maxed = lv >= a.max;
+      const price = dArtPrice(a);
+      const tag = lv ? { name: lv + ' 级', cls: 'peace' } : { name: '未请', cls: 'warn' };
+      const note = maxed ? '已至顶 · 维护 ' + a.upkeep + '/级'
+        : price + ' 灵石 · 维护 ' + a.upkeep + '/级';
+      b += optRow(keys[i], a.name + '　' + a.eff, tag, note,
+        maxed || S.stones < price, maxed ? 'act:openDivineArts' : 'do;dart:' + a.id);
+    });
+    b += '</ul>';
+    b += `<div class="hint">维护在每月结算时自动扣除；付不起则当月全部失效，不会掉级。</div>`;
+    openModal('神器 · 身上的东西', b);
+  };
+
+  ACT.do_dart = (id) => {
+    const a = D.DIVINE_ARTIFACTS.find(function (x) { return x.id === id; });
+    if (!a) { toast('无此神器'); return; }
+    if (dArtRaw(id) >= a.max) { toast('已至顶'); return; }
+    const price = dArtPrice(a);
+    if (S.stones < price) { toast('灵石不足（需 ' + price + '）'); return; }
+    S.stones -= price;
+    ledgerAdd('out', '请' + a.name, price);
+    if (!S.dArt) S.dArt = {};
+    S.dArt[id] = dArtRaw(id) + 1;
+    logLine('请回' + a.name + '（' + S.dArt[id] + ' 级）。' + a.desc, 'good');
+    toast(a.name + ' · ' + S.dArt[id] + ' 级');
+    render();
+    ACT.openDivineArts();
+  };
+
+  /* ---------- v8.0 愿物 ---------- */
+  ACT.openVotive = () => {
+    if (!usesShenLine()) { toast('愿物是香客的生意，仙道做不来'); return; }
+    const made = S.votMade || 0, sold = S.votSold || 0;
+    const cCap = votCraftCap(), sCap = votSellCap();
+    let b = `<div class="small">把香火做成香客肯掏钱的东西。比「化香火钱」挣得多，但要先垫灵石、也得有人来买。</div>`;
+    b += `<div class="statline"><span class="k">本月制作</span><span class="v"><b>${made}/${cCap} 次</b></span></div>`;
+    b += `<div class="statline"><span class="k">本月售出</span><span class="v"><b>${sold}/${sCap} 件</b></span></div>`;
+    b += `<div class="statline"><span class="k">仓中存货</span><span class="v">${votStockTotal()} 件</span></div>`;
+    b += divider() + `<div class="muted small">开炉制作</div><ul class="opts">`;
+    const keys = ['A', 'B', 'C'];
+    D.VOTIVE_ITEMS.forEach(function (v, i) {
+      const mats = Object.keys(v.mats || {});
+      let matOk = true;
+      mats.forEach(function (k) { if (votHave(k) < v.mats[k]) matOk = false; });
+      const dis = made >= cCap || S.xianghuo < v.xianghuo || S.stones < v.stones || !matOk;
+      const matTxt = mats.length ? ' · 耗' + mats.map(function (k) {
+        const it = votItem(k); return (it ? it.name : k) + '×' + v.mats[k];
+      }).join('、') : '';
+      b += optRow(keys[i], v.name + ' ×' + v.out,
+        { name: '香火 ' + v.xianghuo, cls: 'warn' },
+        v.stones + ' 灵石' + matTxt, dis, 'do;votc:' + v.id);
+    });
+    b += '</ul>' + divider() + `<div class="muted small">卖给香客</div><ul class="opts">`;
+    ['D', 'E', 'F'].forEach(function (k, i) {
+      const v = D.VOTIVE_ITEMS[i];
+      const have = votHave(v.id);
+      const dis = sold >= sCap || have <= 0;
+      b += optRow(k, '售 ' + v.name, { name: '存 ' + have, cls: have > 0 ? 'peace' : 'warn' },
+        v.price + ' 灵石/件', dis, 'do;vots:' + v.id);
+    });
+    b += '</ul>';
+    b += `<div class="hint">制作与售出次数随信众增长；没人来上香，做出来也只能压仓。清净符水每卖一份另积功德 1。</div>`;
+    openModal('愿物 · 香客的生意', b);
+  };
+
+  ACT.do_votc = (id) => {
+    const v = votItem(id);
+    if (!v) { toast('无此愿物'); return; }
+    if ((S.votMade || 0) >= votCraftCap()) { toast('本月开炉次数已尽'); return; }
+    if (S.xianghuo < v.xianghuo) { toast('香火不足（需 ' + v.xianghuo + '）'); return; }
+    if (S.stones < v.stones) { toast('灵石不足（需 ' + v.stones + '）'); return; }
+    const mats = Object.keys(v.mats || {});
+    for (const k of mats) {
+      if (votHave(k) < v.mats[k]) {
+        const it = votItem(k);
+        toast('缺' + (it ? it.name : k));
+        return;
+      }
+    }
+    S.xianghuo -= v.xianghuo;
+    S.stones -= v.stones;
+    ledgerAdd('out', '愿物本钱·' + v.name, v.stones);
+    if (!S.votive) S.votive = {};
+    mats.forEach(function (k) { S.votive[k] = votHave(k) - v.mats[k]; });
+    S.votive[id] = votHave(id) + v.out;
+    S.votMade = (S.votMade || 0) + 1;
+    logLine('开炉制成 ' + v.name + ' ×' + v.out + '。', 'good');
+    toast(v.name + ' +' + v.out);
+    render();
+    ACT.openVotive();
+  };
+
+  ACT.do_vots = (id) => {
+    const v = votItem(id);
+    if (!v) { toast('无此愿物'); return; }
+    if ((S.votSold || 0) >= votSellCap()) { toast('今日香客已散，明日再来'); return; }
+    if (votHave(id) <= 0) { toast('仓里没有' + v.name); return; }
+    S.votive[id] = votHave(id) - 1;
+    S.stones += v.price;
+    ledgerAdd('in', '愿物·' + v.name, v.price);
+    S.votSold = (S.votSold || 0) + 1;
+    S.fame += 1;
+    if (id === 'fuShui') { S.merit += 1; }
+    logLine('香客请走' + v.name + '，得灵石 ' + v.price + '。', 'good');
+    toast('灵石 +' + v.price);
+    render();
+    ACT.openVotive();
   };
 
   /* ---------- 锚（v6.2） ---------- */
@@ -3205,6 +3423,18 @@
     out.bag = Object.assign({ pillHp: 0, pillMp: 0, heal: 0 }, st.bag || {});
     out.anchors = Object.assign({ wu: 1, ren: 1, shi: 1, yi: 1 }, st.anchors || {});
     out.anchorMiss = Object.assign({ wu: 0, ren: 0, shi: 0, yi: 0 }, st.anchorMiss || {});
+    // v8.0：神器与愿物是后加字段，旧档没有。dock/dockItems 会直接读，
+    // 缺了就是 undefined.staff → 一进游戏 render 抛错、整屏冻住。
+    out.dArt = Object.assign({ staff: 0, mirror: 0, seal: 0 }, st.dArt || {});
+    out.votive = Object.assign({}, st.votive || {});
+    out.dArtIdle = st.dArtIdle || 0;
+    out.votMade = st.votMade || 0;
+    out.votSold = st.votSold || 0;
+    out.aucSell = Array.isArray(st.aucSell) ? st.aucSell : [];
+    out.aucYear = st.aucYear || 0;
+    out.aucFloor = st.aucFloor || 'mid';
+    out.aucLot = st.aucLot || null;
+    out.aucLotWon = st.aucLotWon || null;
     // 奇遇卡死过的存档会残留 pendingEnc，不清掉的话 maybeEvent 里
     // `!S.pendingEnc` 恒为假，奇遇系统此后永久不再触发。
     out.pendingEnc = null;
@@ -4190,6 +4420,7 @@
   /* ---------- 丹药效果兑现（扩充版） ---------- */
   function applyPill(it) {
     if (!it) return '';
+    consumeQuality(it.id);
     let msg = '';
     switch (it.type) {
       case 'hp': S.hp = Math.min(S.hpMax, S.hp + (it.v || 50)); msg = '气血 +' + (it.v || 50); break;
@@ -4549,12 +4780,16 @@
     const e = S.equipped || {};
     for (const slot in e) {
       const a = D.ARTIFACT_EXT.find(function (x) { return x.id === e[slot]; });
-      if (!a) continue;
-      if (kind === 'atk' && a.slot === 'atk') v += 0.25;
-      if (kind === 'body' && a.slot === 'body') v += 0.08;
-      if (kind === 'move' && a.slot === 'move') v += 0.10;
+      if (a && a.bonus && Number(a.bonus[kind])) v += Number(a.bonus[kind]);
     }
     return v;
+  }
+  function applyAttackArtCost() {
+    const cost = artBonus('hpCost');
+    if (cost > 0) {
+      S.hp = Math.max(1, S.hp - Math.round(cost));
+      logLine('百魂幡反噬，气血 −' + Math.round(cost) + '。', 'danger');
+    }
   }
 
   /* ---------- 招式（杀伐神通）----------
@@ -4574,12 +4809,12 @@
     const eq = Array.isArray(S.skillsEquip) ? S.skillsEquip : [];
     let out = pool.filter(function (k) { return eq.indexOf(k.id) >= 0; });
     if (!out.length) out = [pool[0]];
-    return out;
+    return out.filter(Boolean).slice(0, equipLimit());
   }
-  /* 可装配道数：受宗门身份所限，散修只有 2 */
+  /* 宗门按身份给格；散修随大境界从 2 格长到 4 格。 */
   function equipLimit() {
     if (S.sect) return (D.SECT.ranks[S.sect.rank] || D.SECT.ranks[0]).equip;
-    return 2;
+    return clamp(2 + Math.floor((S.xRealm || 0) / 2), 2, 4);
   }
   function learnSkill(id) {
     if (!Array.isArray(S.skillsKnown)) S.skillsKnown = [];
@@ -4876,6 +5111,8 @@
       })(),
       round: 0, observed: false, defending: false
     };
+    S.combat.rankUp = !!(S.preBuff && S.preBuff.rankUp);
+    if (S.preBuff) S.preBuff.rankUp = false;
     S.phase = 'combat';
     bump('warFight');
     render();
@@ -4898,6 +5135,9 @@
       const a = D.ARTIFACT_EXT.find(function (x) { return x.id === id; });
       b += optRow('ABC'[i] || '·', '用「' + a.name + '」', { name: '符箓', cls: 'chance' }, a.eff, false, 'do;cbtpre:' + id);
     });
+    (S.disks || []).filter(function (d) { return d.id === 'zhenSuoLing'; }).forEach(function (d) {
+      b += optRow('阵', '携「锁灵阵」入场', { name: '随身阵', cls: 'peace' }, '本场敌人不能遁走，阵盘不消耗', false, 'do;cbtpre:disk_zhenSuoLing');
+    });
     const pills = D.PILL_EXT.filter(function (p) { return (S.bag[p.id] || 0) > 0 && ['hp', 'hpPct', 'hpFull', 'mp', 'mpPct', 'mpFull', 'cure'].includes(p.type); });
     pills.slice(0, 4).forEach(function (p) {
       b += optRow('·', '服 ' + p.name + '（' + (S.bag[p.id]) + '）', { name: '丹药', cls: 'peace' }, p.desc, false, 'do;cbtpill:' + p.id);
@@ -4908,12 +5148,21 @@
     openModal('战前准备', b);
   }
 
-  ACT.openPreFight = openPreFight;   // B1：普通函数没挂到 ACT，dispatch 的 act: 分支查不到它
+  ACT.openPreFight = () => { if (S.combat) S.combat.prepared = true; openPreFight(); };
 
   ACT.do_cbtpre = (id) => {
+    if (id === 'disk_zhenSuoLing') {
+      if (!(S.disks || []).some(function (d) { return d.id === 'zhenSuoLing'; })) return;
+      S.combat.noFoeFlee = true;
+      logLine('你在四周钉下阵旗，锁灵阵封住了退路。', 'good');
+      closeModal(); render(); return;
+    }
     const a = D.ARTIFACT_EXT.find(function (x) { return x.id === id; });
     if (!a) return;
-    S.arts = (S.arts || []).filter(function (x) { return x !== id; });   // 一次性消耗
+    const artAt = (S.arts || []).indexOf(id);
+    if (artAt < 0) { toast('此物已不在身上'); closeModal(); return; }
+    S.arts.splice(artAt, 1);
+    consumeQuality(id);
     S.preBuff = S.preBuff || {};
     if (id === 'huoyuyuan') S.preBuff.fire = 0.6;
     else if (id === 'wuyun') S.preBuff.sureHit = true;
@@ -4951,7 +5200,7 @@
     if (isShen()) b += optRow('·', '动权柄', { name: '权柄', cls: 'peace' }, '-50 香火', S.xianghuo < 50, 'do;cbt:quanbing');
     D.PILL_EXT.filter(function (p) { return (S.bag[p.id] || 0) > 0 && ['hp', 'hpPct', 'hpFull', 'mp', 'mpPct', 'mpFull', 'cure'].indexOf(p.type) >= 0; })
       .slice(0, 6).forEach(function (p) {
-        b += optRow('·', '服 ' + p.name + '（' + S.bag[p.id] + '）', { name: '丹药', cls: 'peace' }, p.desc, false, 'do;cbtpill:' + p.id);
+        b += optRow('·', '服 ' + p.name + '（' + S.bag[p.id] + '）', { name: '丹药', cls: 'peace' }, p.desc, false, 'do;cbt:pill:' + p.id);
       });
     if (!tals.length && !isShen() && !hasUsablePill()) b += '<div class="small muted">身上没有可用之物。</div>';
     b += '</ul>';
@@ -5062,12 +5311,19 @@
     return (o ? o.name : '?') + (st ? '·' + st : '');
   }
 
+  function combatRank(c) {
+    return positionRank() + (c && c.rankUp ? (isShen() ? 4 : 1) : 0);
+  }
+  function combatGap(c) {
+    return c ? realmIdxRank(c.foe.rank) - realmIdxRank(combatRank(c)) : 0;
+  }
+
   function renderCombat() {
     const c = S.combat;
     if (!c) { S.phase = 'play'; return ''; }
 
-    const myR = positionRank(), foeR = c.foe.rank;
-    const gap = realmGap(foeR), subGap = foeR - myR;   // 大境差 / 同境内的阶差
+    const myR = combatRank(c), foeR = c.foe.rank;
+    const gap = combatGap(c), subGap = foeR - myR;   // 大境差 / 同境内的阶差
     const R = computePower() / Math.max(1, c.foe.power);
     // 胜算五档：碾压 / 压制 / 相持 / 下风 / 绝境
     const tier = R >= 3 ? '碾压' : R >= 1.5 ? '压制' : R >= 0.8 ? '相持' : R >= 0.4 ? '下风' : '绝境';
@@ -5111,7 +5367,8 @@
     });
     if (talAtk.length) tips.push('用「' + D.TALISMANS.find(function (x) { return x.id === talAtk[0]; }).name + '」可打开局面');
     if ((S.talismans.fuDun || 0) > 0) tips.push('贴「遁符」可保命');
-    if ((S.disks || []).length) tips.push('已布阵盘在洞府，野外的仗用不上');
+    if ((S.disks || []).some(function (d) { return d.id === 'zhenSuoLing'; })) tips.push('战前可携锁灵阵，禁敌遁走');
+    if (c.noFoeFlee) tips.push('锁灵阵已展开，敌人无法遁走');
     if (tips.length) fb += '<div class="small" style="margin-top:8px">' + tips.map(function (x) { return '→ ' + x; }).join('<br>→ ') + '</div>';
     if (gap >= 1) fb += '<div class="small danger" style="margin-top:8px">对方威压令你窒息。这不是你能上桌的局。</div>';
 
@@ -5166,10 +5423,11 @@
       '遁速 ' + Math.round((0.4 + st('speed') * 0.035 + artBonus('move')) * 100) + '%', false, 'do;cbt:flee'));
     o.push(optRow('6', '谋', { name: '平和', cls: 'peace' }, '观察 / 交涉', false, 'act:openWits'));
 
-    const head = '<div class="vsline"><span>第 ' + (c.round + 1) + ' 回合</span>'
+    let head = '<div class="vsline"><span>第 ' + (c.round + 1) + ' 回合</span>'
       + '<span>R=' + R.toFixed(2) + '</span>'
       + '<b class="' + (['绝境', '下风'].indexOf(tier) >= 0 ? 'danger' : (['碾压', '压制'].indexOf(tier) >= 0 ? 'good' : '')) + '">' + tier + '</b>'
       + '<span class="' + ocls + '">' + esc(odds) + '</span></div>';
+    if (c.round === 0 && !c.prepared) head += '<div class="small" data-act="act:openPreFight" style="cursor:pointer;color:var(--jade)">开战前：符、丹、随身阵，择一准备 →</div>';
 
     // 战况：只留最近四条，新的在下
     const fl = (S.log || []).slice(0, 4).reverse();
@@ -5191,7 +5449,7 @@
   function foeTurn() {
     const c = S.combat;
     if (!c) return false;
-    const gap = realmGap(c.foe.rank), diff = c.foe.rank - positionRank();
+    const gap = combatGap(c), diff = c.foe.rank - combatRank(c);
     // 气势：每三回合涨一档，逼玩家在「稳」和「险」之间选，而不是无限拖
     if (!c.momentum) c.momentum = 0;
     if (c.round > 0 && c.round % 3 === 0) c.momentum = Math.min(3, c.momentum + 1);
@@ -5202,14 +5460,23 @@
     if (gap >= 1) dmg *= 1.6;
     if (gap <= -1) dmg *= 0.35;
     if (c.foeWeaken > 0) dmg *= 0.7;   // 术神通压住了他的势
+    if (c.foe.trait === 'brute') dmg *= 1.25;       // 莽夫：出手更重
+    if (c.foe.trait === 'veteran') dmg *= 0.90;     // 老练：不拼命，求稳耗
+    dmg *= clamp(1 - artBonus('body'), 0.1, 1);     // 常驻护体法宝
     if (c.defending) {
-      let red = 0.5 - artBonus('body');
+      let red = 0.5;
       if (c.talShield) red -= c.talShield;
       dmg *= clamp(red, 0.05, 0.9);
     }
     if (c.talShield) c.talShield = 0;
     // 滑头：血量低于一半会试着跑
     if (c.foe.trait === 'slippery' && c.foe.hp <= c.foe.hpMax * 0.5 && Math.random() < 0.35) {
+      if (c.noFoeFlee) {
+        logLine(c.foe.name + '想遁走，却被锁灵阵逼了回来。', 'good');
+        c.foe.trait = 'normal';
+        c.round++;
+        return true;
+      }
       S.combat = null; S.phase = 'play';
       logLine(c.foe.name + '见势不妙，遁走了。', '');
       advanceMonth(1); render(); return false;
@@ -5236,8 +5503,8 @@
   ACT.do_cbt = (sub, arg) => {
     const c = S.combat;
     if (!c) return;
-    const gap = realmGap(c.foe.rank);
-    const diff = c.foe.rank - positionRank();
+    const gap = combatGap(c);
+    const diff = c.foe.rank - combatRank(c);
     let mult = 1;
     if (gap >= 2) mult = 0;
     else if (gap >= 1) mult = 0.45;
@@ -5247,9 +5514,10 @@
     let dmg = 0, hit = true, note = '';
     const ratio = clamp(Math.sqrt(computePower() / Math.max(1, c.foe.power)), 0.2, 2.5);
     const keK = keMul(mainEl(), c.foe.el) || 1;   // P2-19 五行克制
+    const hitBonus = artBonus('hit') - (c.foe.trait === 'veteran' ? 0.12 : 0);
 
     if (sub === 'attack') {
-      hit = c.observed || Math.random() < 0.72;
+      hit = c.observed || Math.random() < clamp(0.72 + hitBonus, 0.2, 0.98);
       // 同格时至少打出可感知伤害（基准 15%，下限 6%）
       const r = ratio;
       if (c.talBuff) { mult *= (1 + c.talBuff); }
@@ -5269,9 +5537,9 @@
       if (sk.kind === 'thunder') sure = true;
       if (S.preBuff && S.preBuff.fire && sk.kind === 'fire') { mul2 *= (1 + S.preBuff.fire); S.preBuff.fire = 0; extra += '（符箓加成）'; }
       if (S.preBuff && S.preBuff.sureHit) { sure = true; S.preBuff.sureHit = false; extra += '（五雷符）'; }
-      hit = sure || c.observed || Math.random() < 0.72;
+      hit = sure || c.observed || Math.random() < clamp(0.72 + hitBonus, 0.2, 0.98);
       const r2 = ratio;
-      dmg = Math.round(c.foe.hpMax * Math.max(0.10, 0.22 * r2) * mul2 * mult * keK);
+      dmg = Math.round(c.foe.hpMax * Math.max(0.10, 0.22 * r2) * mul2 * mult * keK * (1 + artBonus('atk')));
       c.observed = false;
       note = '「' + nm + '」' + (hit ? '' : '未中') + extra;
       if (!hit) dmg = 0;
@@ -5291,7 +5559,7 @@
       if (k0 === '命') {
         hit = true;                                   // 命神通必中，直接砸在本体上
       } else if (k0 === '术') {
-        hit = c.observed || Math.random() < 0.82;
+        hit = c.observed || Math.random() < clamp(0.82 + hitBonus, 0.25, 0.99);
         c.foeWeaken = 2;
         sextra = '（敌势一滞）';
       } else if (k0 === '身') {
@@ -5314,7 +5582,7 @@
       if (S.mp < 30) { toast('灵力不足（需 30）'); render(); return; }
       S.mp -= 30;
       const g = getGongfa();
-      dmg = Math.round(c.foe.hpMax * Math.max(0.08, 0.22 * ratio) * mult * keK);
+      dmg = Math.round(c.foe.hpMax * Math.max(0.08, 0.22 * ratio) * mult * keK * (1 + artBonus('atk')));
       note = `施展《${g.name}》`;
     } else if (sub === 'quanbing') {
       if (!isShen()) { toast('仙道无权柄'); render(); return; }
@@ -5328,6 +5596,7 @@
       const t = D.TALISMANS.find(function (x) { return x.id === tid; });
       if (!t || (S.talismans[tid] || 0) < 1) { toast('没有这张符'); render(); return; }
       S.talismans[tid]--;
+      consumeQuality(tid);
       if (t.kind === 'atk') {
         hit = true;
         dmg = Math.round(c.foe.hpMax * Math.max(0.12, 0.30 * ratio) * (t.v || 1) * mult);
@@ -5365,8 +5634,12 @@
       note = '走不脱';
     } else if (sub === 'observe') { c.observed = true; note = '看破破绽'; }
     else if (sub === 'pill') {
-      if (S.bag.pillHp > 0) { S.bag.pillHp--; S.hp = Math.min(S.hpMax, S.hp + 50); note = '回血 50'; }
-      else if (S.bag.heal > 0) { S.bag.heal--; S.hp = Math.min(S.hpMax, S.hp + Math.round(S.hpMax*0.6)); note = '伤愈'; }
+      const p = D.PILL_EXT.find(function (x) { return x.id === arg; }) ||
+        D.PILL_EXT.find(function (x) { return (S.bag[x.id] || 0) > 0 && ['hp','hpPct','hpFull','cure','mp','mpPct','mpFull'].includes(x.type); });
+      if (!p || (S.bag[p.id] || 0) < 1) { toast('没有可用丹药'); render(); return; }
+      S.bag[p.id]--;
+      bump('pillUsed'); S.pillThisMonth = true; c.usedPill = true;
+      note = '服 ' + p.name + '：' + applyPill(p);
     } else if (sub === 'talk') {
       if (Math.random() < clamp(0.2 + st('fate') * 0.02 - gap * 0.1 - diff * 0.01, 0.05, 0.6)) {
         S.combat = null; S.phase = 'play';
@@ -5376,6 +5649,7 @@
       note = '不为所动';
     }
 
+    if (dmg > 0 && hit && ['attack', 'skill', 'shentong', 'cast', 'tal'].indexOf(sub) >= 0) applyAttackArtCost();
     if (mult === 0 && hit) { dmg = 1; note = '全力一击，只在对方衣袍上留下浅痕'; }
     if (hit && dmg > 0 && c.foeMark > 0) { dmg = Math.round(dmg * 1.25); }
     if (hit && dmg > 0) {
@@ -6553,6 +6827,261 @@
     r.n--;
     return true;
   }
+  /* ============================================================
+     v8.0 拍卖会 —— 独立玩法，不再只是「卖出渠道里的一个倍率」
+     ------------------------------------------------------------
+     流程：寄售（定底价）→ 开拍 → NPC 举牌 → 成交/流拍 → 抽一成。
+     同场另设一件「客籍拍品」，玩家可密封竞价，灵石在这一场里既进也出。
+     一年只办一场（year % 3 === 0），一场一人只能进场一次——
+     否则反复「开拍」就成了一次次白拿 1.4 倍价的无风险套利。
+     ============================================================ */
+  const AUC_LOTS = [
+    { id: 'lot_jade', name: '残玉一匣', base: 600, eff: '悟性 +1',
+      apply: function () { S.stats.qualify = Math.min(20, st('qualify') + 1); },
+      desc: '匣中二十一枚碎玉，边缘皆有云纹，像从同一件器物上崩下来的。' },
+    { id: 'lot_bone', name: '无名兽骨', base: 900, eff: '气血上限 +20',
+      apply: function () { S.hpMax += 20; S.hp += 20; },
+      desc: '三尺长，骨上有旧伤，摸上去还是温的。' },
+    { id: 'lot_map', name: '半卷残图', base: 1400, eff: '机缘 +1',
+      apply: function () { S.stats.fate = Math.min(20, st('fate') + 1); },
+      desc: '只剩半幅，画的是水，水里有山。' },
+    { id: 'lot_bell', name: '旧铜小钟', base: 2000, eff: '道心 +1',
+      apply: function () { S.stats.heart = Math.min(20, st('heart') + 1); },
+      desc: '钟身没有铭文，摇之无声，贴上耳朵才听见一点。' }
+  ];
+  const AUC_FLOOR = { low: { n: '保守', mul: 0.9 }, mid: { n: '常价', mul: 1.2 }, high: { n: '高价', mul: 1.6 } };
+
+  function aucNextYear() { return S.year + (3 - S.year % 3); }
+  function aucFloorMul() { return (AUC_FLOOR[S.aucFloor] || AUC_FLOOR.mid).mul; }
+  function aucUsed() { return S.aucYear === S.year; }
+
+  /* 寄售候选：只收单价 100 石以上的东西——拍卖会上没人争一把价值 8 石的香灰。 */
+  function aucCandidates() {
+    const out = [];
+    const seen = {};
+    function push(kind, id, base, name) {
+      if (!id || seen[kind + id] || base < 100) return;
+      let n = 0;
+      if (kind === 'dan') n = (S.bag || {})[id] || 0;
+      else if (kind === 'tal') n = (S.talismans || {})[id] || 0;
+      else n = (S.arts || []).filter(function (x) { return x === id; }).length;
+      if (n < 1) return;
+      seen[kind + id] = 1;
+      qualityRows(id, n).forEach(function (r) {
+        out.push({ kind: kind, id: id, q: r.q, n: r.n, base: base, name: name });
+      });
+    }
+    Object.keys(S.bag || {}).forEach(function (id) {
+      const p = D.PILL_EXT.find(function (x) { return x.id === id; });
+      if (p) push('dan', id, p.price, p.name);
+    });
+    Object.keys(S.talismans || {}).forEach(function (id) {
+      const p = D.TALISMANS.find(function (x) { return x.id === id; });
+      if (p) push('tal', id, p.price, p.name);
+    });
+    (S.arts || []).forEach(function (id) {
+      const p = D.ARTIFACT_EXT.find(function (x) { return x.id === id; });
+      if (p) push('art', id, p.price, p.name);
+    });
+    out.sort(function (a, b) { return b.base - a.base; });
+    return out.slice(0, 8);
+  }
+
+  /* 结算一件寄售拍品：最多三位潜在买家，各按自己的心理价举牌。
+     底价定得越高，举牌的人越少——这就是「高价」档的真正代价。 */
+  function aucRoll(it) {
+    const floor = it.base * it.qMul * aucFloorMul();
+    let best = 0, bidders = 0;
+    const heat = clamp(1.6 - 0.35 * (aucFloorMul() - 0.9) / 0.7, 0.45, 1.6);
+    for (let i = 0; i < 3; i++) {
+      if (Math.random() < 0.62 * heat) {
+        bidders++;
+        const p = it.base * it.qMul * (0.95 + Math.random() * 0.95);
+        if (p > best) best = p;
+      }
+    }
+    if (!bidders) return { ok: false, why: '无人举牌', bidders: 0, price: 0, floor: floor };
+    if (best < floor) return { ok: false, why: '未到底价', bidders: bidders, price: Math.round(best), floor: floor };
+    return { ok: true, bidders: bidders, price: Math.max(1, Math.round(best * 0.9)), floor: floor, top: Math.round(best) };
+  }
+
+  ACT.openAuction = () => {
+    if (!auctionOpen()) {
+      let b = `<div class="small">拍会三年一开。下一场在 <b>${aucNextYear()}</b> 年仲夏。</div>`;
+      b += divider() + `<div class="small muted">届时可寄售自己的丹药、符箓、法器，并竞买一件客籍拍品。</div>`;
+      b += `<div class="hint">拍卖倍率 1.40×，成交抽一成；底价定高了会流拍，但流拍不扣货。</div>`;
+      openModal('拍卖会 · 未开场', b);
+      return;
+    }
+    if (aucUsed()) {
+      let b = `<div class="small">本场已经散场了。下一次在 <b>${aucNextYear()}</b> 年。</div>`;
+      const won = S.aucLotWon;
+      if (won) b += `<div class="small good">你带走了「${esc(won)}」。</div>`;
+      b += divider() + `<div class="hint">拍卖会三年一场，一人一场只准进场一次。</div>`;
+      openModal('拍卖会 · 已散场', b);
+      return;
+    }
+    if (S.aucSell === undefined || !Array.isArray(S.aucSell)) S.aucSell = [];
+    let b = `<div class="small">天玄历 ${S.year} 年 · 仲夏拍会。台上灯已经亮了，台下坐满了不抬头的人。</div>`;
+    b += `<div class="statline"><span class="k">已寄存</span><span class="v"><b>${S.aucSell.length}/3 件</b></span></div>`;
+    b += `<div class="statline"><span class="k">底价档</span><span class="v">${(AUC_FLOOR[S.aucFloor] || AUC_FLOOR.mid).n}（${aucFloorMul().toFixed(1)}× 底）</span></div>`;
+    b += `<div class="row" style="gap:6px;margin:6px 0">`;
+    ['low', 'mid', 'high'].forEach(function (k) {
+      const on = (S.aucFloor || 'mid') === k;
+      b += `<span class="chip${on ? ' on' : ''}" data-act="do;aucfloor:${k}">${AUC_FLOOR[k].n}</span>`;
+    });
+    b += `</div>`;
+
+    if (S.aucSell.length) {
+      b += divider() + `<div class="muted small">已寄存</div><ul class="opts">`;
+      S.aucSell.forEach(function (it, i) {
+        b += optRow(String(i + 1), it.name + ' · ' + qualityDef(it.q).name + ' ×' + it.n,
+          { name: '底 ' + Math.round(it.base * it.qMul * aucFloorMul()), cls: 'peace' },
+          '撤下', false, 'do;aucdel:' + i);
+      });
+      b += `</ul>`;
+    }
+
+    if (S.aucSell.length < 3) {
+      const cands = aucCandidates();
+      b += divider() + `<div class="muted small">可寄存（单价 100 石以上）</div><ul class="opts">`;
+      if (!cands.length) b += `<div class="small muted">囊中还没有值得上拍的东西。</div>`;
+      cands.forEach(function (c, i) {
+        b += optRow('ABCDEFGH'[i] || '·', c.name + ' · ' + qualityDef(c.q).name,
+          { name: '存 ' + c.n, cls: 'peace' },
+          Math.round(c.base * c.qMul * 1.4) + ' 石估', false,
+          'do;aucadd:' + c.kind + ':' + c.id + ':' + c.q);
+      });
+      b += `</ul>`;
+    }
+
+    /* 客籍拍品：一件，密封竞价 */
+    if (!S.aucLot) S.aucLot = pick(AUC_LOTS).id;
+    const lot = AUC_LOTS.find(function (x) { return x.id === S.aucLot; }) || AUC_LOTS[0];
+    b += divider() + `<div class="muted small">客籍拍品</div>`;
+    b += `<div class="small"><b>${esc(lot.name)}</b>　起拍 ${fmtNum(lot.base)} 石</div>`;
+    b += `<div class="small muted" style="margin:2px 0 6px">${esc(lot.desc)}　<span class="good">${esc(lot.eff)}</span></div>`;
+    b += `<ul class="opts">`;
+    [1.0, 1.25, 1.55].forEach(function (m, i) {
+      const bid = Math.round(lot.base * m);
+      b += optRow('ABC'[i], '出价 ' + fmtNum(bid) + ' 石',
+        { name: m === 1 ? '起拍' : (m === 1.25 ? '加两成半' : '志在必得'), cls: m === 1.55 ? 'risk' : 'chance' },
+        S.stones < bid ? '灵石不足' : '', S.stones < bid, 'do;aucbid:' + bid);
+    });
+    b += `</ul>`;
+    b += divider() + `<div class="row"><span class="lab">灵石</span><b style="color:var(--stone)">${fmtNum(S.stones)}</b></div>`;
+    b += `<div class="hint">开拍后不可反悔，且本场就此散场——一年只能来一次。</div>`;
+    b += `<ul class="opts"><li class="opt" data-act="do;aucgo"><span class="key">▶</span>
+      <span class="txt">开拍（结清寄存，散场）</span></li></ul>`;
+    openModal('拍卖会 · ' + S.year + ' 年仲夏', b);
+  };
+
+  ACT.do_aucfloor = (k) => { if (AUC_FLOOR[k]) S.aucFloor = k; ACT.openAuction(); render(); };
+
+  ACT.do_aucadd = (kind, id, q) => {
+    if (!Array.isArray(S.aucSell)) S.aucSell = [];
+    if (S.aucSell.length >= 3) { toast('最多寄存三件'); return; }
+    const kindKey = { dan: 'dan', tal: 'tal', art: 'art' }[kind];
+    if (!kindKey) { toast('这类东西不收'); return; }
+    let def = null;
+    if (kindKey === 'dan') def = D.PILL_EXT.find(function (x) { return x.id === id; });
+    else if (kindKey === 'tal') def = D.TALISMANS.find(function (x) { return x.id === id; });
+    else def = D.ARTIFACT_EXT.find(function (x) { return x.id === id; });
+    if (!def) { toast('没有这件东西'); return; }
+    const left = S.aucSell.filter(function (x) { return x.kind === kindKey && x.id === id && x.q === q; })
+      .reduce(function (a, x) { return a + x.n; }, 0);
+    let have = 0;
+    if (kindKey === 'dan') have = (S.bag || {})[id] || 0;
+    else if (kindKey === 'tal') have = (S.talismans || {})[id] || 0;
+    else have = (S.arts || []).filter(function (x) { return x === id; }).length;
+    if (have - left < 1) { toast('这个品相已全部寄存'); return; }
+    S.aucSell.push({ kind: kindKey, id: id, q: q, n: 1, name: def.name,
+      base: def.price, qMul: qualityDef(q).mul });
+    ACT.openAuction(); render();
+  };
+
+  ACT.do_aucdel = (i) => {
+    i = parseInt(i, 10);
+    if (!Array.isArray(S.aucSell) || isNaN(i)) return;
+    S.aucSell.splice(i, 1);
+    ACT.openAuction(); render();
+  };
+
+  ACT.do_aucbid = (bid) => {
+    bid = parseInt(bid, 10) || 0;
+    const lot = AUC_LOTS.find(function (x) { return x.id === S.aucLot; });
+    if (!lot || bid <= 0) return;
+    if (S.stones < bid) { toast('灵石不足'); return; }
+    /* 密封竞价：对手的心理价在 1.0 ~ 1.6 倍之间，出到 1.55 也未必稳拿 */
+    const rival = lot.base * (1.0 + Math.random() * 0.6);
+    if (bid >= rival) {
+      S.stones -= bid;
+      ledgerAdd('out', '拍得' + lot.name, bid);
+      lot.apply();
+      S.aucLotWon = lot.name;
+      logLine('拍得「' + lot.name + '」，' + lot.eff + '。', 'good');
+      toast('落槌 · ' + lot.name);
+    } else {
+      logLine('「' + lot.name + '」被旁人叫走，你的号牌没再举。', '');
+      toast('未拍得');
+    }
+    S.aucLot = null;
+    ACT.openAuction(); render();
+  };
+
+  ACT.do_aucgo = () => {
+    if (!auctionOpen() || aucUsed()) { toast('本场已散'); return; }
+    const list = Array.isArray(S.aucSell) ? S.aucSell.slice() : [];
+    const results = [];
+    list.forEach(function (it) {
+      const r = aucRoll(it);
+      if (!r.ok) {
+        results.push({ it: it, r: r });
+        return;
+      }
+      /* 真的把货扣掉——沿用卖出那套扣减，避免品相库存与总数脱节 */
+      if (it.kind === 'dan') { if ((S.bag[it.id] || 0) > 0) S.bag[it.id]--; consumeQuality(it.id, it.q); }
+      else if (it.kind === 'tal') { if ((S.talismans[it.id] || 0) > 0) S.talismans[it.id]--; consumeQuality(it.id, it.q); }
+      else {
+        const at = (S.arts || []).indexOf(it.id);
+        if (at >= 0) { S.arts.splice(at, 1); consumeQuality(it.id, it.q); }
+        if ((S.arts || []).indexOf(it.id) < 0) {
+          Object.keys(S.equipped || {}).forEach(function (slot) {
+            if (S.equipped[slot] === it.id) delete S.equipped[slot];
+          });
+        }
+      }
+      S.stones += r.price;
+      ledgerAdd('in', '拍卖·' + it.name, r.price);
+      sellTally(r.price, 'auction');
+      bump('auctionWin');
+      results.push({ it: it, r: r });
+    });
+    S.aucSell = [];
+    S.aucYear = S.year;
+    S.aucLot = null;
+
+    let b = `<div class="small">槌声落定。台上换了三次灯。</div>` + divider();
+    if (!results.length) b += `<div class="small muted">你没有寄存任何东西，只坐着看了一场。</div>`;
+    let total = 0;
+    results.forEach(function (x) {
+      const q = qualityDef(x.it.q).name;
+      if (x.r.ok) {
+        total += x.r.price;
+        b += `<div class="small good">${esc(x.it.name)}（${q}）成交 ${fmtNum(x.r.price)} 石 —— ${x.r.bidders} 人举牌，最高 ${fmtNum(x.r.top)}，抽一成。</div>`;
+      } else {
+        b += `<div class="small muted">${esc(x.it.name)}（${q}）流拍 · ${esc(x.r.why)}${x.r.price ? '（最高只到 ' + fmtNum(x.r.price) + '）' : ''}，货已带回。</div>`;
+      }
+    });
+    if (total) b += `<div class="small" style="margin-top:6px">合计入账 <b style="color:var(--stone)">${fmtNum(total)}</b> 灵石。</div>`;
+    b += divider() + `<div class="small">下一场：${aucNextYear()} 年仲夏。</div>`;
+    logLine('拍卖会散场，寄售所得 ' + total + ' 灵石。', total ? 'good' : '');
+    advanceMonth(1);
+    if (S.phase !== 'play') return render();
+    openModal('拍卖会 · 落槌', b);
+    render();
+  };
+
   function auctionOpen() { return S.year % 3 === 0; }
   function auctionPassed() { return sellCh().id !== 'auction' || Math.random() >= 0.15; }
   function sellMul() {
