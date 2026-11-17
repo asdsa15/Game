@@ -1,4 +1,4 @@
-// 长跑冒烟：用 DOM 桩真跑 120 个月的随机操作，专抓 NaN / 负值 / 抛错
+// 长跑冒烟：用 DOM 桩真跑 300 个月的随机操作，专抓 NaN / 负值 / 抛错
 // 覆盖仙道与神道两条线，包括庙市、化香火钱、卖出渠道、四艺面板。
 const fs = require('fs');
 const path = require('path');
@@ -117,10 +117,10 @@ function run(cult, steps) {
   if (cult === 'shen') ok(S.xianghuo >= 0 && isFinite(S.xianghuo), '神道香火非负有限', S.xianghuo);
 }
 
-console.log('=== 仙道 120 步 ===');
-run('xian', 120);
-console.log('=== 神道 120 步 ===');
-run('shen', 120);
+console.log('=== 仙道 300 步 ===');
+run('xian', 300);
+console.log('=== 神道 300 步 ===');
+run('shen', 300);
 
 console.log('=== 道途目标 ===');
 setup('xian');

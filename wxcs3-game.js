@@ -12,7 +12,7 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   /* 版本号只在这里定义一次。旧代码把 '6.2' 硬编码在 envelope、checkSaveVersion、
      导出文件名、帮助面板四处——改一处忘三处，就会出现「新档被判成旧版」。 */
-  const VER = '7.4';
+  const VER = '8.0';
 
   const rnd = (n) => Math.floor(Math.random() * n) + 1;
   const rnd100 = () => rnd(100);
@@ -136,6 +136,7 @@
       aucLotWon: null,    // 已拍得的客籍拍品名
 
       npcCall: null,      // 待处理的 NPC 主动事件 {id, kind}
+      tutStep: 0,         // 新手引导进度（到 TUTORIAL_STEPS.length 即结束）
       dying: null,        // 临终状态 {reason}
       dyingUsed: false,   // 一局只给一次临终选择
       legacyPact: null,   // 临终所托：pass / daotong，带到来世
@@ -1175,6 +1176,37 @@
     for (const k in S.bag) n += S.bag[k] || 0;
     return n ? n + ' 件' : '空';
   }
+  /* ============ v8.0 新手引导 ============
+     TUTORIAL_STEPS 之前只有文案，没有任何地方展示。这里做成一条可跳过的短引导：
+     不弹模态（避免顶掉开局的传法/奇遇），只在常驻区挂一个「引」按钮，走完自动消失。 */
+  function tutLeft() {
+    const n = D.TUTORIAL_STEPS.length;
+    const i = S.tutStep || 0;
+    return Math.max(0, n - i);
+  }
+  function openTut() {
+    const steps = D.TUTORIAL_STEPS;
+    const i = Math.min(S.tutStep || 0, steps.length - 1);
+    const cur = steps[i];
+    let b = `<div class="small muted">第 ${i + 1} / ${steps.length} 条</div>`;
+    b += `<div class="small" style="margin:6px 0"><b>${esc(cur.name)}</b></div>`;
+    b += `<div class="small">${esc(cur.text)}</div>`;
+    b += divider() + '<ul class="opts">';
+    if (i < steps.length - 1) {
+      b += optRow('A', '下一条', { name: '续', cls: 'peace' }, '', false, 'do;tut:next');
+    } else {
+      b += optRow('A', '知道了，开始吧', { name: '完', cls: 'peace' }, '', false, 'do;tut:done');
+    }
+    b += optRow('B', '不必再看', { name: '略', cls: 'warn' }, '', false, 'do;tut:done');
+    b += '</ul>';
+    openModal('新手引导', b);
+  }
+  function do_tut(a) {
+    if (a === 'next') S.tutStep = (S.tutStep || 0) + 1;
+    else S.tutStep = D.TUTORIAL_STEPS.length;
+    closeModal(); render();
+  }
+
   function dockItems() {
     const list = [];
     /* 有人上门时排在最前面——这件事不处理，会一直挂着 */
@@ -1187,6 +1219,10 @@
       });
     }
     list.push({ k: '功', t: '功法', s: getGongfa().name, act: 'act:openGongfa' });
+    /* 新手引导走完就自己消失，不长期占位 */
+    if (S.started && tutLeft() > 0) {
+      list.push({ k: '引', t: '新手引导', s: '还有 ' + tutLeft() + ' 条', act: 'act:openTut' });
+    }
     if (isShen()) list.push({ k: '庙', t: '庙宇', s: S.miaoHao || S.miao, act: 'act:openTemple' });
     else list.push({ k: '府', t: '洞府', s: D.LINGQI[S.lingqi].name, act: 'act:openCave' });
     // 两套系统两个市：仙道坊市只认灵石，神道庙市另开一摊
@@ -1503,6 +1539,8 @@
   /* ============ 行动 ============ */
   const ACT = {};
   ACT.openGoals = openGoals;
+  ACT.openTut = openTut;
+  ACT.do_tut = do_tut;
 
   ACT.screen = () => { closeModal(); render(); };
 
@@ -1762,6 +1800,7 @@
         S.hp = Math.max(1, S.hp - z);
         S.xiuwei = Math.round((xrealm().need || 100) * 0.2);
         logLine('那缕不属你的气忽然逆冲——走火。气血 −' + z + '，修为倒退。', 'danger');
+        bump('heartBreak');   // 功过格「走火」需要两次
         toast('走火');
       }
       // holdEvent 期间不抢先弹传法：破境的诗还没看完，传法等 afterbreak 放行
@@ -1879,6 +1918,11 @@
     S.lifeMax = 1200;
     S.jinxing = true;
     S.unlockStage = Math.max(S.unlockStage, 5);
+    /* 功过格「孤证」：既无道侣，也无一个交情过 40 的人——
+       这一位，是一个人证下来的。 */
+    if (!npcHasMate() && !Object.keys(S.npcs || {}).some(function (k) {
+      return (S.npcs[k] || {}).fav >= 40;
+    })) bump('aloneCert');
     logLine(`结丹得果位：${g.n}（${g.rank}）。以己心代天心。`, 'good');
     toast('金丹 · ' + g.n);
     closeModal(); advanceMonth(1); render();
@@ -2313,6 +2357,7 @@
     if (!g) return;
     const oldCap = (D.DAOGONG_CAP[getDaogong().tier] || D.DAOGONG_CAP.huang).cap;
     const newCap = (D.DAOGONG_CAP[g.tier] || D.DAOGONG_CAP.huang).cap;
+    if (S.gongfa[0] !== id) bump('gfChanged');   // 「一炁」要求从未换过功法
     S.gongfa[0] = id;
     S.daogong = id;
     const gname = g.name;
@@ -2698,6 +2743,8 @@
     if (it.type === 'xiang' && !usesShenLine()) { toast('此物唯神道受用'); closeModal(); return; }
     if (S.stones < it.price) { toast('灵石不足'); closeModal(); return; }
     S.stones -= it.price;
+    /* 功过格「空囊」：正好把最后一块灵石花出去 */
+    if (S.stones === 0) bump('buyAtZero');
     if (it.cat === 'art') {
       S.arts = (S.arts || []).concat([it.id]);
       logLine('购得「' + it.name + '」，可佩戴。', 'good');
@@ -3043,6 +3090,7 @@
       S.karma += 20;
       S.sect = null;
       S.enemySect = true;
+      bump('leftSect');     // 功过格「叛门」
       closeModal(); render();
     });
   };
@@ -3078,9 +3126,12 @@
     b += '<div class="statline"><span class="k">族人</span><span class="v">' + S.clan.pop + ' / ' + hall.pop + '</span></div>';
     b += '<div class="statline"><span class="k">族运</span><span class="v">' + Math.round(S.clan.luck) + ' / ' + hall.luck + '</span></div>';
     b += '<div class="muted small" style="margin:4px 0">每月族人供奉 ' +
-      Math.round(S.clan.pop * D.CLAN.income.stonePerPop) + ' 灵石，族运 +' +
+      Math.round(S.clan.pop * D.CLAN.income.stonePerPop) + ' 灵石（未派活时），族运 +' +
       Math.round(S.clan.pop * D.CLAN.income.luckPerPop) + '。可传授功法至 ' +
       esc(D.GONGFA_TIERS[hall.gongfa].name) + '。</div>';
+    b += '<ul class="opts">' + optRow('产', '族人派活 · 药圃／帮工／跑商／修行',
+      { name: '新', cls: 'chance' }, Math.min(S.clan.pop, clanIndUsed()) + '/' + S.clan.pop + ' 已派',
+      false, 'act:openClanInd') + '</ul>';
     b += divider();
     b += '<div class="small muted" style="margin-bottom:4px">族老会</div>';
     b += D.CLAN.elders.map(function (e) {
@@ -3110,7 +3161,9 @@
     const rules = [];
     const pool2 = D.CLAN.rules.slice();
     for (let i = 0; i < 3 && pool2.length; i++) rules.push(pool2.splice(Math.floor(Math.random() * pool2.length), 1)[0].id);
-    S.clan = { name: nm, lv: 1, pop: 120, luck: 60, ident: 'di', rules: rules, founded: S.turn, peaks: null };
+    S.clan = { name: nm, lv: 1, pop: 120, luck: 60, ident: 'di', rules: rules, founded: S.turn, peaks: null,
+      ind: { farm: 0, work: 0, trade: 0, study: 0 },
+      elder: pick(['shou', 'jin', 'li']) };
     logLine('立祠堂，开族府。' + nm + '氏在这一带算是有了名。', 'good');
     toast('立族 · ' + nm + '氏');
     closeModal(); render();
@@ -3150,13 +3203,96 @@
     closeModal(); render();
   };
 
+  /* ============ v8.0 家族产业 ============
+     CLAN_INDUSTRIES 之前只是一张说明表，族人的产出跟「派去做什么」无关。
+     现在族人要分配：派去帮工/跑商换灵石，派去药圃出草药，派去修行攒悟道。
+     没派活的人只按老规矩交一点供奉（0.35 石/人），所以「派人」是真的取舍。 */
+  function clanIndOf() {
+    if (!S.clan) return { farm: 0, work: 0, trade: 0, study: 0 };
+    if (!S.clan.ind || typeof S.clan.ind !== 'object') S.clan.ind = { farm: 0, work: 0, trade: 0, study: 0 };
+    return S.clan.ind;
+  }
+  function clanIndUsed() {
+    const i = clanIndOf();
+    return (i.farm || 0) + (i.work || 0) + (i.trade || 0) + (i.study || 0);
+  }
+  function clanElder() { return (S.clan && S.clan.elder) || 'jin'; }
+  function clanElderName() {
+    const e = D.CLAN.elders.find(function (x) { return x.id === clanElder(); });
+    return e ? e.name : '进取族老';
+  }
+
   function tickClan() {
     if (!S.clan) return;
     const hall = clanLv();
     S.clan.luck = Math.min(hall.luck, S.clan.luck + S.clan.pop * D.CLAN.income.luckPerPop);
-    const inc = Math.round(S.clan.pop * D.CLAN.income.stonePerPop);
-    if (inc > 0) S.stones += inc;
+    const ind = clanIndOf();
+    const pop = S.clan.pop || 0;
+    const used = Math.min(pop, clanIndUsed());
+    const idle = Math.max(0, pop - used);
+    const elder = clanElder();
+    /* 空闲：老规矩的供奉；帮工 0.8/人；跑商 2.0/人（贪利族老再抽五成） */
+    let stone = idle * D.CLAN.income.stonePerPop + (ind.work || 0) * 0.8 + (ind.trade || 0) * 2.0;
+    if (elder === 'li') stone += (ind.trade || 0) * 1.0;
+    stone = Math.round(stone);
+    if (stone > 0) { S.stones += stone; ledgerAdd('in', '家族营生', stone); }
+    /* 药圃：守旧族老增产两成，200 人一株 */
+    const farmMul = elder === 'shou' ? 1.2 : 1;
+    const herb = Math.floor((ind.farm || 0) * farmMul / 200);
+    for (let i = 0; i < herb; i++) addMat('lanyouCao', 1);
+    if (herb > 0) logLine('药圃收了 ' + herb + ' 株蓝幽草。', 'good');
+    /* 修行：50 人一月一悟 */
+    const xp = Math.floor((ind.study || 0) / 50);
+    if (xp > 0) S.insightXp = (S.insightXp || 0) + xp;
+    /* 跑商有风险，贪利族老把风险也放大了 */
+    const risk = elder === 'li' ? 0.10 : 0.05;
+    if ((ind.trade || 0) > 0 && Math.random() < risk) {
+      S.clan.luck = Math.max(0, S.clan.luck - 40);
+      logLine('族人跑商折了本，族运 −40。', 'danger');
+    }
   }
+
+  ACT.openClanInd = () => {
+    if (!S.clan) { toast('尚未立族'); return; }
+    const ind = clanIndOf();
+    const pop = S.clan.pop || 0;
+    const idle = Math.max(0, pop - Math.min(pop, clanIndUsed()));
+    let b = `<div class="small">族人派去做什么，就长出什么。没派活的人只交一点供奉。</div>`;
+    b += `<div class="statline"><span class="k">族人</span><span class="v">${pop}</span></div>`;
+    b += `<div class="statline"><span class="k">已派</span><span class="v">${Math.min(pop, clanIndUsed())}</span></div>`;
+    b += `<div class="statline"><span class="k">空闲</span><span class="v">${idle}（每月 0.35 石/人）</span></div>`;
+    b += `<div class="statline"><span class="k">主事族老</span><span class="v">${esc(clanElderName())}</span></div>`;
+    b += divider() + '<ul class="opts">';
+    const keys = ['A', 'B', 'C', 'D'];
+    D.CLAN_INDUSTRIES.forEach(function (x, i) {
+      const n = ind[x.id] || 0;
+      b += optRow(keys[i], x.name + '　' + n + ' 人',
+        { name: n > 0 ? '在办' : '未派', cls: n > 0 ? 'peace' : 'warn' }, x.eff, false,
+        'do;ind:' + x.id + ':plus');
+      b += optRow('−', '　减一成（现 ' + n + ' 人）', { name: '调', cls: 'warn' }, '',
+        n <= 0, 'do;ind:' + x.id + ':minus');
+    });
+    b += '</ul>';
+    b += `<div class="hint">点一下加一成人口。派去跑商来钱最快，但族运可能折损。</div>`;
+    openModal('家族产业 · 族人怎么用', b);
+  };
+
+  ACT.do_ind = (k, dir) => {
+    if (!S.clan) return;
+    const ind = clanIndOf();
+    const pop = S.clan.pop || 0;
+    const step = Math.max(1, Math.round(pop * 0.1));
+    if (dir === 'minus') {
+      if ((ind[k] || 0) <= 0) return;
+      ind[k] = Math.max(0, (ind[k] || 0) - step);
+    } else {
+      const used = Math.min(pop, clanIndUsed());
+      if (used >= pop) { toast('族人都派满了'); return; }
+      ind[k] = (ind[k] || 0) + Math.min(step, pop - used);
+    }
+    ACT.openClanInd(); render();
+  };
+
 
   /* ---------- 洞天 ---------- */
   ACT.openDongtian = () => {
@@ -3315,8 +3451,13 @@
     let d = o.fav || 3;
     if (S.talents.includes('peach')) d = Math.round(d * 1.2);
     if (hasDebuff('debt_weight')) d = Math.max(1, Math.round(d * 0.7));   // 人情压身：处不熟
+    const favBefore = rec.fav || 0;
     rec.fav = clamp(rec.fav + d, 0, 120);
     rec.answers = (rec.answers || 0) + 1;
+    bumpIn('talk', id);                                   // 「论道百回」按人计数
+    if (favBefore <= -60 && rec.fav >= 40) bump('enemyToFriend');   // 「化敌」
+    /* 相识年数从第一次见面起算，给「故人」用 */
+    if (rec.since === undefined) rec.since = S.turn || 0;
     // 把对话展示出来，而不是只记一笔账
     let b = '<div class="npcmeet">';
     b += '<div class="nm-name">' + esc(n.name) + '</div>';
@@ -3341,7 +3482,11 @@
     else if (kind === 'gift') { if (S.stones < 80) { toast('灵石不足'); return; } S.stones -= 80; d = 6 + rnd(7); }
     else { if (Math.random() < 0.7) d = 5 + rnd(11); else { d = 2; S.hp = Math.max(1, S.hp - Math.round(S.hpMax*0.2)); } }
     if (S.talents.includes('peach')) d = Math.round(d * 1.2);
+    const favBefore2 = S.npcs[id].fav || 0;
     S.npcs[id].fav = clamp(S.npcs[id].fav + d, 0, 120);
+    if (kind === 'talk') bumpIn('talk', id);
+    if (favBefore2 <= -60 && S.npcs[id].fav >= 40) bump('enemyToFriend');
+    if (S.npcs[id].since === undefined) S.npcs[id].since = S.turn || 0;
     // 让他说句话，而不是只记「好感 +N」
     let line = '';
     if (kind === 'gift') line = npcCtxLine(n, 'together') || ('「收下了。」' + n.name + '把东西收进袖里。');
@@ -3558,6 +3703,8 @@
       if (choice === 'mourn') {
         S.merit += 30;
         bump('npcFuneral');
+        /* 功过格「白头」：他从初见走到老死，你一次境都没破过 */
+        if ((S.xRealm || 0) === 0 && (S.pillar || 0) === 0) bump('npcFuneralSameRealm');
         logLine('你送' + n.name + '走完了最后一程。功德 +30。', 'good');
       } else {
         S.karma += 12;
@@ -3706,6 +3853,13 @@
     if (out.phase === 'dying' && !out.dying) out.phase = 'over';
     out.dyingUsed = !!st.dyingUsed;
     out.legacyPact = st.legacyPact || null;
+    /* 老玩家不推新手引导：他们不是新手，弹出来只会烦 */
+    out.tutStep = st.tutStep === undefined ? D.TUTORIAL_STEPS.length : st.tutStep;
+    // v8.0：家族产业字段是后加的，旧档的 clan 里没有
+    if (out.clan) {
+      out.clan.ind = Object.assign({ farm: 0, work: 0, trade: 0, study: 0 }, out.clan.ind || {});
+      out.clan.elder = out.clan.elder || 'jin';
+    }
     // 奇遇卡死过的存档会残留 pendingEnc，不清掉的话 maybeEvent 里
     // `!S.pendingEnc` 恒为假，奇遇系统此后永久不再触发。
     out.pendingEnc = null;
@@ -6276,6 +6430,7 @@
     if (S.talents.includes('peach')) S.npcs[n0.id].fav = Math.round(S.npcs[n0.id].fav * 1.2);
 
     S.started = true; S.phase = 'play'; S.turn = 0;
+    S.tutStep = 0;      // 新手引导从头开始
     // v6.6：百世书页数烧掉之后，这一世开局可以带一项前世残忆
     if (S.legacy || pageCount() < 3) {
       const _mem = unlockedMemories();
@@ -7679,6 +7834,21 @@
 
   function boot() {
     S = newGame(); S.draft = draftInit(); render();
+    /* v8.0 全局错误网：以前脚本一抛错就是整屏白，玩家以为手机卡死。
+       现在至少把错误摊在屏幕下方，且只报一次，不刷屏。 */
+    let errShown = 0;
+    window.onerror = function (msg, src, line, col, err) {
+      errShown++;
+      if (errShown > 3) return;
+      const txt = '脚本出错：' + (err && err.message ? err.message : msg) +
+        (line ? '（第 ' + line + ' 行）' : '') + '　已自动存档，可刷新再试。';
+      try { toast(txt); } catch (e) { }
+      try { console.error('[wxcs3]', msg, src, line, col, err); } catch (e) { }
+      try { autoSave(); } catch (e) { }
+    };
+    window.addEventListener('unhandledrejection', function (e) {
+      try { console.error('[wxcs3] unhandled', e && e.reason); } catch (x) { }
+    });
     // 顶栏「系统」按钮由全局 data-act 分发处理（act:openSys），无需额外绑定
     window.addEventListener('beforeunload', function () { autoSave(); });
     document.addEventListener('visibilitychange', function () {
