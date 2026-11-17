@@ -256,6 +256,17 @@
     return n;
   }
 
+  /* ============ v8.0 信众来源缩放 ============
+     传教是「常数收益」，流失是「百分比」，于是信众必然在 收益/流失率 处饱和：
+     30+115 人/月 ÷ 1% ≈ 11500 人——这个数与柱位无关。
+     而五柱起的信众上限是 3 万 / 9.5 万 / 30 万，光靠传教永远够不到，
+     结果就是越往后越只能反复刷显圣（一次几百人，要刷几百次）。
+     这里让「传教」与「显圣」两条来源都随上限等比放大，
+     使每柱拉信众的耗时稳定在一两年，而不是按柱位指数级增长。 */
+  function followerScale() {
+    return Math.max(1, followLimit() / 3450);
+  }
+
   /* 买香只能补到本柱需求的八成——余下两成须得真信众来烧 */
   function xiangBuyCap() {
     return Math.round(pillar().need * D.EXCHANGE.buyCapRatio);
@@ -1528,7 +1539,8 @@
     ledgerAdd('out', '庙会施粥', cost);
     advanceMonth(1);
     if (S.phase !== 'play') return render();
-    const add = 30 + rnd(170);
+    /* 收益随柱位放大：柱越高，一场庙会能招来的人越多 */
+    const add = Math.round((30 + rnd(170)) * followerScale());
     const mul = S.fame > 20 ? 1.3 : 1;
     S.followers = Math.min(followLimit(), S.followers + Math.round(add * mul));
     S.piety = Math.min(2.0, S.piety + 0.05);
@@ -2062,7 +2074,7 @@
     if (S.benmingQuanbing.length) base += 0.05;
     if (Math.random() < clamp(base, 0.15, 0.95)) {
       /* 摄心神杖：显圣所得信众 ×(1+20%/级)，只放大「灵验」那一半的收获 */
-      const raw = { small: 20 + rnd(80), mid: 120 + rnd(380), big: 600 + rnd(1400) }[lv];
+      const raw = Math.round({ small: 20 + rnd(80), mid: 120 + rnd(380), big: 600 + rnd(1400) }[lv] * followerScale());
       const gain = Math.round(raw * dArtStaffMul());
       S.followers = Math.min(followLimit(), S.followers + gain);
       S.piety = Math.min(2.0, S.piety + (lv === 'big' ? 0.2 : 0.1));
