@@ -900,13 +900,13 @@
   /* ====== 锚（v6.2 核心：无寿元者靠锚） ====== */
   const ANCHOR_TYPES = [
     { id: 'wu', name: '物锚', xian: '金性、本命法宝、道统信物', shen: '庙中塑像、神箓、神位黑箓',
-      solid: '存在且完好，未被夺、未破损', fixCost: '重铸金性需 10 年修为；重塑像需 1 万香火' },
+      solid: '存在且完好，未被夺、未破损', fixStones: 500, fixCost: '重铸信物／重塑像：500 灵石' },
     { id: 'ren', name: '人锚', xian: '亲传弟子（在世且未叛）／道侣／护道者', shen: '信众达本柱门槛／守庙人／上级城隍',
-      solid: '人在、未散、未叛', fixCost: '收一名亲传要 20 年；信众散了要重走传教' },
+      solid: '人在、未散、未叛', fixStones: 200, fixCost: '寻访亲传／重聚信众：200 灵石' },
     { id: 'shi', name: '事锚', xian: '未了的道（开道未成）或已立的法则', shen: '履职（牧民、镇灾、剿邪祀）',
-      solid: '按期履职，未抗命、未弃职', fixCost: '把没做完的事做完' },
+      solid: '按期履职，未抗命、未弃职', fixStones: 300, fixCost: '了却一事／履职一回：300 灵石' },
     { id: 'yi', name: '仪锚', xian: '续灯仪（每甲子一次，独坐七日七夜，不可中断）', shen: '岁时大醮（每年一场）＋晨昏三炷香（每日）',
-      solid: '按期举行，一场不落', fixCost: '补办需双倍代价＋道心 −1，且不算按期' }
+      solid: '按期举行，一场不落', fixStones: 400, fixCost: '备齐仪物、补办一场：400 灵石' }
   ];
 
   const ANCHOR_STATES = { solid: { v: 1, name: '固' }, loose: { v: 0.5, name: '松' }, broken: { v: 0, name: '断' } };

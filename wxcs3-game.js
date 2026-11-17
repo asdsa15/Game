@@ -100,6 +100,7 @@
       learnedRecipes: [],     // 已掌握的配方
       bagMat: {},             // 材料库存（与丹药法宝分开）
       talismans: {},          // 符箓库存
+      craftedQ: {},           // 自制成品品相：{物品id:[{q,n}]}，与普通购货分开计价
       disks: [],              // 已布阵盘
       dishes: { dan: 0, qi: 0, fu: 0, zhen: 0 },  // 本月制作次数（用于收支）
       ledger: { income: [], expense: [] },        // 本月收支明细
@@ -979,6 +980,12 @@
     openModal('道途 · 目标', b);
   }
 
+  function breakReady() {
+    const xianReady = hasXianLine() && (S.xRealm >= 4 || (!!xrealm().need && S.xiuwei >= xrealm().need));
+    const shenReady = hasShenLine() && (S.pillar >= D.PILLARS.length - 1 || S.xianghuo >= pillar().need);
+    return isBoth() ? (xianReady || shenReady) : (isShen() ? shenReady : xianReady);
+  }
+
   function renderMainCol() {
     let b = '';
     b += renderRealmBar();
@@ -993,9 +1000,9 @@
     o.push(optRow('A', (isShen() ? '坐庙温养' : '打坐采气'),
       { name: '平和', cls: 'peace' }, '+' + gain + ' ' + unit, false, 'act:cultivate'));
 
-    const full = isShen() ? (S.xianghuo >= pillar().need) : (xrealm().need && S.xiuwei >= xrealm().need);
+    const full = breakReady();
     // 神道未受箓：破柱之后本该受箓，漏领则永远进不了洞天
-    const noLu = isShen() && !S.lu && S.pillar >= 1;
+    const noLu = hasShenLine() && !S.lu && S.pillar >= 1;
     if (noLu && full) {
       o.push(optRow('B', '受箓（入洞天之凭）', { name: '机缘', cls: 'chance' }, '未受箓则进不得洞天', false, 'act:openLuPick'));
     } else if (full) {
@@ -1852,7 +1859,9 @@
       toast('破柱 · ' + realmName());
       addRenGong(400);
       reciteLiturgy('breakShen');
+      S.pendingQuanbing = true;
       if (!S.lu) { logLine('破柱已成，当受天箓——否则入洞天即为邪魔。', 'danger'); openLuPick(); return; }
+      S.pendingQuanbing = false;
       if (S.phase === 'play') maybeTransmitNow();   // P0-1
       openQuanbingPick();
       return;
@@ -1954,12 +1963,14 @@
     b += `<ul class="opts">`;
     for (const a of D.ANCHOR_TYPES) {
       const v = S.anchors[a.id];
-      const tag = v >= 1 ? { name: '固', cls: 'peace' } : v >= 0.5 ? { name: '松', cls: 'warn' } : { name: '断', cls: 'risk' };
+      const tag = v >= D.ANCHOR_STATES.solid.v ? { name: D.ANCHOR_STATES.solid.name, cls: 'peace' }
+        : v >= D.ANCHOR_STATES.loose.v ? { name: D.ANCHOR_STATES.loose.name, cls: 'warn' } : { name: D.ANCHOR_STATES.broken.name, cls: 'risk' };
       const what = isXian() ? a.xian : a.shen;
-      b += optRow('·', a.name + '：' + what, tag, v >= 1 ? '完好' : '需补', v >= 1, 'do;anchor:' + a.id);
+      b += optRow('·', a.name + '：' + what, tag,
+        (v >= 1 ? '按期维护' : '修复') + ' · ' + a.fixStones + ' 石', S.stones < a.fixStones, 'do;anchor:' + a.id);
     }
     b += `</ul>`;
-    b += `<div class="hint">补锚代价：${D.ANCHOR_TYPES.map(a => a.name + '=' + a.fixCost).join('；')}</div>`;
+    b += `<div class="hint">维护会重置该类锚的周期计时；不必等它松断后再救。</div>`;
     b += `<div class="hint danger">仪式有窗口期：误一期转松，连误三期即断。仪式中被中断，当场断一锚且反噬。</div>`;
     if (needsAnchor()) b += `<div style="margin-top:8px"><button class="btn gold" data-act="do;ritual">举行仪式（续锚）</button></div>`;
     openModal('锚 · 无寿元者的活法', b);
@@ -1967,14 +1978,13 @@
 
   ACT.do_anchor = (id) => {
     const a = D.ANCHOR_TYPES.find(x => x.id === id);
-    if (S.anchors[id] >= 1) { toast('此锚已固'); return; }
-    // 补锚代价
-    const cost = { wu: 500, ren: 200, shi: 300, yi: 400 }[id];
+    if (!a) return;
+    const cost = a.fixStones;
     if (S.stones < cost) { toast(`需 ${cost} 灵石（${a.fixCost}）`); return; }
     S.stones -= cost;
-    S.anchors[id] = 1;
-    S.anchorMiss[id] = 0;
-    logLine(`补回${a.name}。`, 'good');
+    ledgerAdd('out', '维护' + a.name, cost);
+    doAnchorMaintain(id);
+    logLine(`${S.anchors[id] >= 1 ? '维护' : '补回'}${a.name}，周期重计。`, 'good');
     closeModal(); render();
   };
 
@@ -2000,9 +2010,8 @@
       logLine('法事中途被人闯了。当场断一锚，气血 -30%，道心 -1。', 'danger');
       toast('仪式被打断');
     } else {
-      S.anchors.yi = 1;
-      S.anchorMiss.yi = 0;
-      logLine(`${isXian() ? '续灯仪' : '岁时大醮'}如期举行，仪锚复固。`, 'good');
+      doAnchorMaintain('yi');
+      logLine(`${isXian() ? '续灯仪' : '岁时大醮'}如期举行，仪锚复固，周期重计。`, 'good');
       toast('仪式完成');
     }
     render();
@@ -2083,9 +2092,10 @@
       }
       b += divider();
     }
-    const cost = (S.lingqi + 1) * 800;
-    if (S.lingqi < D.LINGQI.length - 1) {
-      b += `<div class="small">提升灵气 → ${D.LINGQI[S.lingqi+1].name}（${cost} 灵石）</div>`;
+    const up = Math.max(parseInt(S.lingqiUp, 10) || 0, placeBaseLingqi(S.place));
+    const cost = (up + 1) * 800;
+    if (up < D.LINGQI.length - 1) {
+      b += `<div class="small">提升灵气 → ${D.LINGQI[up+1].name}（${cost} 灵石）</div>`;
       b += `<div style="margin-top:6px"><button class="btn gold" data-act="do;upqi">寻龙脉升阶</button></div>`;
     } else b += `<div class="small muted">灵气已至洞天，再无可升。</div>`;
     b += `<div class="hint">夺灵脉是仙道最常见的战争：一条福地灵脉，够养活一个小宗门。</div>`;
@@ -2106,7 +2116,7 @@
   };
 
   ACT.do_upqi = () => {
-    const up = clamp(parseInt(S.lingqiUp, 10) || 1, 0, D.LINGQI.length - 1);
+    const up = Math.max(parseInt(S.lingqiUp, 10) || 0, placeBaseLingqi(S.place));
     const cost = (up + 1) * 800;
     if (up >= D.LINGQI.length - 1) { toast('灵气已至洞天'); return; }
     if (S.stones < cost) { toast('灵石不足'); return; }
@@ -2891,21 +2901,22 @@
     let b = `<div class="small">阳世 ↔ 洞天并行，时间同步。</div>` + divider();
     b += `<div class="statline"><span class="k">现在</span><span class="v">${S.inDongtian ? '洞天' : '阳世'}</span></div>`;
     b += `<div class="statline"><span class="k">神位</span><span class="v">${S.shenwei || '未入品'}</span></div>`;
-    if (isShen() && !S.lu) {
+    if (hasShenLine() && !S.lu) {
       b += `<div class="small danger">无箓者入洞天视为邪魔，诸神见之则诛。</div>`;
       b += `<div style="margin:10px 0"><button class="btn gold" data-act="act:openLuPick">去受箓（补领）</button></div>`;
     }
     b += divider() + `<ul class="opts">`;
-    for (const g of D.GATE) b += optRow('·', g.name + '（' + g.cost + ' 香火）', { name: '风险', cls: 'risk' }, S.inDongtian ? '回阳世' : '入洞天', isShen() && S.xianghuo < g.cost, 'do;gate:' + g.id);
+    for (const g of D.GATE) b += optRow('·', g.name + '（' + g.cost + ' 香火）', { name: '风险', cls: 'risk' }, S.inDongtian ? '回阳世' : '入洞天', hasShenLine() && S.xianghuo < g.cost, 'do;gate:' + g.id);
     b += `</ul>`;
     openModal('两界 · 界门', b);
   };
 
   ACT.do_gate = (id) => {
     const g = D.GATE.find(x => x.id === id);
-    if (isShen() && S.xianghuo < g.cost) { toast('香火不足'); return; }
-    if (!S.inDongtian && isShen() && !S.lu) { toast('无箓入洞天＝邪魔，诸神见之则诛'); return; }
-    if (isShen()) S.xianghuo -= g.cost;
+    if (!g || !hasShenLine()) { toast('唯有神道或双修可行两界'); return; }
+    if (S.xianghuo < g.cost) { toast('香火不足'); return; }
+    if (!S.inDongtian && !S.lu) { toast('无箓入洞天＝邪魔，诸神见之则诛'); return; }
+    S.xianghuo -= g.cost;
     S.inDongtian = !S.inDongtian;
     if (S.inDongtian) bump('gate');
     logLine(S.inDongtian ? `过${g.name}，入洞天。` : `过${g.name}，归阳世。`, '');
@@ -3204,6 +3215,10 @@
     // maybeEvent 里一旦据此拦截，奇遇与传法此后永久不再触发。
     out.hookPending = null;
     if (!Array.isArray(out.hooks)) out.hooks = [];
+    out.hooks.forEach(function (h) {
+      // 索债弹窗未处理时刷新：清掉瞬态锁，让下月能重新上门；赖账后果则保留。
+      if (h && !h.done && !h.refuseDebuff) h.blocked = false;
+    });
     if (!Array.isArray(out.hooksGiven)) out.hooksGiven = [];
     if (!Array.isArray(out.log)) out.log = [];
     if (!Array.isArray(out.gongfa) || !out.gongfa.length) out.gongfa = ['juqi'];
@@ -3259,6 +3274,13 @@
     }
     if (!out.talismans || typeof out.talismans !== 'object') out.talismans = {};
     if (!Array.isArray(out.disks)) out.disks = [];
+    if (!out.craftedQ || typeof out.craftedQ !== 'object') out.craftedQ = {};
+    Object.keys(out.craftedQ).forEach(function (id) {
+      if (!Array.isArray(out.craftedQ[id])) out.craftedQ[id] = [];
+      out.craftedQ[id] = out.craftedQ[id].filter(function (r) {
+        return r && qualityDef(r.q) && Number(r.n) > 0;
+      }).map(function (r) { return { q: r.q, n: Math.floor(Number(r.n)) }; });
+    });
     if (!out.dishes || typeof out.dishes !== 'object') out.dishes = { dan: 0, qi: 0, fu: 0, zhen: 0 };
     if (!out.ledger || typeof out.ledger !== 'object') out.ledger = { income: [], expense: [] };
     if (!out.market || typeof out.market !== 'object') out.market = { mul: { dan: 1, qi: 1, fu: 1, zhen: 1 }, month: 0 };
@@ -3590,6 +3612,10 @@
     logLine('受箓：' + x.rank + '箓·' + x.name + '。', 'good');
     toast('受箓 · ' + x.name);
     closeModal(); advanceMonth(1); render();
+    if (S.pendingQuanbing) {
+      S.pendingQuanbing = false;
+      openQuanbingPick();
+    }
   };
 
   /* ---------- P0-2 道途四印 ---------- */
@@ -3597,7 +3623,11 @@
     const marks = S.daoyin || [];
     let gan = 0, zhi = 0;
     marks.forEach(function (m) { if (m.kind === 'gan') gan++; else if (m.kind === 'zhi') zhi++; });
-    const ok = marks.length === 4 && gan === 2 && zhi === 2;
+    // 阳干配阳支、阴干配阴支；至少有一对同阴阳，四印才不是一盘散沙。
+    const paired = marks.some(function (g) {
+      return g.kind === 'gan' && marks.some(function (z) { return z.kind === 'zhi' && g.g % 2 === z.z % 2; });
+    });
+    const ok = marks.length === 4 && gan === 2 && zhi === 2 && paired;
     S.daoyinOk = ok;
     return ok;
   }
@@ -3842,11 +3872,14 @@
   };
 
   ACT.do_legacy = (kind) => {
+    if (['treasure', 'xiuwei', 'life'].indexOf(kind) < 0) { toast('须选一项传承'); return; }
     const pages = Math.max(0, pageCount() - 1);
+    const debt = (S.bloodDebt || 0) + 0.1;
     S = newGame();
     S.draft = draftInit();
     S.pages = pages;
     S.legacy = { kind: kind };
+    S.bloodDebt = debt;
     if (kind === 'treasure') S.stones = 400;
     closeModal();
     bump('cheated');
@@ -3913,11 +3946,13 @@
       logLine('法相未认你——神位空了一夜。功德 +50。', 'danger');
       render(); return;
     }
-    S.endingId = 'zhenjun';
+    S.endingId = S.merit >= 300 ? 'shizun' : 'zhenjun';
     S.phase = 'over';
-    S.deathReason = '法相归位。十二真君之中，有了你一个。';
+    S.deathReason = S.endingId === 'shizun'
+      ? '万民愿力洗净神胎。你不受封，不列真君，自成世尊。'
+      : '法相归位。十二真君之中，有了你一个。';
     S.combat = null;
-    logLine('法相归位，你成了第十二真君之一。', 'good');
+    logLine(S.endingId === 'shizun' ? '功德圆满，你成了世尊。' : '法相归位，你成了第十二真君之一。', 'good');
     render();
   };
 
@@ -4054,12 +4089,12 @@
   /* 主栏直选：字母与数字都走这里，按当前线路给同一件事。
      旧表把 c 固定成「外出历练」、d 固定成「参悟功法」，神道按下去是错的。 */
   function mainKeyAction(k) {
-    const full = isShen() ? (S.xianghuo >= pillar().need) : (!!xrealm().need && S.xiuwei >= xrealm().need);
+    const full = breakReady();
     const map = {
       a: 'act:cultivate',
       b: full ? 'act:openBreak' : 'act:openMeditate',
-      c: isShen() ? 'act:openXiansheng' : 'act:explore',
-      d: isShen() ? 'act:preach' : 'act:openGongfa',
+      c: hasShenLine() ? 'act:openXiansheng' : 'act:explore',
+      d: hasShenLine() ? 'act:preach' : 'act:openGongfa',
       e: 'act:openRest'
     };
     const num = { '1': 'a', '2': 'b', '3': 'c', '4': 'd', '5': 'e' }[k];
@@ -4668,7 +4703,7 @@
           if (hit(45)) {
             S.stones += 800;
             const pool = D.MATERIAL_EXT.filter(function (m) { return m.tier !== 'huang'; });
-            const m = pick(pool); S.bag[m.id] = (S.bag[m.id] || 0) + 1;
+            const m = pick(pool); addMat(m.id, 1);
             msg = '洞底有一具枯骨，怀里揣着 800 灵石和一株' + m.name + '。'; cls = 'good';
           } else { startCombat(false); return; }   // 遇妖
         }
@@ -4694,7 +4729,9 @@
       case 'ruined':
         if (opt === 'rebuild') {
           if (S.xianghuo < 300) { toast('香火不足 300'); return render(); }
-          S.xianghuo -= 300; S.miao = '野祀'; S.followers = Math.min(followLimit(), S.followers + 120);
+          S.xianghuo -= 300;
+          if (!S.miao || S.miao === '野祀') S.miao = '野祀';
+          S.followers = Math.min(followLimit(), S.followers + 120);
           S.merit += 25; S.miaoSites = (S.miaoSites || 0) + 1;
           msg = '你重立了香火。此庙归你，信众 +120，庙址 +1。'; cls = 'good';
         } else if (opt === 'take') {
@@ -4710,7 +4747,7 @@
           if (hit(50)) {
             const pool = D.ARTIFACT_EXT.filter(function (a) { return a.price <= 2500 && !(S.arts || []).includes(a.id); });
             if (pool.length) { const a = pick(pool); S.arts = (S.arts || []).concat([a.id]); msg = '拍得「' + a.name + '」：' + a.eff; }
-            else msg = '拍下的是旧货，你识破了，钱没白花，转了 600 灵石。';
+            else { S.stones += 600; msg = '拍下的是旧货，你识破了，钱没白花，转了 600 灵石。'; }
             cls = 'good';
           } else { msg = '价被抬到天上去，你没拿下，800 灵石打了水漂。'; cls = 'danger'; }
         } else if (opt === 'watch') { S.fame += 8; S.stats.insight = clamp(S.stats.insight + 1, 1, 20); msg = '你看了一场好戏，声望 +8，悟性 +1。'; cls = 'good'; }
@@ -4727,7 +4764,7 @@
           if (hit(55)) { S.yaoshou = true; msg = '妖物伤愈后没走，蹲在你洞口。它认你了。'; cls = 'good'; }
           else { S.merit += 20; msg = '它伤太重，还是死了。功德 +20。'; cls = 'good'; }
         } else if (opt === 'kill') {
-          S.karma += 12; S.bag.mudanYao = (S.bag.mudanYao || 0) + 1;
+          S.karma += 12; addMat('mudanYao', 1);
           msg = '取了一枚妖丹，业力 +12。'; cls = 'danger';
         } else { msg = '你绕过它，什么也没发生。'; }
         break;
@@ -5623,6 +5660,15 @@
       return i2 > best ? i2 : best;
     }, 0);
 
+    // 烧页传承：只继承所选一项，同时执行血债与寿元代价。
+    if (S.legacy && S.legacy.kind) {
+      if (S.legacy.kind === 'xiuwei' && xrealm().need) S.xiuwei = Math.min(xrealm().need, 30);
+      if (S.legacy.kind === 'life' && S.lifeMax) S.lifeMax += 40;
+      if (S.lifeMax) S.lifeMax = Math.max(40, Math.round(S.lifeMax * 0.95));
+      S.bloodDebt = Math.max(0.1, S.bloodDebt || 0);
+      logLine('前世烧页之债随此生而来：血债 +10%，寿元上限 −5%。', 'danger');
+    }
+
     S.mainline = mainlineFor(S.path);
     S.unlockStage = 0;
 
@@ -5678,12 +5724,12 @@
     }
     if (S.deathReason && /道化|锚/.test(S.deathReason)) return pickEnd('daohua');
     if (S.deathReason) return pickEnd('fall');
-    if (S.guowei) return pickEnd('guowei');
     if (S.xRealm >= 5) return pickEnd('daotai');
+    if (S.pillar >= 7 && S.merit >= 300) return pickEnd('shizun');
     if (S.pillar >= 7) return pickEnd('zhenjun');
+    if (S.guowei) return pickEnd('guowei');
     if (S.xianzun || S.fame >= 500) return pickEnd('xianzun');
     if (S.karma >= 300) return pickEnd('modao');
-    if (isShen() && S.pillar >= 7 && S.merit >= 300) return pickEnd('shizun');
     return pickEnd('sit');
   }
 
@@ -5717,7 +5763,7 @@
       if (S.legacyMemory) { const _m = D.ACH_MEMORY.find(function(x){return x.id===S.legacyMemory;}); if (_m) b += '<div class="small muted">带走了「' + esc(_m.name) + '」</div>'; }
     }
     b += `<div class="small muted">${isXian() ? '你走到今法的尽头了——或者没走到。' : '那尊像还在，只是不再应你。'}</div>`;
-    b += `<div style="margin-top:10px"><button class="btn gold" data-act="do;reset">百世书 · 烧一页重来</button></div>`;
+    b += `<div style="margin-top:10px"><button class="btn gold" data-act="do;burn">百世书 · 烧一页重来</button></div>`;
     return panel('道途终章', b, { cls: 'warn', sub: '坐化 / 道化 / 陨落' });
   }
 
@@ -5799,10 +5845,11 @@
   }
   function tierIdx(t) { return ['huang', 'xuan', 'di', 'tian', 'xian'].indexOf(t); }
   /* 能不能碰这个品阶的配方：受「技艺品级」与「境界」双重限制 */
-  function canCraftTier(tier) {
-    const myTier = tierIdx(craftTierOf(null));
+  function canCraftTier(art, tier, needLv) {
+    const myLv = clamp(parseInt((S.craftLv || {})[art], 10) || 1, 1, D.CRAFT_LEVELS.length);
+    const myTier = tierIdx(craftTierOf(art));
     const gate = D.CRAFT_REALM_GATE[tier] || 0;
-    return tierIdx(tier) <= Math.max(myTier, 0) && S.xRealm >= gate;
+    return myLv >= (needLv || 1) && tierIdx(tier) <= Math.max(myTier, 0) && S.xRealm >= gate;
   }
   function craftRateOf(art, recipe) {
     const lv = clamp(parseInt((S.craftLv || {})[art], 10) || 1, 1, D.CRAFT_LEVELS.length);
@@ -6048,7 +6095,7 @@
   function recipeCard(r) {
     const m = matsOf(r);
     const lvNeed = D.CRAFT_LEVELS[clamp((r.lv || 1) - 1, 0, D.CRAFT_LEVELS.length - 1)];
-    const can = canCraftTier(r.tier);
+    const can = canCraftTier(r.kind, r.tier, r.lv);
     let lack = 0;
     const matLine = Object.keys(m).map(function (k) {
       const it = D.MATERIAL_EXT.find(function (x) { return x.id === k; });
@@ -6099,7 +6146,7 @@
     if (!r) return;
     const m = matsOf(r);
     let b = '';
-    if (!canCraftTier(r.tier)) {
+    if (!canCraftTier(r.kind, r.tier, r.lv)) {
       const needLv = D.CRAFT_LEVELS.findIndex(function (x) { return x.tier === r.tier; }) + 1;
       const needRealm = (D.XIAN_REALMS[D.CRAFT_REALM_GATE[r.tier] || 0] || { name: '炼气' }).name;
       b += '<div class="small danger">品阶不够：这张是' + D.GONGFA_TIERS[r.tier].name + '配方，需要技艺到 <b>' +
@@ -6203,27 +6250,27 @@
   ACT.openDaoshu = () => {
     const owned = (S.books || []);
     let b = '<div class="small">道书不是读一遍加属性——同一本书，读得懂多少，看你自己。</div>' + divider();
-    if (!owned.length) {
-      b += '<div class="small muted">还没得到任何道书。坊市有卖的，奇遇里也捡得到。</div>' + divider();
+    if (owned.length) {
       b += '<ul class="opts">';
-      (D.DAOSHU || []).forEach(function (bk) {
-        b += optRow('·', bk.name, { name: '道书', cls: 'chance' }, fmtNum(bk.price) + ' 石',
+      owned.forEach(function (id) {
+        const bk = (D.DAOSHU || []).find(function (x) { return x.id === id; });
+        if (!bk) return;
+        const rc = bookReadCount(id);
+        b += optRow('读', bk.name, { name: '第 ' + Math.min(rc + 1, bk.layers.length) + ' 读', cls: 'chance' },
+          rc >= bk.layers.length ? '已读尽' : (bk.layers[rc] ? bk.layers[rc].needText : ''),
+          rc >= bk.layers.length, 'do;readbook:' + id);
+      });
+      b += '</ul>';
+    } else b += '<div class="small muted">还没得到任何道书。坊市有卖的，奇遇里也捡得到。</div>';
+    const available = (D.DAOSHU || []).filter(function (bk) { return owned.indexOf(bk.id) < 0; });
+    if (available.length) {
+      b += divider() + '<div class="small muted">可购道书</div><ul class="opts">';
+      available.forEach(function (bk) {
+        b += optRow('购', bk.name, { name: '道书', cls: 'chance' }, fmtNum(bk.price) + ' 石',
           S.stones < bk.price, 'do;buybook:' + bk.id);
       });
       b += '</ul>';
-      openModal('道书', b);
-      return;
     }
-    b += '<ul class="opts">';
-    owned.forEach(function (id) {
-      const bk = (D.DAOSHU || []).find(function (x) { return x.id === id; });
-      if (!bk) return;
-      const rc = bookReadCount(id);
-      b += optRow('读', bk.name, { name: '第 ' + (rc + 1) + ' 读', cls: 'chance' },
-        rc >= bk.layers.length ? '已读尽' : (bk.layers[rc] ? bk.layers[rc].needText : ''),
-        rc >= bk.layers.length, 'do;readbook:' + id);
-    });
-    b += '</ul>';
     b += '<div class="hint">第一次读只是故事。要读出别的东西，得有那个本事。</div>';
     openModal('道书', b);
   };
@@ -6231,11 +6278,12 @@
   ACT.do_buybook = (id) => {
     const bk = (D.DAOSHU || []).find(function (x) { return x.id === id; });
     if (!bk) return;
+    S.books = S.books || [];
+    if (S.books.indexOf(id) >= 0) { toast('此书已在架上'); return; }
     if (S.stones < bk.price) { toast('灵石不足'); return; }
     S.stones -= bk.price;
     ledgerAdd('out', '购 ' + bk.name, bk.price);
-    S.books = S.books || [];
-    if (S.books.indexOf(id) < 0) S.books.push(id);
+    S.books.push(id);
     logLine('购得 ' + bk.name + '。', 'good');
     closeModal(); render();
   };
@@ -6258,10 +6306,8 @@
     S.bookRead[id] = rc + 1;
     // 应用收益
     const gain = layer.gain || '';
-    if (/道心 +(d+)/.test(gain)) {
-      const m1 = gain.match(/道心 +(d+)/);
-      S.stats.heart = clamp(S.stats.heart + parseInt(m1[1], 10), 1, 20);
-    }
+    const heartGain = gain.match(/道心\s*\+\s*(\d+)/);
+    if (heartGain) S.stats.heart = clamp(S.stats.heart + parseInt(heartGain[1], 10), 1, 20);
     if (/阅历/.test(gain)) S.insightXp = (S.insightXp || 0) + 1;
     logLine('读 ' + bk.name + ' 第 ' + (rc + 1) + ' 层：' + gain, 'good');
     let b = '<div class="daoshu">';
@@ -6394,6 +6440,8 @@
   ACT.do_craftgo = (id, mode) => {
     const r = D.RECIPES.find(function (x) { return x.id === id; });
     if (!r) return;
+    if ((S.learnedRecipes || []).indexOf(id) < 0) { toast('尚未学会这张配方'); return; }
+    if (!canCraftTier(r.kind, r.tier, r.lv)) { toast('技艺或境界不足'); return; }
     closeModal();
     if (!hasMats(r)) { toast('材料不足'); return; }
     // 扣料
@@ -6440,7 +6488,7 @@
         queueGain(outNameOf(r) + '（' + q.name + '）', 1, '阵盘 · 洞府布下', true);
       } else if (r.kind === 'qi') {
         S.arts = S.arts || [];
-        if (S.arts.indexOf(r.out) < 0) S.arts.push(r.out);
+        S.arts.push(r.out);
         msg = '炼成「' + outNameOf(r) + '」（' + q.name + '·' + ot + '）。';
         queueGain(outNameOf(r) + '（' + q.name + '）', 1, '法宝 · 记得佩戴才生效', true);
       } else {
@@ -6449,6 +6497,7 @@
         msg = '成丹 ' + r.need + ' 枚（' + q.name + '·' + ot + '）。';
         queueGain(outNameOf(r) + '（' + q.name + '）', r.need, '丹药 · 背包里可用', true);
       }
+      if (r.kind !== 'zhen') addQuality(r.out, q.id, r.need);
       cls = 'good';
     }
     logLine(msg, cls);
@@ -6473,6 +6522,39 @@
   };
 
   /* ---------- 坊市卖出 ---------- */
+  function qualityDef(id) {
+    return D.QUALITY.find(function (q) { return q.id === id; }) || D.QUALITY.find(function (q) { return q.id === 'zhong'; });
+  }
+  function addQuality(id, qid, n) {
+    if (!S.craftedQ || typeof S.craftedQ !== 'object') S.craftedQ = {};
+    if (!Array.isArray(S.craftedQ[id])) S.craftedQ[id] = [];
+    const row = S.craftedQ[id].find(function (x) { return x.q === qid; });
+    if (row) row.n += n; else S.craftedQ[id].push({ q: qid, n: n });
+  }
+  function qualityRows(id, total) {
+    const rows = ((S.craftedQ || {})[id] || []).filter(function (x) { return x.n > 0; });
+    let made = rows.reduce(function (a, x) { return a + x.n; }, 0);
+    // 普通服用/消耗也扣总库存；若没逐次指定品相，先从未售记录中同步掉多余数量。
+    while (made > total && rows.length) {
+      const r = rows[0], cut = Math.min(r.n, made - total);
+      r.n -= cut; made -= cut;
+      if (r.n <= 0) rows.shift();
+    }
+    if (S.craftedQ && Array.isArray(S.craftedQ[id])) S.craftedQ[id] = rows;
+    const out = rows.map(function (r) { return { q: r.q, n: r.n }; });
+    if (total - made > 0) out.push({ q: 'zhong', n: total - made });
+    return out;
+  }
+  function consumeQuality(id, qid) {
+    const rows = ((S.craftedQ || {})[id] || []);
+    if (!rows.length) return false;
+    const r = qid ? rows.find(function (x) { return x.q === qid && x.n > 0; }) : rows.find(function (x) { return x.n > 0; });
+    if (!r) return false;
+    r.n--;
+    return true;
+  }
+  function auctionOpen() { return S.year % 3 === 0; }
+  function auctionPassed() { return sellCh().id !== 'auction' || Math.random() >= 0.15; }
   function sellMul() {
     return (S.market && S.market.mul) || { dan: 1, qi: 1, fu: 1, zhen: 1 };
   }
@@ -6480,46 +6562,75 @@
     const id = S.sellCh || 'market';
     return D.SELL_CHANNELS.find(function (c) { return c.id === id; }) || D.SELL_CHANNELS[1];
   }
-  function sellPriceOf(base, mul) {
-    return Math.max(1, Math.round(base * (mul || 1) * sellCh().mul));
+  function sellPriceOf(base, mul, qualityMul) {
+    const fee = sellCh().id === 'auction' ? 0.9 : 1;
+    return Math.max(1, Math.round(base * (mul || 1) * (qualityMul === undefined ? 1 : qualityMul) * sellCh().mul * fee));
   }
-  ACT.do_sellch = (id) => { S.sellCh = id; closeModal(); ACT.openSell(); };
+  ACT.do_sellch = (id) => {
+    const ch = D.SELL_CHANNELS.find(function (c) { return c.id === id; });
+    if (!ch) return;
+    if (ch.need === 'sect' && !S.sect) { toast('未入宗门'); return; }
+    if (ch.id === 'auction' && !auctionOpen()) { toast('今年无拍卖会，下一场在' + (S.year + (3 - S.year % 3)) + '年'); return; }
+    S.sellCh = id; closeModal(); ACT.openSell();
+  };
 
   ACT.openSell = () => {
+    if (S.sellCh === 'auction' && !auctionOpen()) S.sellCh = 'market';
     const ch = sellCh();
     let b = '<div class="row"><span class="lab">灵石</span><b style="color:var(--stone)">' + fmtNum(S.stones) + '</b></div>';
     b += '<div class="shop-tabs">';
-    D.SELL_CHANNELS.filter(function (c) { return c.id !== 'auction'; }).forEach(function (c) {
-      const off = c.need === 'sect' && !S.sect;
+    D.SELL_CHANNELS.forEach(function (c) {
+      const off = (c.need === 'sect' && !S.sect) || (c.id === 'auction' && !auctionOpen());
       const on = ch.id === c.id;
+      const label = c.name + (c.id === 'auction' && !auctionOpen() ? '（' + (S.year + (3 - S.year % 3)) + '年）' : ' ' + c.mul.toFixed(2) + '×');
       b += off
-        ? '<span class="shop-tab" style="opacity:.42">' + c.name + '</span>'
-        : '<span class="shop-tab ' + (on ? 'on' : '') + '" data-act="do;sellch:' + c.id + '">' +
-          c.name + ' ' + c.mul.toFixed(2) + '×</span>';
+        ? '<span class="shop-tab" style="opacity:.42">' + label + '</span>'
+        : '<span class="shop-tab ' + (on ? 'on' : '') + '" data-act="do;sellch:' + c.id + '">' + label + '</span>';
     });
     b += '</div>';
     b += '<div class="small muted" style="margin:2px 0 4px">' + esc(ch.desc) +
-      (ch.id === 'black' ? '（每件业力 +3）' : ch.id === 'sect' ? '（两成折成贡献）' : '') + '</div>' + divider();
-    b += '<div class="small muted" style="margin-top:6px">丹药</div><ul class="opts">';
-    const pills = Object.keys(S.bag || {}).filter(function (k) {
+      (ch.id === 'black' ? '（每件业力 +3）' : ch.id === 'sect' ? '（两成折成贡献）' : ch.id === 'auction' ? '（成交价已抽成一成；15% 流拍，流拍不扣货）' : '') + '</div>' + divider();
+
+    function qualityBlock(title, kind, ids, defs, counts, marketKey) {
+      b += '<div class="small muted" style="margin-top:6px">' + title + '</div><ul class="opts">';
+      if (!ids.length) b += '<div class="small muted">无</div>';
+      ids.forEach(function (id) {
+        const def = defs(id);
+        if (!def) return;
+        qualityRows(id, counts(id)).forEach(function (qr) {
+          const q = qualityDef(qr.q);
+          const price = sellPriceOf(def.price, sellMul()[marketKey] || 1, q.mul);
+          b += optRow('·', def.name + ' · ' + q.name, { name: title, cls: q.id === 'ji' ? 'chance' : 'peace' },
+            '×' + qr.n + ' · ' + fmtNum(price) + ' 石/件', false, 'do;sellitem:' + kind + ':' + id + ':' + q.id);
+        });
+      });
+      b += '</ul>';
+    }
+    const pillIds = Object.keys(S.bag || {}).filter(function (k) {
       return (S.bag[k] || 0) > 0 && D.PILL_EXT.some(function (p) { return p.id === k; });
     });
-    if (!pills.length) b += '<div class="small muted">无</div>';
-    pills.forEach(function (k) {
-      const p = D.PILL_EXT.find(function (x) { return x.id === k; });
-      const price = sellPriceOf(p.price, sellMul().dan || 1);
-      b += optRow('·', p.name, { name: '丹药', cls: 'peace' }, '×' + S.bag[k] + ' · ' + fmtNum(price) + ' 石/枚',
-        false, 'do;selldan:' + k);
-    });
-    b += '</ul>';
-    b += '<div class="small muted" style="margin-top:6px">符箓</div><ul class="opts">';
-    const tals = Object.keys(S.talismans || {}).filter(function (k) { return (S.talismans[k] || 0) > 0; });
-    if (!tals.length) b += '<div class="small muted">无</div>';
-    tals.forEach(function (k) {
-      const t = D.TALISMANS.find(function (x) { return x.id === k; });
-      if (!t) return;
-      b += optRow('·', t.name, { name: '符', cls: 'chance' }, '×' + S.talismans[k] + ' · ' +
-        fmtNum(sellPriceOf(t.price, sellMul().fu || 1)) + ' 石/张', false, 'do;selltal:' + k);
+    qualityBlock('丹药', 'dan', pillIds,
+      function (id) { return D.PILL_EXT.find(function (x) { return x.id === id; }); },
+      function (id) { return S.bag[id] || 0; }, 'dan');
+    const talIds = Object.keys(S.talismans || {}).filter(function (k) { return (S.talismans[k] || 0) > 0; });
+    qualityBlock('符箓', 'tal', talIds,
+      function (id) { return D.TALISMANS.find(function (x) { return x.id === id; }); },
+      function (id) { return S.talismans[id] || 0; }, 'fu');
+    const artIds = [];
+    (S.arts || []).forEach(function (id) { if (artIds.indexOf(id) < 0) artIds.push(id); });
+    qualityBlock('法宝', 'art', artIds,
+      function (id) { return D.ARTIFACT_EXT.find(function (x) { return x.id === id; }); },
+      function (id) { return (S.arts || []).filter(function (x) { return x === id; }).length; }, 'qi');
+    b += '<div class="small muted" style="margin-top:6px">阵盘</div><ul class="opts">';
+    if (!(S.disks || []).length) b += '<div class="small muted">无</div>';
+    (S.disks || []).forEach(function (d, i) {
+      const rec = D.RECIPES.find(function (r) { return r.out === d.id; });
+      const dk = D.ARRAY_DISKS.find(function (x) { return x.id === d.id; });
+      if (!rec || !dk) return;
+      const q = qualityDef(d.q);
+      b += optRow('·', dk.name + ' · ' + q.name, { name: '阵盘', cls: 'chance' },
+        fmtNum(sellPriceOf(outPriceOf(rec, { mul: 1 }), sellMul().zhen || 1, q.mul)) + ' 石', false,
+        'do;sellitem:disk:' + i + ':' + q.id);
     });
     b += '</ul>';
     b += '<div class="hint">族规「不得经商牟利」会在这里咬你——卖多了族运要掉。</div>';
@@ -6527,42 +6638,63 @@
     openModal('坊市 · 卖出', b);
   };
 
-  ACT.do_selldan = (id) => {
-    const p = D.PILL_EXT.find(function (x) { return x.id === id; });
-    if (!p || (S.bag[id] || 0) < 1) { toast('没有'); return; }
-    if (sellCh().need === 'sect' && !S.sect) { toast('未入宗门'); return; }
-    S.bag[id]--;
+  ACT.do_sellitem = (kind, id, qid) => {
     const ch = sellCh();
-    const price = sellPriceOf(p.price, sellMul().dan || 1);
+    if (ch.need === 'sect' && !S.sect) { toast('未入宗门'); return; }
+    if (ch.id === 'auction' && !auctionOpen()) { toast('拍卖会尚未开场'); return; }
+    let def, rec, disk = null, count = 0, base = 0, market = 1;
+    if (kind === 'disk') {
+      disk = (S.disks || [])[parseInt(id, 10)];
+      if (!disk) { toast('没有'); return; }
+      def = D.ARRAY_DISKS.find(function (x) { return x.id === disk.id; });
+      rec = D.RECIPES.find(function (r) { return r.out === disk.id; });
+      if (!def || !rec) return;
+      qid = disk.q; count = 1; base = outPriceOf(rec, { mul: 1 }); market = sellMul().zhen || 1;
+    } else if (kind === 'dan') {
+      def = D.PILL_EXT.find(function (x) { return x.id === id; });
+      count = (S.bag || {})[id] || 0; if (def) { base = def.price; market = sellMul().dan || 1; }
+    } else if (kind === 'tal') {
+      def = D.TALISMANS.find(function (x) { return x.id === id; });
+      count = (S.talismans || {})[id] || 0; if (def) { base = def.price; market = sellMul().fu || 1; }
+    } else if (kind === 'art') {
+      def = D.ARTIFACT_EXT.find(function (x) { return x.id === id; });
+      count = (S.arts || []).filter(function (x) { return x === id; }).length;
+      if (def) { base = def.price; market = sellMul().qi || 1; }
+    }
+    if (!def || count < 1) { toast('没有'); return; }
+    const available = kind === 'disk' ? [{ q: qid, n: 1 }] : qualityRows(id, count);
+    if (!qid) qid = available[0].q;
+    if (!available.some(function (x) { return x.q === qid && x.n > 0; })) { toast('这个品相已经没了'); return; }
+    if (!auctionPassed()) {
+      toast('流拍，货物已带回');
+      logLine(def.name + '在拍卖会上流拍，货未出手。', '');
+      closeModal(); ACT.openSell(); render(); return;
+    }
+    const q = qualityDef(qid);
+    const price = sellPriceOf(base, market, q.mul);
+    if (kind === 'dan') { S.bag[id]--; consumeQuality(id, qid); }
+    else if (kind === 'tal') { S.talismans[id]--; consumeQuality(id, qid); }
+    else if (kind === 'art') {
+      const at = S.arts.indexOf(id); if (at >= 0) S.arts.splice(at, 1);
+      consumeQuality(id, qid);
+      if (S.arts.indexOf(id) < 0) Object.keys(S.equipped || {}).forEach(function (slot) {
+        if (S.equipped[slot] === id) delete S.equipped[slot];
+      });
+    } else if (kind === 'disk') S.disks.splice(parseInt(id, 10), 1);
     S.stones += price;
     if (ch.id === 'black') S.karma += 3;
     if (ch.id === 'sect' && S.sect) S.sect.contrib = (S.sect.contrib || 0) + Math.round(price * 0.2);
-    ledgerAdd('in', '卖 ' + p.name, price);
+    ledgerAdd('in', '卖 ' + def.name + '（' + q.name + '）', price);
     sellTally(price, ch.id);
-    logLine('在' + ch.name + '卖出 ' + p.name + '，得灵石 ' + price + '。', ch.id === 'black' ? 'danger' : 'good');
-    // 族规约束
+    logLine('在' + ch.name + '卖出 ' + def.name + '（' + q.name + '），得灵石 ' + price + '。', ch.id === 'black' ? 'danger' : 'good');
     if (S.clan && (S.clan.rules || []).indexOf('noTrade') >= 0 && price >= 200) {
       S.clan.luck = Math.max(0, S.clan.luck - 100);
       logLine('族老们不悦：「与商贾为伍」。族运 −100。', 'danger');
     }
     closeModal(); ACT.openSell(); render();
   };
-
-  ACT.do_selltal = (id) => {
-    const t = D.TALISMANS.find(function (x) { return x.id === id; });
-    if (!t || (S.talismans[id] || 0) < 1) { toast('没有'); return; }
-    if (sellCh().need === 'sect' && !S.sect) { toast('未入宗门'); return; }
-    S.talismans[id]--;
-    const ch = sellCh();
-    const price = sellPriceOf(t.price, sellMul().fu || 1);
-    S.stones += price;
-    if (ch.id === 'black') S.karma += 3;
-    if (ch.id === 'sect' && S.sect) S.sect.contrib = (S.sect.contrib || 0) + Math.round(price * 0.2);
-    ledgerAdd('in', '卖 ' + t.name, price);
-    sellTally(price, ch.id);
-    logLine('在' + ch.name + '卖出 ' + t.name + '，得灵石 ' + price + '。', ch.id === 'black' ? 'danger' : 'good');
-    closeModal(); ACT.openSell(); render();
-  };
+  ACT.do_selldan = (id) => ACT.do_sellitem('dan', id);
+  ACT.do_selltal = (id) => ACT.do_sellitem('tal', id);
 
   ACT.do_sellmat = (id) => {
     const it = D.MATERIAL_EXT.find(function (x) { return x.id === id; });
