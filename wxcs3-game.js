@@ -1842,6 +1842,9 @@
     if (p.guard) b += `<span class="chip" data-act="do;prep:guard:none">不必护法</span>`;
     b += `</div>`;
 
+    /* 四印是否成对，直接在面板上写出来——不然那 +6% 是隐形的，玩家不知道它从哪来 */
+    const dyOk = daoyinPaired();
+    b += `<div class="statline"><span class="k">道途四印</span><span class="v" style="color:${dyOk ? 'var(--merit)' : 'var(--muted)'}">${dyOk ? '成对（+6%）' : '未成对'}</span></div>`;
     b += `<div class="hint">准备要花东西：丹药吃了就没，护法欠一次人情。择地只在这一次管用。</div>`;
     b += `<div class="hint danger">失败：修为跌回 ${S.jinxing ? '88' : '70'}%，气血逆冲。</div>`;
     b += `<div style="margin-top:10px"><button class="btn" data-act="do;xbreak">开坛破境</button>
@@ -5555,7 +5558,13 @@
     const ok = pool.filter(function (v) { return (v[key] || 0) <= cur; });
     if (!ok.length) return '';
     const top = Math.max.apply(null, ok.map(function (v) { return v[key] || 0; }));
-    const band = ok.filter(function (v) { return (v[key] || 0) === top; });
+    let band = ok.filter(function (v) { return (v[key] || 0) === top; });
+    /* 同一档里有多句时，避开上一句——否则连着破两次境会念同一首诗。
+       旧版把 S.lastVerse 存了下来却从不读，等于白存。 */
+    if (band.length > 1) {
+      const fresh = band.filter(function (v) { return v.line !== S.lastVerse; });
+      if (fresh.length) band = fresh;
+    }
     const v = pick(band);
     S.lastVerse = v.line;
     return v.line;
