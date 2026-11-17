@@ -5678,7 +5678,7 @@
   /* 「谋」：观察 / 交涉 / 虚张声势 */
   ACT.openWits = () => {
     let b = '<div class="small">不一定要动手。</div>' + divider() + '<ul class="opts">';
-    b += optRow('A', '观察破绽', { name: '平和', cls: 'peace' }, '下回合必中', false, 'do;cbt:observe');
+    b += optRow('A', '观察破绽', { name: '平和', cls: 'peace' }, '下一击无视卸力、增伤六成', false, 'do;cbt:observe');
     b += optRow('B', '开口交涉', { name: '机缘', cls: 'chance' }, '或可罢手', false, 'do;cbt:talk');
     b += optRow('C', '虚张声势', { name: '风险', cls: 'risk' }, '或可令其退走', false, 'do;cbt:bluff');
     b += '</ul>';
@@ -5785,6 +5785,35 @@
     return c ? realmIdxRank(c.foe.rank) - realmIdxRank(combatRank(c)) : 0;
   }
 
+  /* ============================================================
+     v8.1 卸力：把「未中 / 命中」的二值赌博换成连续减伤
+     ------------------------------------------------------------
+     旧版这里是个纯概率闸门：玩家每次出手掷 72%（遇老练 60%），
+     掷不中就是 0 伤害、只写一句「未中」；而 foeTurn 压根没有命中判定，
+     敌方每一击都实打实结算。于是玩家体感必然是「我一直在空挥，他一刀不落」。
+     那不是战斗，是单向的掷骰子。
+     ------------------------------------------------------------
+     现在：每一击必定造成伤害，但会被对方「卸」掉一部分，最低留 5%。
+     卸力由位格差、护体法宝、性格决定，全部可预期、可针对：
+       · 老练之敌卸力高 → 该用「看破」或神通
+       · 莽夫卸力低、伤害高 → 该在守势下换血
+     玩家不再是赌命中，而是在「打得动多少」之间做选择。
+     ============================================================ */
+  function deflectOf(c, side) {
+    /* side: 'foe' = 敌人卸我的力；'me' = 我卸敌人的力 */
+    const gap = combatGap(c);
+    let d = 0.15;
+    if (side === 'foe') {
+      d += clamp(gap * 0.05, -0.10, 0.15);          // 他位格越高，越难打实
+      if (c.foe.trait === 'veteran') d += 0.10;     // 老练：稳守，不与你换命
+      else if (c.foe.trait === 'brute') d -= 0.08;  // 莽夫：只顾攻，门户大开
+    } else {
+      d += artBonus('body');                        // 护身法器常驻减伤
+      d += clamp(-gap * 0.05, -0.10, 0.15);         // 你位格越高，越扛得住
+    }
+    return clamp(d, 0.05, 0.55);
+  }
+
   function renderCombat() {
     const c = S.combat;
     if (!c) { S.phase = 'play'; return ''; }
@@ -5866,7 +5895,7 @@
       eqArt.map(function (a) { return '<span class="stance on">' + esc(a.name) + '</span>'; }).join('') + '</div></div>';
     let tags = '';
     if (c.defending) tags += '<span class="stance on">守势 · 减伤50%</span>';
-    if (c.observed) tags += '<span class="stance on">下回合必中</span>';
+    if (c.observed) tags += '<span class="stance on">看破 · 下一击无视卸力</span>';
     if (!tags) tags = '<span class="stance">无</span>';
     mb += '<div class="frow"><span class="k">状态</span><div>' + tags + '</div></div>';
 
@@ -5876,9 +5905,11 @@
     const o = [];
     const tals = Object.keys(S.talismans || {}).filter(function (k) { return (S.talismans[k] || 0) > 0; });
     const qbN = isShen() ? 1 : 0;
-    const atkPct = Math.round(Math.max(0.09, 0.20 * Math.sqrt(computePower() / Math.max(1, c.foe.power))) * 100);
+    const atkPct = Math.round(Math.max(0.10,
+      0.19 * Math.sqrt(computePower() / Math.max(1, c.foe.power))) *
+      (1 - clamp(deflectOf(c, 'foe') - artBonus('hit') * 0.5, 0, 0.55)) * 100);
     o.push(optRow('1', '攻', { name: '风险', cls: 'risk' },
-      '72% · 约' + atkPct + '%' + (artBonus('atk') ? ' ·宝+' + Math.round(artBonus('atk') * 100) + '%' : ''), false, 'do;cbt:attack'));
+      '必中 · 约' + atkPct + '% 伤害' + (artBonus('atk') ? ' ·宝+' + Math.round(artBonus('atk') * 100) + '%' : ''), false, 'do;cbt:attack'));
     o.push(optRow('2', '术', { name: '平和', cls: 'peace' },
       '招式' + equippedSkills().length + '·神通' + (S.shenTong || []).length, S.mp < 15, 'act:openSkills'));
     o.push(optRow('3', '御', { name: '平和', cls: 'peace' },
@@ -5923,13 +5954,19 @@
     const momMul = [1.0, 1.10, 1.20, 1.35][c.momentum] || 1;
     // P1-8：双向按血量百分比结算
     const ratio = clamp(Math.sqrt(computePower() / Math.max(1, c.foe.power)), 0.2, 2.5);
+    /* v8.1：基础值保持 0.15。旧版玩家的期望伤害是 0.20×0.72=0.144，
+       去掉空挥后若不同步回调这里，战斗会整体变简单。 */
     let dmg = S.hpMax * 0.15 * (1 / ratio) * (0.8 + Math.random() * 0.4) * momMul;
     if (gap >= 1) dmg *= 1.6;
     if (gap <= -1) dmg *= 0.35;
     if (c.foeWeaken > 0) dmg *= 0.7;   // 术神通压住了他的势
     if (c.foe.trait === 'brute') dmg *= 1.25;       // 莽夫：出手更重
     if (c.foe.trait === 'veteran') dmg *= 0.90;     // 老练：不拼命，求稳耗
-    dmg *= clamp(1 - artBonus('body'), 0.1, 1);     // 常驻护体法宝
+    /* v8.1：玩家同样有卸力——护体法器与位格优势在这里兑现，
+       而不是像旧版那样只挨打、看不出自己的防御有什么用。 */
+    const myDefl = deflectOf(c, 'me');
+    dmg *= (1 - myDefl);
+    if (myDefl >= 0.25) logLine('你卸去了这一击的大半。', 'good');
     if (c.defending) {
       let red = 0.5;
       if (c.talShield) red -= c.talShield;
@@ -5973,7 +6010,10 @@
     const gap = combatGap(c);
     const diff = c.foe.rank - combatRank(c);
     let mult = 1;
-    if (gap >= 2) mult = 0;
+    /* v8.1：位格压制不再把伤害压成 1 点。
+       「全力一击只留下浅痕」和「未中」是同一种失败体验——出手了却毫无意义。
+       现在压制是「打得很轻」而不是「打了等于没打」，差距仍然由 ratio 与卸力体现。 */
+    if (gap >= 2) mult = 0.15;
     else if (gap >= 1) mult = 0.45;
     else if (diff >= 2) mult = 0.75;
     else if (diff <= -2) mult = 1.3;
@@ -5984,13 +6024,18 @@
     const hitBonus = artBonus('hit') - (c.foe.trait === 'veteran' ? 0.12 : 0);
 
     if (sub === 'attack') {
-      hit = c.observed || Math.random() < clamp(0.72 + hitBonus, 0.2, 0.98);
-      // 同格时至少打出可感知伤害（基准 15%，下限 6%）
+      hit = true;                                   // v8.1：普攻必中，不再掷骰子
       const r = ratio;
       if (c.talBuff) { mult *= (1 + c.talBuff); }
-      dmg = Math.round(c.foe.hpMax * Math.max(0.09, 0.20 * r) * mult * keK * (1 + artBonus('atk')) * (c.observed ? 1.6 : 1));
+      /* 看破破绽时无视卸力；太阴宝鉴这类命中加成按一半抵掉对方卸力 */
+      const defl = c.observed ? 0 : clamp(deflectOf(c, 'foe') - hitBonus * 0.5, 0, 0.55);
+      let raw = c.foe.hpMax * Math.max(0.10, 0.19 * r) * mult * keK * (1 + artBonus('atk'));
+      raw *= (1 - defl);
+      if (c.observed) raw *= 1.6;
+      dmg = Math.round(raw * (0.94 + Math.random() * 0.12));
+      if (c.observed) note = '看破破绽';
+      else if (defl >= 0.20) note = '对方卸去 ' + Math.round(defl * 100) + '%';
       c.observed = false;
-      if (!hit) note = '未中';
     } else if (sub === 'skill') {
       const nm = decodeURIComponent(arg || '');
       const sk = D.SKILLS.find(function (x) { return x.name === nm; });
@@ -6004,12 +6049,15 @@
       if (sk.kind === 'thunder') sure = true;
       if (S.preBuff && S.preBuff.fire && sk.kind === 'fire') { mul2 *= (1 + S.preBuff.fire); S.preBuff.fire = 0; extra += '（符箓加成）'; }
       if (S.preBuff && S.preBuff.sureHit) { sure = true; S.preBuff.sureHit = false; extra += '（五雷符）'; }
-      hit = sure || c.observed || Math.random() < clamp(0.72 + hitBonus, 0.2, 0.98);
+      hit = true;                                   // v8.1：招式同样必中
+      const defl2 = (sure || c.observed) ? 0 : clamp(deflectOf(c, 'foe') - hitBonus * 0.5, 0, 0.55);
       const r2 = ratio;
-      dmg = Math.round(c.foe.hpMax * Math.max(0.10, 0.22 * r2) * mul2 * mult * keK * (1 + artBonus('atk')));
+      let raw2 = c.foe.hpMax * Math.max(0.11, 0.21 * r2) * mul2 * mult * keK * (1 + artBonus('atk'));
+      raw2 *= (1 - defl2);
+      if (c.observed) raw2 *= 1.6;
+      dmg = Math.round(raw2 * (0.94 + Math.random() * 0.12));
       c.observed = false;
-      note = '「' + nm + '」' + (hit ? '' : '未中') + extra;
-      if (!hit) dmg = 0;
+      note = '「' + nm + '」' + (defl2 >= 0.20 ? '（卸去 ' + Math.round(defl2 * 100) + '%）' : '') + extra;
     } else if (sub === 'shentong') {
       /* 神通不占装配格、可穿透位格压制的一部分，代价是「一道一场只能出一次」。
          它是大招，不是第二个普攻——所以必中，但消耗高、有次数。 */
@@ -6026,7 +6074,7 @@
       if (k0 === '命') {
         hit = true;                                   // 命神通必中，直接砸在本体上
       } else if (k0 === '术') {
-        hit = c.observed || Math.random() < clamp(0.82 + hitBonus, 0.25, 0.99);
+        hit = true;                                   // v8.1：术神通不再掷命中
         c.foeWeaken = 2;
         sextra = '（敌势一滞）';
       } else if (k0 === '身') {
@@ -6043,7 +6091,6 @@
       dmg = Math.round(c.foe.hpMax * Math.max(0.13, 0.26 * ratio) * sp.mul * mult * keK * (1 + artBonus('atk')));
       c.observed = false;
       note = '神通「' + stShort(snm) + '」' + sextra;
-      if (!hit) { dmg = 0; note += '未中'; }
     } else if (sub === 'cast') {
       // 旧代码判 <25 却扣 30，灵力会被打成负数
       if (S.mp < 30) { toast('灵力不足（需 30）'); render(); return; }
@@ -6117,7 +6164,9 @@
     }
 
     if (dmg > 0 && hit && ['attack', 'skill', 'shentong', 'cast', 'tal'].indexOf(sub) >= 0) applyAttackArtCost();
-    if (mult === 0 && hit) { dmg = 1; note = '全力一击，只在对方衣袍上留下浅痕'; }
+    if (gap >= 2 && hit && ['attack', 'skill'].indexOf(sub) >= 0) {
+      note = (note ? note + '；' : '') + '位格差得太远，这一下几乎打不动他';
+    }
     if (hit && dmg > 0 && c.foeMark > 0) { dmg = Math.round(dmg * 1.25); }
     if (hit && dmg > 0) {
       c.foe.hp = Math.max(0, c.foe.hp - dmg);

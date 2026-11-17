@@ -407,5 +407,45 @@ const xhMonths = S.turn;
 G.ACT.cultivate();
 ok(S.stones > stBefore || S.stones === stBefore, '家族营生结算不产生负数', S.stones);
 
+/* ==================== 10. 战斗：不得有空挥 ==================== */
+console.log('=== 10. 战斗判定 ===');
+function enterFight() {
+  for (let i = 0; i < 80; i++) {
+    try { G.ACT.do_xing('wild'); } catch (e) { }
+    if (S.phase === 'combat' && S.combat) return true;
+    if (S.phase !== 'play') return false;
+    S.hp = S.hpMax;
+  }
+  return false;
+}
+
+let missCount = 0, zeroDmg = 0, atkRounds = 0, gotFight = 0;
+for (let i = 0; i < 12; i++) {
+  setup('xian', { stones: 500 });
+  S.xRealm = 2; S.xStage = 0; S.hpMax = 340; S.hp = 340;
+  S.mpMax = 200; S.mp = 200;
+  if (!enterFight()) continue;
+  gotFight++;
+  let guard = 0;
+  while (S.phase === 'combat' && guard < 40) {
+    const before = S.combat.foe.hp;
+    const logLen = S.log.length;
+    const wasFoe = S.combat.foe;
+    try { G.ACT.do_cbt('attack'); } catch (e) { break; }
+    guard++;
+    atkRounds++;
+    const fresh = S.log.slice(0, S.log.length - logLen).map(function (l) { return l.txt || ''; }).join(' ');
+    if (/未中/.test(fresh)) missCount++;
+    /* 同一次出手若既没写造成伤害、也没写卸力/看破/位格，就是打了等于没打 */
+    if (S.combat && S.combat.foe === wasFoe && S.combat.foe.hp === before && !/卸去|看破|位格/.test(fresh)) {
+      zeroDmg++;
+    }
+  }
+}
+ok(gotFight > 0, '能进入战斗（' + gotFight + ' 场）', gotFight);
+ok(missCount === 0, '普攻不再出现「未中」', missCount);
+ok(zeroDmg === 0, '每次出手都有伤害或明确的卸力/压制说明', zeroDmg);
+ok(atkRounds > 0, '确实打出了若干回合（' + atkRounds + ' 次出手）', atkRounds);
+
 console.log('\n结果：' + pass + ' 通过 / ' + fail + ' 失败');
 process.exit(fail ? 1 : 0);
