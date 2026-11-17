@@ -321,6 +321,13 @@
      ============================================================ */
   const XUN_PER_MONTH = 3;
   const XUN_NAME = ['上旬', '中旬', '下旬'];
+  /* 一月要打坐三次才顶过去，如果三次回报同一句话，
+     玩家会觉得在点点点。三旬各一句，成本极低，但把「重复」变成了「推移」。 */
+  const XUN_SIT = [
+    '天没亮就坐了，露水顺着瓦檐滴到石阶上。',
+    '日头移到院当中，影子缩到脚边不动了。',
+    '夜里坐的，灯芯爆了一下，屋里暗了半瞬。'
+  ];
   function season() { const m = S.month; return m >= 3 && m <= 5 ? '春' : m <= 8 ? '夏' : m <= 11 ? '秋' : '冬'; }
   function timeLine() {
     const y = Math.floor(S.turn / 12);
@@ -1187,12 +1194,13 @@
     b += renderXunBar();
 
     const o = [];
-    /* 一旬的量：打坐一次只给月修为的三分之一。
-       界面上必须写「一旬」，否则玩家会以为还是「一月」，
-       点了三次发现只涨了一月的量，会以为出了 bug。 */
-    const gain = (isXian() || S.cultivation === 'both')
-      ? Math.round(monthXiuwei() / XUN_PER_MONTH)
-      : Math.round(monthXianghuo().capped / XUN_PER_MONTH);
+    /* 打坐会自动坐满本月剩下的旬，所以这里报的是「坐完能得多少」。
+       做一件事之后再来看，这个数就会变小——那就是刚才那件事的价格。 */
+    const xunLeftNow = Math.max(1, XUN_PER_MONTH - (S.xun || 0));
+    const perXun = (isXian() || S.cultivation === 'both')
+      ? monthXiuwei() / XUN_PER_MONTH
+      : monthXianghuo().capped / XUN_PER_MONTH;
+    const gain = Math.round(perXun * xunLeftNow);
     const unit = isShen() ? '香火' : '修为';
 
     /* 修为已满时打坐是白扔一旬——这一旬本可以拿去做事。
@@ -1203,7 +1211,7 @@
     const fullNow = xFullNow || sFullNow;
     o.push(optRow('A', (isShen() ? '坐庙温养' : '打坐采气'),
       { name: '平和', cls: 'peace' },
-      fullNow ? '已满 · 白坐一旬' : ('+' + gain + ' ' + unit + '（一旬）'),
+      fullNow ? '已满 · 白坐' : ('+' + gain + ' ' + unit + '（余 ' + xunLeftNow + ' 旬）'),
       false, 'act:cultivate'));
 
     const full = breakReady();
@@ -1660,22 +1668,30 @@
   ACT.cultivate = () => {
     if (S.phase !== 'play') return;
     S.meditate = false;
-    /* 打坐一旬——全项目唯一主动产出修为的动作。
-       一旬给月修为的 1/3，三旬合起来正好一个月，所以「全月打坐」
-       与改前的节奏完全一致；但每做别的事，就少了三分之一个月的修为。 */
+    /* 「打坐」一次坐到本月末，而不是只坐一旬。
+       ------------------------------------------------------------
+       如果每点一次只推一旬，升到紫府要按一千多次，那不是取舍，是折磨。
+       而打坐本身没有任何决策——有决策的是「这一旬拿去打坐，还是拿去做事」。
+       所以让打坐自动填满剩下的旬，把决策留在「做事」那一步：
+         月初直接打坐 → 坐满三旬 = 一个月修为
+         做了一件事再打坐 → 只剩两旬 = 三分之二个月
+       做事的机会成本因此一眼可见。 */
+    const left = Math.max(1, XUN_PER_MONTH - (S.xun || 0));
+    const xunNow = S.xun || 0;
     let dx = 0, dh = 0;
-    if (isXian() || S.cultivation === 'both') dx = gainXiuwei(monthXiuwei() / XUN_PER_MONTH);
-    if (isShen() || S.cultivation === 'both') dh = gainXianghuo(monthXianghuo().capped / XUN_PER_MONTH);
-    advanceXun(1);
+    if (isXian() || S.cultivation === 'both') dx = gainXiuwei(monthXiuwei() / XUN_PER_MONTH * left);
+    if (isShen() || S.cultivation === 'both') dh = gainXianghuo(monthXianghuo().capped / XUN_PER_MONTH * left);
+    advanceXun(left);
     if (S.phase !== 'play') return render();
+    const span = left > 1 ? ('（余 ' + left + ' 旬一并坐过去）') : '';
     // 两套账：仙道打坐只出修为，香火一分也不该涨；神道坐庙只动香火
     if (isShen()) {
-      if (dh > 0) logLine(`坐庙温养一旬，香火 +${dh}`, 'good');
-      else logLine('香火已满，这一旬白坐。', '');
+      if (dh > 0) logLine(`坐庙温养到月末，香火 +${dh}`, 'good');
+      else logLine('香火已满，这些日子白坐。', '');
     } else if (isBoth() && dh > 0) {
-      logLine(`打坐一旬，修为 +${dx}，香火 +${dh}`, 'good');
+      logLine(`打坐到月末，修为 +${dx}，香火 +${dh}`, 'good');
     } else if (dx > 0) {
-      logLine(`打坐采气一旬，修为 +${dx}`, 'good');
+      logLine(XUN_SIT[xunNow] + span + `　修为 +${dx}`, 'good');
     } else {
       logLine('本境修为已满，再坐也只是白坐——该破境了。', '');
     }
@@ -2722,8 +2738,9 @@
       toast('境界上限降至 ' + (D.DAOGONG_CAP[g.tier] || D.DAOGONG_CAP.huang).to);
     }
     S.topGongfaTier = ['huang', 'xuan', 'di', 'tian', 'xian'].indexOf(g.tier);
-    closeModal(); ACT.openGongfa();
-    render();
+    /* 改换道基不是翻页——要重新坐过。占一旬。 */
+    advanceXun(1); if (S.phase !== 'play') return render();
+    closeModal(); render();
   };
 
   /* ---------- 洞府 ---------- */
@@ -2821,6 +2838,7 @@
     if (S.xianghuo < 300) { toast('香火不足'); return; }
     S.xianghuo -= 300; S.templeBroken = false;
     logLine('塑像重修，庙墙补齐。', 'good');
+    advanceXun(1); if (S.phase !== 'play') return render();
     closeModal(); render();
   };
 
@@ -3519,6 +3537,7 @@
       elder: pick(['shou', 'jin', 'li']) };
     logLine('立祠堂，开族府。' + nm + '氏在这一带算是有了名。', 'good');
     toast('立族 · ' + nm + '氏');
+    advanceXun(1); if (S.phase !== 'play') return render();
     closeModal(); render();
   };
 
@@ -7478,6 +7497,7 @@
     });
     logLine('学会' + artName(bk.art) + '（' + D.GONGFA_TIERS[bk.tier].name + '）。', 'good');
     toast('习得 ' + artName(bk.art));
+    advanceXun(1); if (S.phase !== 'play') return render();
     closeModal(); render();
     const got = D.RECIPES.filter(function (r) {
       return r.kind === bk.art && tierIdx(r.tier) <= tierIdx(bk.tier);

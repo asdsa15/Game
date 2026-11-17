@@ -315,33 +315,39 @@ ok(!/do;prep:guard:guqingxuan/.test(document.getElementById('modals').innerHTML 
 /* ==================== 7. 行动预算：月拆三旬 ==================== */
 console.log('=== 7. 行动预算 ===');
 
-/* 月修为：三次打坐的总量 */
+/* 月初一次打坐 = 坐满三旬 = 一整月的修为 */
 setup();
 S.xRealm = 1; S.xStage = 0; S.xiuwei = 0; S.xun = 0; S.xiuAcc = 0;
 S.lingqi = 1; S.root = 'heaven';
 const p0 = S.xiuwei, m0 = S.month;
-G.ACT.cultivate(); G.ACT.cultivate(); G.ACT.cultivate();
-const oneMonth = S.xiuwei - p0;
-ok(oneMonth > 0, '三次打坐能攒出修为', oneMonth);
-ok(S.month === m0 + 1 && S.xun === 0, '三旬之后进入下一月', S.month + '月/' + S.xun + '旬');
+G.ACT.cultivate();
+const fullMonth = S.xiuwei - p0;
+ok(fullMonth > 0, '月初打坐坐到月末，得整月修为', fullMonth);
+ok(S.month === m0 + 1 && S.xun === 0, '一次打坐走完一个月', S.month + '月/' + S.xun + '旬');
 
-/* 一旬的收益 = 月额的三分之一（允许取整误差 1） */
+/* 关键：先做一件事，再打坐，只能坐两旬 —— 那一旬就是做事的价钱 */
 setup();
 S.xRealm = 1; S.xStage = 0; S.xiuwei = 0; S.xun = 0; S.xiuAcc = 0;
 S.lingqi = 1; S.root = 'heaven';
 const p1 = S.xiuwei;
-G.ACT.cultivate();
-const oneXun = S.xiuwei - p1;
-ok(Math.abs(oneXun - oneMonth / 3) <= 1,
-  '一旬给月修为的三分之一', oneXun + ' ≈ ' + (oneMonth / 3).toFixed(1));
+G.advanceXun(1);              // 一旬拿去做别的事
+ok(S.xiuwei === p1, '做事的那一旬不涨修为');
+G.ACT.cultivate();            // 剩两旬拿来打坐
+const afterWork = S.xiuwei - p1;
+ok(afterWork < fullMonth, '做过事之后，修为少了', afterWork + ' < ' + fullMonth);
+ok(Math.abs(afterWork - fullMonth * 2 / 3) <= 1,
+  '少掉的正是那三分之一', afterWork + ' ≈ ' + (fullMonth * 2 / 3).toFixed(1));
 
-/* 关键：做别的事不涨修为，但时间照走——这就是机会成本 */
+/* 做两件事，只剩一旬 */
 setup();
 S.xRealm = 1; S.xStage = 0; S.xiuwei = 0; S.xun = 0; S.xiuAcc = 0;
+S.lingqi = 1; S.root = 'heaven';
 const p2 = S.xiuwei;
-G.advanceXun(1);
-ok(S.xiuwei === p2, '做事的一旬不涨修为（时间不再是奖励）', S.xiuwei);
-ok(S.xun === 1, '但那一旬确实过去了', S.xun);
+G.advanceXun(1); G.advanceXun(1);
+G.ACT.cultivate();
+const afterTwo = S.xiuwei - p2;
+ok(Math.abs(afterTwo - fullMonth / 3) <= 1,
+  '两件事之后只剩三分之一', afterTwo + ' ≈ ' + (fullMonth / 3).toFixed(1));
 
 /* 世界按月结算，不按旬结算 */
 setup();
@@ -357,15 +363,33 @@ S.xun = 1;
 document.getElementById('stage').innerHTML = '';
 G.render();
 const html0 = document.getElementById('stage').innerHTML || '';
-ok(/本月余 2 旬/.test(html0), '界面显示本月剩余旬数', html0.indexOf('余 2 旬') >= 0);
+ok(/本月余 2 旬/.test(html0), '界面显示本月剩余旬数');
 ok(/下旬/.test(html0), '界面标出当前旬');
 
-/* 全月打坐与闭关的关系：闭关按月给足额，且吞掉本月余旬 */
+/* 打坐按钮报的是「坐完能得多少」，随做事的多少变小 */
+setup();
+S.xRealm = 1; S.xStage = 0; S.xiuwei = 0; S.xun = 0; S.xiuAcc = 0;
+S.lingqi = 1; S.root = 'heaven';
+document.getElementById('stage').innerHTML = '';
+G.render();
+const h1 = document.getElementById('stage').innerHTML || '';
+const m1 = h1.match(/余 (\d) 旬/);
+setup();
+S.xRealm = 1; S.xStage = 0; S.xiuwei = 0; S.xun = 2; S.xiuAcc = 0;
+S.lingqi = 1; S.root = 'heaven';
+document.getElementById('stage').innerHTML = '';
+G.render();
+const h2 = document.getElementById('stage').innerHTML || '';
+const m2 = h2.match(/余 (\d) 旬/);
+ok(m1 && m2 && Number(m1[1]) > Number(m2[1]), '剩余的旬会随做事减少',
+  (m1 && m1[1]) + ' → ' + (m2 && m2[1]));
+
+/* 闭关按月给足额，且吞掉本月余旬 */
 setup();
 S.xRealm = 1; S.xStage = 0; S.xiuwei = 0; S.xun = 2; S.xiuAcc = 0;
 S.lingqi = 1; S.root = 'heaven';
 const p3 = S.xiuwei;
-G.ACT.do_med(1);          // 闭关一年
+G.ACT.do_med(1);
 ok(S.xiuwei > p3, '闭关按月给修为', S.xiuwei - p3);
 ok(S.xun === 0, '闭关后旬归零', S.xun);
 
