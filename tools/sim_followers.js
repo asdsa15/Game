@@ -136,4 +136,4 @@ console.log('\n=== 五、庙产投入的影响（四柱） ===');
     ' 月（' + round(r.total / 12) + ' 年）');
 });
 
-process.exit(bad.length || !allFull ? 1 : 0);
+process.exit(bad.length || thin.length ? 1 : 0);

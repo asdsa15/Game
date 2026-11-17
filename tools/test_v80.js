@@ -369,5 +369,43 @@ S.age = 120; S.lifeMax = 120; S.month = 12;
 G.ACT.cultivate();
 ok(S.phase === 'over', '用过一次后直接死，不再进临终', S.phase);
 
+/* ==================== 9. 渲染冒烟 ==================== */
+console.log('=== 9. 渲染冒烟 ===');
+function noThrow(fn, name) {
+  try { fn(); ok(true, name); } catch (e) { ok(false, name, e.message); }
+}
+
+setup('shen', { stones: 5000, xianghuo: 300, followers: 900 });
+noThrow(function () { G.render(); }, '常规神道局面渲染');
+noThrow(function () { G.ACT.openDivineArts(); }, '神器面板渲染');
+noThrow(function () { G.ACT.openVotive(); }, '愿物面板渲染');
+noThrow(function () { G.ACT.openTut(); }, '新手引导面板渲染');
+
+S.npcCall = { id: NPC0.id, kind: 'hurt' };
+noThrow(function () { G.render(); }, '有客来访时渲染（常驻区多一项）');
+noThrow(function () { G.ACT.openNpcCall(); }, '来访面板渲染');
+
+S.phase = 'dying'; S.dying = { reason: '气血耗尽。' };
+noThrow(function () { G.render(); }, '临终页渲染');
+S.phase = 'play'; S.dying = null;
+
+setup('xian', { stones: 5000 });
+S.year = 387;
+noThrow(function () { G.ACT.openAuction(); }, '拍卖会面板渲染');
+S.tutStep = 0;
+noThrow(function () { G.ACT.do_tut('next'); }, '引导推进不抛错');
+ok(S.tutStep === 1, '引导推进到第二条', S.tutStep);
+
+setup('xian', { stones: 20000 });
+S.clan = { name: 'TEST', lv: 1, pop: 120, luck: 60, ident: 'di', rules: [], founded: 0,
+  ind: { farm: 0, work: 0, trade: 0, study: 0 }, elder: 'jin' };
+noThrow(function () { G.ACT.openClanInd(); }, '家族产业面板渲染');
+G.ACT.do_ind('work', 'plus');
+ok(S.clan.ind.work > 0, '派人帮工后人数增加', S.clan.ind.work);
+const stBefore = S.stones;
+const xhMonths = S.turn;
+G.ACT.cultivate();
+ok(S.stones > stBefore || S.stones === stBefore, '家族营生结算不产生负数', S.stones);
+
 console.log('\n结果：' + pass + ' 通过 / ' + fail + ' 失败');
 process.exit(fail ? 1 : 0);
