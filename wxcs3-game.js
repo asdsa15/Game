@@ -137,7 +137,8 @@
 
       npcCall: null,      // 待处理的 NPC 主动事件 {id, kind}
       tutStep: 0,         // 新手引导进度（到 TUTORIAL_STEPS.length 即结束）
-      freeLog: [],        // 最近做过的闲事（意图 id），用于避免连着做同一件
+      hdRate: 0,          // 心魔劫：本次破境的原成功率
+      pendingVengeance: false,   // 仇家已上门，等一个处理时机
       dying: null,        // 临终状态 {reason}
       dyingUsed: false,   // 一局只给一次临终选择
       legacyPact: null,   // 临终所托：pass / daotong，带到来世
@@ -377,6 +378,20 @@
       tickClan();
       // —— v8.0：NPC 主动来访/病故（一次只挂一件，不打断当前面板）
       if (S.phase === 'play') tickNpcEvents();
+      /* —— v8.0 仇家上门：业力与夺祀/叛门的真后果
+         旧版 S.enemy 只在夺祀时置一次 true，之后再没人读过，
+         等于「你多了个死仇」只是一句日志。现在它会真的找上门。 */
+      if (S.phase === 'play' && !S.combat && !S.pendingVengeance) {
+        if (S.enemy) {
+          const chase = clamp(0.02 + S.karma / 2000, 0.02, 0.08);
+          if (Math.random() < chase) S.pendingVengeance = 'person';
+        }
+        /* 叛门的账也要有人来收。旧版 S.enemySect 写了一次就再没人读过，
+           等于「立过的誓会咬人」只是面板上的一句话。 */
+        if (!S.pendingVengeance && S.enemySect && Math.random() < 0.03) {
+          S.pendingVengeance = 'sect';
+        }
+      }
       // —— 四艺：行情波动、阵盘维持费
       tickMarket();
       if (Array.isArray(S.disks) && S.disks.length) {
@@ -1725,6 +1740,10 @@
     if (S.karma > 30) r -= 0.06;
     if (S.merit > 20) r += 0.04;
     if (D.LINGQI[S.lingqi].v >= 2.0) r += 0.04;
+    /* v8.0：道途四印配成对，气机自洽，破境更稳。
+       旧版 checkDaoyin() 算出了 S.daoyinOk 却没有任何地方读它——
+       四印这个系统整条是装饰，玩家配不配成对完全没区别。 */
+    if (daoyinPaired()) r += 0.06;
     // 破境丹类加成（新表：小破障/筑基/大破障/凝婴）
     r += (S.breakBonus || 0);
     if (S.hp / S.hpMax < 0.33) r -= 0.15;
@@ -1758,6 +1777,88 @@
     }
     S.breakBonus = 0;
     S.cultBonus = 1;
+    /* ============================================================
+       v8.0 心魔劫：业力的第一个真消费端
+       ------------------------------------------------------------
+       旧版业力只值「破境率 −6%」——杀十个人和没杀，区别小到看不见。
+       业力本来就是「你做过的事在夜里回来找你」，所以它该在破境这一夜发作：
+       业力 ≥30 时，破境前会先被问一句。答什么，决定这一夜能不能过去。
+       ============================================================ */
+    if (S.karma >= 30) {
+      const odds = clamp(S.karma / 100, 0.30, 0.85);
+      if (Math.random() < odds) {
+        S.hdRate = rate;
+        openHeartDemon();
+        return;
+      }
+    }
+    resolveXianBreak(rate);
+  };
+
+  /* 心魔问的那句话，按境界换口气：低境问「怕不怕」，高境问「值不值」 */
+  function heartDemonQ() {
+    if (S.xRealm >= 3) {
+      return {
+        q: '你这一路走上来，踩过的人，还记得几个？',
+        a: '「记得。夜里记得。」',
+        b: '「不记得。他们不重要。」',
+        c: '「记得。但我不打算还。」'
+      };
+    }
+    if (S.xRealm >= 1) {
+      return {
+        q: '若这一关过不去，你悔不悔？',
+        a: '「悔。但还是要过。」',
+        b: '「不悔。悔了就过不去。」',
+        c: '「悔不悔，都得过。」'
+      };
+    }
+    return {
+      q: '怕吗？',
+      a: '「怕。」',
+      b: '「不怕。」',
+      c: '「怕，所以更要试。」'
+    };
+  }
+
+  function openHeartDemon() {
+    const k = heartDemonQ();
+    let b = `<div class="small muted">识海里有个声音，用你自己的口气说话。</div>`;
+    b += `<div class="npcmeet" style="margin:8px 0"><div class="nm-line">「${esc(k.q)}」</div></div>`;
+    b += `<div class="small" style="margin-bottom:6px">答完之后，这一夜才继续。</div>`;
+    b += '<ul class="opts">';
+    b += optRow('A', k.a, { name: '认', cls: 'peace' }, '道心 −1 · 业力 −5 · 成功率 上浮一成', false, 'do;hd:admit');
+    b += optRow('B', k.b, { name: '抗', cls: 'risk' }, '道心 +2 · 成功率 下压一成半', false, 'do;hd:fight');
+    b += optRow('C', k.c, { name: '借', cls: 'chance' }, '业力 +15 · 功德 −10 · 成功率 上浮三成半', false, 'do;hd:borrow');
+    b += '</ul>';
+    b += `<div class="hint">认了会软，抗了会硬，借来的力最省事——也最贵。</div>`;
+    openModal('心魔 · ' + realmName(), b, true);
+  }
+
+  ACT.do_hd = (kind) => {
+    const base = S.hdRate || 0.5;
+    S.hdRate = 0;
+    closeModal();
+    let rate = base;
+    if (kind === 'admit') {
+      rate = clamp(base * 1.10, 0.05, 0.95);
+      S.stats.heart = Math.max(1, st('heart') - 1);
+      S.karma = Math.max(0, S.karma - 5);
+      logLine('你说了实话。心魔退了一步，你也退了一步。', '');
+    } else if (kind === 'fight') {
+      rate = clamp(base * 0.85, 0.05, 0.95);
+      S.stats.heart = Math.min(20, st('heart') + 2);
+      logLine('你把那句话按了回去。按住了，手却在抖。', '');
+    } else {
+      rate = clamp(base * 1.35, 0.05, 0.95);
+      S.karma += 15;
+      S.merit = Math.max(0, S.merit - 10);
+      logLine('你借了它的力。它没有讨价，只是记下了。', 'danger');
+    }
+    resolveXianBreak(rate);
+  };
+
+  function resolveXianBreak(rate) {
     if (Math.random() < rate) {
       const r = xrealm();
       if (S.xStage < r.stages.length - 1) {
@@ -1807,7 +1908,12 @@
       // holdEvent 期间不抢先弹传法：破境的诗还没看完，传法等 afterbreak 放行
       if (S.phase === 'play' && !S.holdEvent) maybeTransmitNow();
     } else {
-      S.xiuwei = Math.round((xrealm().need || 100) * 0.7);
+      /* v8.0：金性不坏。金丹之后，破境失败不再把修为散掉三成。
+         旧版 S.jinxing 只在结丹时置 true，之后再没人读过——
+         「煅出金性」这个金丹的核心设定等于没写。 */
+      const keep = S.jinxing ? 0.88 : 0.70;
+      if (S.jinxing) logLine('金性不动。修为没有散，只是这一夜过不去。', 'good');
+      S.xiuwei = Math.round((xrealm().need || 100) * keep);
       const dmg = Math.round(S.hpMax * (0.12 + Math.random() * 0.15));
       S.hp = Math.max(1, S.hp - dmg);   // 破境失败不致死，最低留 1 血
       let extra = '';
@@ -1896,6 +2002,19 @@
   }
 
   /* 金丹：证果位 */
+  /* 金丹证位的成功率：底数直接取果位表里那个从没被用过的 rate（闰60/余40/正20/至尊5），
+     再按四印是否成对与心性加减。面板上「四印未配成对——证位时 −15」这句承诺，
+     终于在这里兑现。 */
+  function jindanRate(g) {
+    const base = (D.GUOWEI_RANK[g.rank] ? D.GUOWEI_RANK[g.rank].rate : 40) / 100;
+    let r = base;
+    r += daoyinPaired() ? 0.15 : -0.15;
+    r += st('heart') * 0.008;
+    if (S.merit >= 50) r += 0.04;
+    if (S.karma >= 50) r -= 0.06;
+    return clamp(r, 0.05, 0.92);
+  }
+
   function openJindan() {
     let b = `<div class="small">金丹需有<b>果位</b>，没有果位的金丹叫「散金丹」——战力只有同阶三成。</div>`;
     b += `<div class="muted small" style="margin:4px 0">三十个位，都有人了。你要去抢一个。</div>`;
@@ -1904,7 +2023,8 @@
     b += `<ul class="opts">`;
     pool.forEach((g, i) => {
       b += optRow('ABC'[i], `${g.n}（${g.gz}）—— ${g.img}`, { name: '机缘', cls: 'chance' },
-        `${g.rank} · ×${D.GUOWEI_RANK[g.rank].mul}`, false, 'do;jindan:' + encodeURIComponent(g.n));
+        `${g.rank} · ×${D.GUOWEI_RANK[g.rank].mul} · 约 ${Math.round(jindanRate(g) * 100)}%`,
+        false, 'do;jindan:' + encodeURIComponent(g.n));
     });
     b += `</ul>`;
     b += `<div class="hint">至尊三位（天河水／天上火／大海水）：去抢，等于向当世最强者宣战。</div>`;
@@ -1914,6 +2034,20 @@
   ACT.do_jindan = (enc) => {
     const name = decodeURIComponent(enc);
     const g = D.GUOWEI.find(x => x.n === name);
+    if (!g) { closeModal(); return; }
+    const rate = jindanRate(g);
+    if (Math.random() >= rate) {
+      /* 证位失败：丹没结成，这一身修为全散了。
+         旧版这里没有任何判定——点一下就白得一个果位，
+         金丹是整个仙道最重的门槛，却也是唯一不设关卡的地方。 */
+      S.xiuwei = 0;
+      S.hp = Math.max(1, Math.round(S.hp - S.hpMax * 0.3));
+      S.karma += 3;
+      logLine(`抢「${g.n}」没抢到。丹在气海里碎了一次，修为散尽，气血去了三成。`, 'danger');
+      toast('证位未成');
+      closeModal(); advanceMonth(1); if (S.phase === 'play') render();
+      return;
+    }
     S.guowei = g;
     S.xRealm = 4; S.xStage = 0; S.xiuwei = 0;
     S.lifeMax = 1200;
@@ -3863,7 +3997,13 @@
     const cls = o.cls || (notes.some(function (n) { return /\+/.test(n); }) ? 'good' : '');
     /* 正文 + 小字记账：正文负责味道，括号负责让玩家知道发生了什么 */
     const line = o.text + (notes.length ? '（' + notes.join('，') + '）' : '');
-    S.freeLog = (S.freeLog || []).concat([{ m: S.turn, i: it.id }]).slice(-12);
+    /* v8.0：造业到一定程度，总有人记着。
+       这条线把「业力」接到「仇家」上，再接到「寻仇」上——三段原本互不相干的东西串成一个回路。 */
+    if (!S.enemy && S.karma >= 50 && Math.random() < 0.12) {
+      S.enemy = true;
+      S.enemyName = pick(['苦主之子', '同门的兄弟', '游方剑客', '货郎的雇主', '那家人的长兄']);
+      logLine('有人在暗处记下了你的样子。', 'danger');
+    }
     /* 先让随机事件记账，再把玩家的行动记到最上面——
        否则一进事件流，自己做的事就被一件不相干的事压下去了 */
     maybeEvent();
@@ -3960,6 +4100,9 @@
     out.aucLotWon = st.aucLotWon || null;
     // 来访事件是瞬态：存档/刷新时挂着的弹窗要清掉，否则每回合都被它挡住
     out.npcCall = null;
+    /* 寻仇是瞬态：读档时清掉，下次按月重新掷 */
+    out.pendingVengeance = false;
+    out.hdRate = 0;
     /* 临终状态要留：不然在读档时把「还有一口气」吞掉，等于白送一条命 */
     out.dying = st.dying || null;
     if (out.phase === 'dying' && !out.dying) out.phase = 'over';
@@ -4386,16 +4529,22 @@
   };
 
   /* ---------- P0-2 道途四印 ---------- */
-  function checkDaoyin() {
+  /* 四印是否配成对：2 干 + 2 支，且至少有一对同阴阳。
+     抽成独立函数是因为破境率要现算——存成缓存会读到过期的值。 */
+  function daoyinPaired() {
     const marks = S.daoyin || [];
     let gan = 0, zhi = 0;
     marks.forEach(function (m) { if (m.kind === 'gan') gan++; else if (m.kind === 'zhi') zhi++; });
-    // 阳干配阳支、阴干配阴支；至少有一对同阴阳，四印才不是一盘散沙。
-    const paired = marks.some(function (g) {
-      return g.kind === 'gan' && marks.some(function (z) { return z.kind === 'zhi' && g.g % 2 === z.z % 2; });
+    if (marks.length !== 4 || gan !== 2 || zhi !== 2) return false;
+    return marks.some(function (g) {
+      return g.kind === 'gan' && marks.some(function (z) {
+        return z.kind === 'zhi' && g.g % 2 === z.z % 2;
+      });
     });
-    const ok = marks.length === 4 && gan === 2 && zhi === 2 && paired;
-    S.daoyinOk = ok;
+  }
+  function checkDaoyin() {
+    const ok = daoyinPaired();
+    S.daoyinOk = ok;      // 仅作面板显示用
     return ok;
   }
 
@@ -5650,6 +5799,57 @@
   };
 
   /* ---------- 战斗 ---------- */
+  /* v8.0 寻仇：仇家真的会来。来的时候给你三条路，每条都有代价。 */
+  function openVengeance(src) {
+    const isSect = src === 'sect';
+    const nm = isSect ? '宗门执法' : (S.enemyName || '仇家');
+    let b = '';
+    if (isSect) {
+      b += `<div class="small">三个人，一样的衣裳，一样的刀。为首那个把令牌举给你看，说奉命行事，让你自己选个地方。</div>`;
+      b += `<div class="small muted" style="margin:6px 0">他们不喊，也不急。宗门办事一向这样。</div>`;
+    } else {
+      b += `<div class="small">${esc(nm)}站在门外，没带兵器，也没带人。他说等这一天很久了。</div>`;
+      b += `<div class="small muted" style="margin:6px 0">街上有几家关了窗。没人出来劝。</div>`;
+    }
+    b += divider() + '<ul class="opts">';
+    b += optRow('A', '迎战', { name: '搏', cls: 'risk' },
+      isSect ? '三人，都是内门以上' : '赢了此账两清，输了不一定还有下次', false, 'do;veng:fight');
+    b += optRow('B', isSect ? '交出这些年攒下的东西' : '破财消灾', { name: '忍', cls: 'warn' },
+      '折三成灵石与人望，人还会再来', S.stones < 50, 'do;veng:pay');
+    b += optRow('C', '闭门不见', { name: '避', cls: 'warn' }, '声望 −8，人还会再来', false, 'do;veng:flee');
+    b += '</ul>';
+    b += `<div class="hint">这件事不了结，它就一直挂在那儿。</div>`;
+    S.vengeanceSrc = isSect ? 'sect' : 'person';
+    openModal((isSect ? '追杀 · ' : '寻仇 · ') + nm, b, true);
+  }
+
+  ACT.do_veng = (k) => {
+    closeModal();
+    if (k === 'fight') {
+      const src = S.vengeanceSrc || 'person';
+      startCombat(true);
+      if (S.combat) {
+        S.combat.isVengeance = src;
+        S.combat.foe.name = src === 'sect' ? '宗门执法' : (S.enemyName || S.combat.foe.name);
+        if (src === 'sect') { S.combat.foe.power = Math.round(S.combat.foe.power * 1.15); S.combat.foe.hpMax = Math.round(S.combat.foe.hpMax * 1.15); S.combat.foe.hp = S.combat.foe.hpMax; }
+      }
+      return;
+    }
+    if (k === 'pay') {
+      const s = Math.round(S.stones * 0.3);
+      S.stones = Math.max(0, S.stones - s);
+      S.followers = Math.round(S.followers * 0.9);
+      ledgerAdd('out', '了断旧怨', s);
+      logLine(`你把 ${s} 块灵石推过去。他收了，什么也没说，走了。`, '');
+    } else {
+      S.fame = Math.max(0, S.fame - 8);
+      logLine('你没开门。他在门外站到天黑，才走。', '');
+    }
+    advanceMonth(1);
+    if (S.phase !== 'play') return render();
+    render();
+  };
+
   function startCombat(isCounter) {
     /* 敌人按「境界」生成，不按 rank 算术。上限 +1 大境，永不通跨两境。
        战力以玩家为锚浮动：常规 0.55~1.55 倍（相持~压制），
@@ -6325,6 +6525,14 @@
   /* ---------- 随机事件 ---------- */
   function maybeEvent() {
     if (S.holdEvent) return;   // 破境的诗还没看完，先别插别的事
+    /* 仇家堵在门口时先处理这件事——别让一件奇遇把它顶掉，
+       那样「死仇」就成了一句永远等不到下文的日志。 */
+    if (S.pendingVengeance && S.phase === 'play' && !S.combat) {
+      const vsrc = S.pendingVengeance;
+      S.pendingVengeance = false;
+      openVengeance(vsrc);
+      return;
+    }
     // 人情账正等着你决定——别用奇遇把面板顶掉（顶掉就等于强制忽略了债）
     if (S.hookPending) return;
     // 传法机缘（主线级）优先：境界够了就先给这个，普通奇遇与随机事件让位
@@ -8523,6 +8731,19 @@
   }
   function noteCombatWin(c) {
     if (!c || !c.foe) return;
+    /* v8.0：仇家是活的。打赢寻仇的人，这笔账才算清；
+       否则 S.enemy 永远为 true，成了没人读的摆设。 */
+    if (c.isVengeance === 'sect' && S.enemySect) {
+      S.enemySect = false;
+      S.fame += 12;
+      logLine('三个都留下了。你把令牌收进怀里，从此不打算再回那座山。', 'danger');
+    } else if (c.isVengeance && S.enemy) {
+      S.enemy = false;
+      S.fame += 10;
+      S.stones += 200;
+      logLine('仇了了一段。你把他埋了，碑上没写名字。', 'good');
+      S.enemyName = null;
+    }
     const t = tly();
     t.warWin = (t.warWin || 0) + 1;
     t.kill = (t.kill || 0) + 1;          // 钩子的「期：你杀够 N 人时」用
