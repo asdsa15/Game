@@ -108,16 +108,16 @@ ok(S.dArt.staff === 3, '三级为顶，不能超', S.dArt.staff);
 
 S.year = 388; S.month = 1; S.turn = 12;
 const st0 = S.stones;
-G.ACT.cultivate();
+G.advanceXun(3);   // 一月三旬：过一整月
 ok(S.stones === st0 - 180, '每月维护 60×3 = 180 灵石', st0 - S.stones);
 S.stones = 0;
-G.ACT.cultivate();
+G.advanceXun(3);   // 一月三旬：过一整月
 ok(S.dArtIdle === 1, '付不起维护 → 停供', S.dArtIdle);
 S.xianghuo = 300;
-G.ACT.cultivate();
+G.advanceXun(3);   // 一月三旬：过一整月
 ok(S.dArtIdle === 2, '继续欠费则停供月数累加', S.dArtIdle);
 S.stones = 1000;
-G.ACT.cultivate();
+G.advanceXun(3);   // 一月三旬：过一整月
 ok(S.dArtIdle === 0, '补上灵石 → 神器恢复', S.dArtIdle);
 ok(S.dArt.staff === 3, '停供不掉级', S.dArt.staff);
 
@@ -128,11 +128,11 @@ setup('shen');
 S.miaoUp = {};
 S.dArt.seal = 0;
 S.xianghuo = 100000;
-G.ACT.cultivate();
+G.advanceXun(3);   // 一月三旬：过一整月
 const capNoSeal = S.xianghuo;
 setup('shen');
 S.dArt.seal = 3; S.xianghuo = 100000;
-G.ACT.cultivate();
+G.advanceXun(3);   // 一月三旬：过一整月
 const capSeal = S.xianghuo;
 ok(capNoSeal === 800, '一柱香火存储上限 800', capNoSeal);
 ok(capSeal === 1160, '牧土神印 3 级把上限抬到 1160', capSeal);
@@ -309,7 +309,7 @@ setup('shen', { stones: 2000 });
 S.npcs = {}; S.npcs[NPC0.id] = { fav: 80, met: true, alive: true, since: 0, lastCall: -99 };
 S.turn = 20; S.month = 12;
 fixRandom(0);
-G.ACT.cultivate();
+G.advanceXun(3);   // 一月三旬：过一整月
 restoreRandom();
 ok(!!S.npcCall, '好感高的 NPC 会主动上门', JSON.stringify(S.npcCall));
 ok(S.npcCall && S.npcCall.kind === 'marry', '好感 ≥60 且无道侣时优先婚约', S.npcCall && S.npcCall.kind);
@@ -319,7 +319,7 @@ setup('shen', { stones: 2000 });
 S.npcs = {}; S.npcs[NPC0.id] = { fav: 80, met: true, alive: true, since: 0, injured: true, lastCall: 99 };
 S.turn = 100; S.month = 12;
 fixRandom(0);
-G.ACT.cultivate();
+G.advanceXun(3);   // 一月三旬：过一整月
 restoreRandom();
 ok(S.npcs[NPC0.id].alive === false, '伤重不治会死', S.npcs[NPC0.id].alive);
 ok(S.npcCall && S.npcCall.kind === 'funeral', '死亡转为丧讯', S.npcCall && S.npcCall.kind);
@@ -328,7 +328,7 @@ ok(S.npcCall && S.npcCall.kind === 'funeral', '死亡转为丧讯', S.npcCall &&
 console.log('=== 8. 临终 ===');
 setup('xian', { stones: 500 });
 S.age = 120; S.lifeMax = 120; S.month = 12; S.turn = 100;
-G.ACT.cultivate();
+G.advanceXun(3);   // 一月三旬：过一整月
 ok(S.phase === 'dying', '寿元耗尽先进临终，不直接结束', S.phase);
 ok(S.dying && /寿元/.test(S.dying.reason), '临终原因已记录', S.dying && S.dying.reason);
 G.ACT.do_die('close');
@@ -366,7 +366,7 @@ ok(S.phase === 'over', '传功后仍会死', S.phase);
 setup('xian', { stones: 500 });
 S.dyingUsed = true;
 S.age = 120; S.lifeMax = 120; S.month = 12;
-G.ACT.cultivate();
+G.advanceXun(3);   // 一月三旬：过一整月
 ok(S.phase === 'over', '用过一次后直接死，不再进临终', S.phase);
 
 /* ==================== 9. 渲染冒烟 ==================== */
@@ -404,7 +404,7 @@ G.ACT.do_ind('work', 'plus');
 ok(S.clan.ind.work > 0, '派人帮工后人数增加', S.clan.ind.work);
 const stBefore = S.stones;
 const xhMonths = S.turn;
-G.ACT.cultivate();
+G.advanceXun(3);   // 一月三旬：过一整月
 /* 同一个月里可能还发生了别的支出（事件/维护），所以只断言账不为负 */
 ok(S.stones >= 0 && isFinite(S.stones), '家族营生结算后灵石不为负', S.stones);
 

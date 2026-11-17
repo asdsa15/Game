@@ -70,6 +70,7 @@ function setup() {
   S.stones = 2000; S.fame = 0; S.karma = 0; S.merit = 0;
   S.hp = S.hpMax = 400; S.mp = S.mpMax = 200;
   S.month = 5; S.year = 395; S.turn = 90;
+  S.xun = 0; S.xiuAcc = 0;
   S.log = []; S.chronicle = []; S.ledger = { income: [], expense: [] };
   S.bag = {}; S.bagMat = {}; S.talismans = {}; S.arts = []; S.disks = []; S.craftedQ = {};
   S.equipped = {}; S.stats = { qualify: 8, insight: 8, sense: 8, speed: 8, heart: 8, fate: 8 };
@@ -137,7 +138,7 @@ console.log('=== 3. 仇家 → 寻仇 ===');
 setup();
 S.enemy = true; S.enemyName = '苦主之子'; S.karma = 80;
 fix(0);
-G.ACT.cultivate();
+G.advanceXun(3);   // 一月三旬
 restore();
 /* 标记可能已被 maybeEvent 立刻消费掉（面板当场弹出），所以两种状态都算触发成功 */
 ok(S.pendingVengeance === 'person' || S.vengeanceSrc === 'person',
@@ -176,7 +177,7 @@ let chased = false;
 for (let i = 0; i < 120 && !chased; i++) {
   fix(0);
   if (S.phase !== 'play' || S.pendingVengeance) { setup(); S.enemySect = true; S.karma = 40; }
-  G.ACT.cultivate();
+  G.advanceXun(3);   // 一月三旬
   restore();
   if (S.pendingVengeance === 'sect' || S.vengeanceSrc === 'sect') chased = true;
 }
@@ -311,8 +312,65 @@ G.ACT.openBreak();
 ok(!/do;prep:guard:guqingxuan/.test(document.getElementById('modals').innerHTML || ''),
   '好感不足 60 请不到护法');
 
-/* ==================== 7. 源码守卫 ==================== */
-console.log('=== 7. 接线守卫 ===');
+/* ==================== 7. 行动预算：月拆三旬 ==================== */
+console.log('=== 7. 行动预算 ===');
+
+/* 月修为：三次打坐的总量 */
+setup();
+S.xRealm = 1; S.xStage = 0; S.xiuwei = 0; S.xun = 0; S.xiuAcc = 0;
+S.lingqi = 1; S.root = 'heaven';
+const p0 = S.xiuwei, m0 = S.month;
+G.ACT.cultivate(); G.ACT.cultivate(); G.ACT.cultivate();
+const oneMonth = S.xiuwei - p0;
+ok(oneMonth > 0, '三次打坐能攒出修为', oneMonth);
+ok(S.month === m0 + 1 && S.xun === 0, '三旬之后进入下一月', S.month + '月/' + S.xun + '旬');
+
+/* 一旬的收益 = 月额的三分之一（允许取整误差 1） */
+setup();
+S.xRealm = 1; S.xStage = 0; S.xiuwei = 0; S.xun = 0; S.xiuAcc = 0;
+S.lingqi = 1; S.root = 'heaven';
+const p1 = S.xiuwei;
+G.ACT.cultivate();
+const oneXun = S.xiuwei - p1;
+ok(Math.abs(oneXun - oneMonth / 3) <= 1,
+  '一旬给月修为的三分之一', oneXun + ' ≈ ' + (oneMonth / 3).toFixed(1));
+
+/* 关键：做别的事不涨修为，但时间照走——这就是机会成本 */
+setup();
+S.xRealm = 1; S.xStage = 0; S.xiuwei = 0; S.xun = 0; S.xiuAcc = 0;
+const p2 = S.xiuwei;
+G.advanceXun(1);
+ok(S.xiuwei === p2, '做事的一旬不涨修为（时间不再是奖励）', S.xiuwei);
+ok(S.xun === 1, '但那一旬确实过去了', S.xun);
+
+/* 世界按月结算，不按旬结算 */
+setup();
+const t0 = S.turn;
+G.advanceXun(2);
+ok(S.turn === t0, '两旬还没到月，世界不结算', S.turn - t0);
+G.advanceXun(1);
+ok(S.turn === t0 + 1, '第三旬才过一月', S.turn - t0);
+
+/* 界面必须把预算写出来 */
+setup();
+S.xun = 1;
+document.getElementById('stage').innerHTML = '';
+G.render();
+const html0 = document.getElementById('stage').innerHTML || '';
+ok(/本月余 2 旬/.test(html0), '界面显示本月剩余旬数', html0.indexOf('余 2 旬') >= 0);
+ok(/下旬/.test(html0), '界面标出当前旬');
+
+/* 全月打坐与闭关的关系：闭关按月给足额，且吞掉本月余旬 */
+setup();
+S.xRealm = 1; S.xStage = 0; S.xiuwei = 0; S.xun = 2; S.xiuAcc = 0;
+S.lingqi = 1; S.root = 'heaven';
+const p3 = S.xiuwei;
+G.ACT.do_med(1);          // 闭关一年
+ok(S.xiuwei > p3, '闭关按月给修为', S.xiuwei - p3);
+ok(S.xun === 0, '闭关后旬归零', S.xun);
+
+/* ==================== 8. 源码守卫 ==================== */
+console.log('=== 8. 接线守卫 ===');
 const gcode = fs.readFileSync(path.join(ROOT, 'wxcs3-game.js'), 'utf8');
 ok(/S\.enemySect/.test(gcode) && (gcode.match(/S\.enemySect/g) || []).length >= 3,
   'enemySect 有写入也有读取（不再是一句死话）', (gcode.match(/S\.enemySect/g) || []).length);

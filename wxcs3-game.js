@@ -31,6 +31,8 @@
     return {
       started: false, phase: 'create', createStep: 0, draft: null,
       year: 387, month: 3, turn: 0, age: 16,
+      xun: 0,             // 本月已过几旬（0=上旬，1=中旬，2=下旬）
+      xiuAcc: 0,          // 修为小数累积器：每旬给月修为/3，取整时不留误差
 
       name: '', dao: '', gender: '男', look: '', origin: null, path: null,
       cultivation: null,           // xian | shen | both
@@ -299,11 +301,67 @@
 
   /* ============ 时间 ============ */
   const MN = ['', '正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '冬', '腊'];
+
+  /* ============================================================
+     v8.0 行动预算：月拆三旬
+     ------------------------------------------------------------
+     改之前的问题：修为由 monthXiuwei() 在 advanceMonth 里自动结算，
+     「打坐」按钮本身不产出任何东西——它只是调用 advanceXun(1)。
+     于是时间不是成本，是奖励：你躺着不动，修为照样涨。
+     155 个动作里有 125 个不花时间，所有系统都是免费外挂，
+     没有取舍，也就没有策略。
+
+     改之后：每月三旬，每旬一次行动。
+       打坐 1 旬  → 修为 + 月修为/3
+       全月打坐   → 月修为（与改前完全一致，数值曲线不动）
+       做一件事   → 少 1/3 月修为，这就是机会成本
+
+     XUN_PER_MONTH 设成 1 即退回「一月一行动」的旧行为。
+     这是唯一的回退开关：所有时间推进都走 advanceXun()。
+     ============================================================ */
+  const XUN_PER_MONTH = 3;
+  const XUN_NAME = ['上旬', '中旬', '下旬'];
   function season() { const m = S.month; return m >= 3 && m <= 5 ? '春' : m <= 8 ? '夏' : m <= 11 ? '秋' : '冬'; }
   function timeLine() {
     const y = Math.floor(S.turn / 12);
-    return y === 0 ? `天玄历 ${S.year} 年 · ${MN[S.month]}月` : `入道第 ${y} 年 · ${MN[S.month]}月`;
+    const xn = XUN_NAME[S.xun || 0] || '';
+    return (y === 0 ? `天玄历 ${S.year} 年 · ${MN[S.month]}月` : `入道第 ${y} 年 · ${MN[S.month]}月`) + ' ' + xn;
   }
+
+  /* 修为入账：带小数累积器，保证「每旬给月修为/3」三次之后与「给整月修为」一致。
+     直接 Math.round(v/3) 会每旬丢掉零点几，三个月能差出三四点，
+     全打坐路径的时长就会与改前对不上。 */
+  function gainXiuwei(v) {
+    if (!(v > 0)) return 0;
+    S.xiuAcc = (S.xiuAcc || 0) + v;
+    const whole = Math.floor(S.xiuAcc);
+    if (whole <= 0) return 0;
+    S.xiuAcc -= whole;
+    const need = xrealm().need;
+    const before = S.xiuwei;
+    S.xiuwei = need ? Math.min(need, S.xiuwei + whole) : S.xiuwei + whole;
+    return S.xiuwei - before;
+  }
+
+  /* 推进 n 旬。这是全项目唯一的时间入口。
+     ------------------------------------------------------------
+     跨旬不结算世界，跨月才走 advanceMonth()——寿元、家族、NPC、行情、
+     维护这些本来就是「按月」的事，不该被拆成三次。
+     动作的时间成本一律 1 旬，写法统一为 advanceXun(1)。 */
+  function advanceXun(n) {
+    n = n || 1;
+    for (let i = 0; i < n; i++) {
+      S.xun = (S.xun || 0) + 1;
+      if (S.xun >= XUN_PER_MONTH) {
+        S.xun = 0;
+        advanceMonth(1);
+        if (S.phase !== 'play') return;
+      }
+    }
+  }
+
+  /* 本旬还能做几次事（界面显示用） */
+  function xunLeft() { return Math.max(1, XUN_PER_MONTH - (S.xun || 0)); }
 
   function advanceMonth(n) {
     n = n || 1;
@@ -316,21 +374,19 @@
       S.votMade = 0; S.votSold = 0;   // 愿物按月重置制作/售出次数
       S.xiangExchangeMonth = 0;      // 香火钱箱按月清空额度
 
-      // —— 仙道结算
+      /* —— 仙道：修为不再由时间自动产出。
+         旧版这里直接 S.xiuwei += monthXiuwei()，等于「你躺着也涨」，
+         于是「打坐」按钮没有任何独立价值，它只是主动跳过一个月。
+         现在修为只由打坐产出（ACT.cultivate 每旬给月修为/3，闭关按月给）。
+         lastGain 仍按满月速率记，界面用它显示「若全月打坐能得多少」。 */
       if (isXian() || S.cultivation === 'both') {
-        const g = monthXiuwei();
-        S.xiuwei += g;
-        S.lastGain = Math.round(g * 10) / 10;
-        const need = xrealm().need;
-        if (need && S.xiuwei > need) S.xiuwei = need;
+        S.lastGain = Math.round(monthXiuwei() * 10) / 10;
       }
 
-      // —— 神道结算
+      /* —— 神道：香火不再由时间自动产出（与修为同理），
+         改由「坐庙温养」按旬给出。这里只留信众生灭——
+         生老病死是世界的节律，本来就该按月。 */
       if (isShen() || S.cultivation === 'both') {
-        const m = monthXianghuo();
-        const gain = Math.min(m.capped, Math.max(0, maxXianghuo() - S.xianghuo));
-        S.xianghuo += gain;
-        S.xianghuoQian = (S.xianghuoQian || 0) + gain;   // 累计香火（用于统计与成就）
         if (S.followers > 0) {
           // P1-10：按设定的「净」流失率结算（生灭已折进这个数）
           let loss = S.trustee ? 0.003 : (S.meditate ? 0.02 : 0.01);
@@ -1108,19 +1164,47 @@
     return isBoth() ? (xianReady || shenReady) : (isShen() ? shenReady : xianReady);
   }
 
+  /* 本月旬数条：已过的旬划掉，当前旬高亮，右侧写余几旬。
+     预算必须一直看得见，否则玩家不会为它做取舍。 */
+  function renderXunBar() {
+    const used = S.xun || 0;
+    let b = '<div class="xunbar">';
+    for (let i = 0; i < XUN_PER_MONTH; i++) {
+      const cls = i < used ? ' used' : (i === used ? ' now' : '');
+      b += '<span class="xun' + cls + '">' + XUN_NAME[i] + '</span>';
+    }
+    const left = Math.max(0, XUN_PER_MONTH - used);
+    b += '<span class="xunleft">本月余 ' + left + ' 旬</span></div>';
+    return b;
+  }
+
   function renderMainCol() {
     let b = '';
     b += renderRealmBar();
     b += renderVitals();
     b += renderGoalCard();
     b += '<div class="scene">' + esc(scene()) + '</div>';
+    b += renderXunBar();
 
     const o = [];
-    const gain = (isXian() || S.cultivation === 'both') ? Math.round(monthXiuwei()) : Math.round(monthXianghuo().capped);
+    /* 一旬的量：打坐一次只给月修为的三分之一。
+       界面上必须写「一旬」，否则玩家会以为还是「一月」，
+       点了三次发现只涨了一月的量，会以为出了 bug。 */
+    const gain = (isXian() || S.cultivation === 'both')
+      ? Math.round(monthXiuwei() / XUN_PER_MONTH)
+      : Math.round(monthXianghuo().capped / XUN_PER_MONTH);
     const unit = isShen() ? '香火' : '修为';
 
+    /* 修为已满时打坐是白扔一旬——这一旬本可以拿去做事。
+       把它写在按钮上，免得玩家在满修时还习惯性点 A。 */
+    const xFullNow = (isXian() || S.cultivation === 'both')
+      && !!xrealm().need && S.xiuwei >= xrealm().need;
+    const sFullNow = isShen() && S.xianghuo >= maxXianghuo();
+    const fullNow = xFullNow || sFullNow;
     o.push(optRow('A', (isShen() ? '坐庙温养' : '打坐采气'),
-      { name: '平和', cls: 'peace' }, '+' + gain + ' ' + unit, false, 'act:cultivate'));
+      { name: '平和', cls: 'peace' },
+      fullNow ? '已满 · 白坐一旬' : ('+' + gain + ' ' + unit + '（一旬）'),
+      false, 'act:cultivate'));
 
     const full = breakReady();
     // 神道未受箓：破柱之后本该受箓，漏领则永远进不了洞天
@@ -1562,22 +1646,36 @@
   ACT.screen = () => { closeModal(); render(); };
 
   /* 修炼 */
+  /* 香火入账：与修为同理，一旬给月额的 1/3，累计值也要跟着涨 */
+  function gainXianghuo(v) {
+    if (!(v > 0)) return 0;
+    const cap = maxXianghuo();
+    const before = S.xianghuo;
+    S.xianghuo = Math.min(cap, S.xianghuo + v);
+    const d = S.xianghuo - before;
+    if (d > 0) S.xianghuoQian = (S.xianghuoQian || 0) + d;
+    return d;
+  }
+
   ACT.cultivate = () => {
     if (S.phase !== 'play') return;
     S.meditate = false;
-    const bx = S.xiuwei, bh = S.xianghuo;
-    advanceMonth(1);
+    /* 打坐一旬——全项目唯一主动产出修为的动作。
+       一旬给月修为的 1/3，三旬合起来正好一个月，所以「全月打坐」
+       与改前的节奏完全一致；但每做别的事，就少了三分之一个月的修为。 */
+    let dx = 0, dh = 0;
+    if (isXian() || S.cultivation === 'both') dx = gainXiuwei(monthXiuwei() / XUN_PER_MONTH);
+    if (isShen() || S.cultivation === 'both') dh = gainXianghuo(monthXianghuo().capped / XUN_PER_MONTH);
+    advanceXun(1);
     if (S.phase !== 'play') return render();
-    const dx = Math.round(S.xiuwei - bx);
-    const dh = Math.round(S.xianghuo - bh);
     // 两套账：仙道打坐只出修为，香火一分也不该涨；神道坐庙只动香火
     if (isShen()) {
-      if (dh > 0) logLine(`坐庙温养一月，香火 +${dh}`, 'good');
-      else logLine('香火已满，这一月白坐。', '');
+      if (dh > 0) logLine(`坐庙温养一旬，香火 +${dh}`, 'good');
+      else logLine('香火已满，这一旬白坐。', '');
     } else if (isBoth() && dh > 0) {
-      logLine(`打坐一月，修为 +${dx}，香火 +${dh}`, 'good');
+      logLine(`打坐一旬，修为 +${dx}，香火 +${dh}`, 'good');
     } else if (dx > 0) {
-      logLine(`打坐采气一月，修为 +${dx}`, 'good');
+      logLine(`打坐采气一旬，修为 +${dx}`, 'good');
     } else {
       logLine('本境修为已满，再坐也只是白坐——该破境了。', '');
     }
@@ -1592,7 +1690,7 @@
     if (S.stones < cost) { toast('灵石不足（需 30）'); return; }
     S.stones -= cost;
     ledgerAdd('out', '庙会施粥', cost);
-    advanceMonth(1);
+    advanceXun(1);
     if (S.phase !== 'play') return render();
     /* 收益随柱位放大：柱越高，一场庙会能招来的人越多 */
     const add = Math.round((30 + rnd(170)) * followerScale());
@@ -1634,8 +1732,12 @@
     const goal = () => (shen ? pillar().need : xrealm().need);
     let total = 0, stopped = '';
     const months = y * 12;
+    S.xun = 0;              // 闭关是整月的事，本月余下的旬一并吞掉
     for (let i = 0; i < months; i++) {
       const before = cur();
+      /* 闭关按月给足额：monthXiuwei / monthXianghuo 里已有 meditate 加成 */
+      if (isXian() || S.cultivation === 'both') gainXiuwei(monthXiuwei());
+      if (isShen() || S.cultivation === 'both') gainXianghuo(monthXianghuo().capped);
       advanceMonth(1);
       if (S.phase !== 'play') return render();
       total += cur() - before;
@@ -2048,7 +2150,7 @@
       };
       toast('破境失败');
     }
-    advanceMonth(1);
+    advanceXun(1);
     // 破境的诗必须压在最后弹：advanceMonth 可能开奇遇，先弹会被顶掉
     if (S.breakPop && !modalBusy()) {
       const p = S.breakPop; S.breakPop = null;
@@ -2161,7 +2263,7 @@
       S.karma += 3;
       logLine(`抢「${g.n}」没抢到。丹在气海里碎了一次，修为散尽，气血去了三成。`, 'danger');
       toast('证位未成');
-      closeModal(); advanceMonth(1); if (S.phase === 'play') render();
+      closeModal(); advanceXun(1); if (S.phase === 'play') render();
       return;
     }
     S.guowei = g;
@@ -2176,7 +2278,7 @@
     })) bump('aloneCert');
     logLine(`结丹得果位：${g.n}（${g.rank}）。以己心代天心。`, 'good');
     toast('金丹 · ' + g.n);
-    closeModal(); advanceMonth(1); render();
+    closeModal(); advanceXun(1); render();
   };
 
   /* 道胎：需三个剧情条件 */
@@ -2200,7 +2302,7 @@
     S.unlockStage = Math.max(S.unlockStage, 6);
     logLine('化道胎。寿元栏空了，取而代之的是锚。', 'good');
     toast('道胎 · 无寿元，只有锚');
-    closeModal(); advanceMonth(1); render();
+    closeModal(); advanceXun(1); render();
   };
 
   /* ---------- 神道破柱 ---------- */
@@ -2231,7 +2333,7 @@
       S.xianghuo = Math.round(S.xianghuo * 0.75);
       logLine('升位失败，香火跌 25%，塑像裂了一道缝。', 'danger');
     }
-    advanceMonth(1); maybeEvent(); render();
+    advanceXun(1); maybeEvent(); render();
   };
 
   function pillarRate(mode) {
@@ -2310,7 +2412,7 @@
       S.sui = true; S.karma += 20;
       logLine('破柱失败：你堕落为「祟」。', 'danger');
     }
-    advanceMonth(1); maybeEvent(); render();
+    advanceXun(1); maybeEvent(); render();
   };
 
   function openQuanbingPick() {
@@ -2327,7 +2429,7 @@
   ACT.do_qb = (enc) => {
     S.benmingQuanbing.push(decodeURIComponent(enc));
     logLine(`得本命权柄：${decodeURIComponent(enc)}`, 'good');
-    closeModal(); advanceMonth(1); render();
+    closeModal(); advanceXun(1); render();
   };
 
   function currentQuanbing() {
@@ -2363,7 +2465,7 @@
     if (S.xianghuo < cost) { toast('香火不足'); return; }
     S.xianghuo -= cost;
     if (free) { S.preBuff.freeXiansheng = false; logLine('祈雨符箓化作青烟，此次显圣不耗香火。', 'good'); }
-    advanceMonth(1);
+    advanceXun(1);
     if (S.phase !== 'play') return render();
     let base = { small: 0.75, mid: 0.6, big: 0.42 }[lv] + st('fate') * 0.015;
     if (S.benmingQuanbing.length) base += 0.05;
@@ -2557,7 +2659,7 @@
 
   ACT.do_ritualDo = () => {
     closeModal();
-    advanceMonth(1);
+    advanceXun(1);
     if (S.phase !== 'play') return render();
     // 有概率被打断
     if (Math.random() < 0.12) {
@@ -2670,7 +2772,7 @@
     S.cave.facilities[art] = 1;
     ledgerAdd('out', '兴建' + artName(art) + '作坊', 800);
     logLine('洞府里多了一间' + artName(art) + '作坊。', 'good');
-    closeModal(); render();
+    closeModal(); advanceXun(1); if (S.phase !== 'play') return render(); render();
   };
 
   ACT.do_upqi = () => {
@@ -2682,7 +2784,7 @@
     S.lingqiUp = up + 1;
     syncLingqi();
     logLine(`灵脉升至${D.LINGQI[S.lingqi].name}。`, 'good');
-    closeModal(); render();
+    closeModal(); advanceXun(1); if (S.phase !== 'play') return render(); render();
   };
 
   /* ---------- 庙宇（神道） ---------- */
@@ -3080,7 +3182,7 @@
 
   ACT.do_xing = (where) => {
     closeModal();
-    advanceMonth(1);
+    advanceXun(1);
     if (S.phase !== 'play') return render();
     if (where === 'wild') {
       const r = rnd100();
@@ -3174,7 +3276,7 @@
   ACT.do_secttask = (i) => {
     const t = D.SECT.tasks[clamp(parseInt(i, 10) || 0, 0, D.SECT.tasks.length - 1)];
     closeModal();
-    advanceMonth(1);
+    advanceXun(1);
     if (S.phase !== 'play') return render();
     const gain = t.contrib + Math.floor(st('insight') * 1.5);
     S.sect.contrib += gain;
@@ -3290,7 +3392,7 @@
     S.sect.contrib -= price;
     addGongfa(id);
     logLine('以 ' + price + ' 贡献从藏经阁换得《' + g.name + '》。', 'good');
-    closeModal(); render();
+    closeModal(); advanceXun(1); if (S.phase !== 'play') return render(); render();
   };
 
   ACT.do_libskill = (id) => {
@@ -3304,7 +3406,7 @@
     learnSkill(id);
     logLine('从藏经阁学得神通「' + sk.name + '」。', 'good');
     toast('神通 · ' + sk.name);
-    closeModal(); render();
+    closeModal(); advanceXun(1); if (S.phase !== 'play') return render(); render();
   };
 
   ACT.do_sectup = () => {
@@ -3327,7 +3429,7 @@
     if (S.sect.rank >= 2 && S.sect.peak == null) S.sect.peak = Math.floor(Math.random() * D.SECT.peaks.length);
     logLine('晋升' + next.name + '。' + next.desc + '。', 'good');
     toast(next.name);
-    closeModal(); render();
+    closeModal(); advanceXun(1); if (S.phase !== 'play') return render(); render();
   };
 
   ACT.do_sectquit = () => {
@@ -3428,7 +3530,7 @@
     S.clan.lv++;
     S.clan.luck = Math.min(clanLv().luck, S.clan.luck + 100);
     logLine('祠堂扩为' + nx.name + '，可授 ' + D.GONGFA_TIERS[nx.gongfa].name + '功法。', 'good');
-    closeModal(); render();
+    closeModal(); advanceXun(1); if (S.phase !== 'play') return render(); render();
   };
 
   ACT.do_clanabsorb = () => {
@@ -3438,7 +3540,7 @@
     S.clan.pop = Math.min(clanLv().pop, S.clan.pop + add);
     S.merit += 10;
     logLine('叶氏诸族老上门，愿意恢复祖姓。族人 +' + add + '。', 'good');
-    closeModal(); render();
+    closeModal(); advanceXun(1); if (S.phase !== 'play') return render(); render();
   };
 
   ACT.do_clanluck = (kind) => {
@@ -3649,7 +3751,7 @@
     const fit = unknown.filter(function (n) { return (n.realm || 0) <= S.xRealm + 2; });
     const n = pick(fit.length ? fit : unknown);
     closeModal();
-    advanceMonth(1);
+    advanceXun(1);
     if (S.phase !== 'play') return render();
     // 初见是这场相遇的正戏：先推进世界，最后再把他那两句话摆出来，
     // 否则 maybeEvent 弹出的事件窗会把它盖掉。
@@ -3696,7 +3798,7 @@
     if (!n || !n.ask) return;
     const o = n.ask.opts[parseInt(i, 10) || 0];
     if (!o) return;
-    advanceMonth(1);
+    advanceXun(1);
     if (S.phase !== 'play') { closeModal(); return render(); }
     const rec = S.npcs[id] || (S.npcs[id] = { fav: 0, met: true });
     let d = o.fav || 3;
@@ -3726,7 +3828,7 @@
   ACT.do_ia = (id, kind) => {
     closeModal();
     const n = D.NPC_POOL.find(x => x.id === id);
-    advanceMonth(1);
+    advanceXun(1);
     if (S.phase !== 'play') return render();
     let d = 0;
     if (kind === 'talk') d = 2 + rnd(4);
@@ -3963,7 +4065,7 @@
       }
       r.funeral = true;
     }
-    advanceMonth(1);
+    advanceXun(1);
     if (S.phase !== 'play') return render();
     render();
   };
@@ -4099,7 +4201,7 @@
     if (!txt) { toast('写下你想做的事'); return; }
     closeModal();
     const it = matchIntent(txt);
-    advanceMonth(1);
+    advanceXun(1);
     if (S.phase !== 'play') return render();
 
     if (!it) {
@@ -4220,6 +4322,11 @@
     out.pendingVengeance = false;
     out.hdRate = 0;
     out.prep = null;   // 破境准备是临场的，读档重置
+    /* v8.0 行动预算：旧档没有旬与累积器，补默认值。
+       旧档的 xiuwei 是按「月」攒的，直接接上即可——旬是新的时间刻度，
+       不需要把旧进度折算。 */
+    out.xun = (typeof st.xun === 'number' && st.xun >= 0 && st.xun < XUN_PER_MONTH) ? st.xun : 0;
+    out.xiuAcc = typeof st.xiuAcc === 'number' ? st.xiuAcc : 0;
     /* 临终状态要留：不然在读档时把「还有一口气」吞掉，等于白送一条命 */
     out.dying = st.dying || null;
     if (out.phase === 'dying' && !out.dying) out.phase = 'over';
@@ -4638,7 +4745,7 @@
     if (x.name === '明霜松岭') S.stats.sense = clamp(S.stats.sense + 3, 1, 20);
     logLine('受箓：' + x.rank + '箓·' + x.name + '。', 'good');
     toast('受箓 · ' + x.name);
-    closeModal(); advanceMonth(1); render();
+    closeModal(); advanceXun(1); render();
     if (S.pendingQuanbing) {
       S.pendingQuanbing = false;
       openQuanbingPick();
@@ -4705,7 +4812,7 @@
     const ok = checkDaoyin();
     logLine('得' + (kind === 'gan' ? '干' : '支') + '印：' + nm + (ok ? '　四印成对。' : ''), ok ? 'good' : '');
     if (S.daoyin.length >= 4 && !ok) logLine('四印未配成对——证位时 −15。', 'danger');
-    closeModal(); advanceMonth(1); render();
+    closeModal(); advanceXun(1); render();
   };
 
   /* ---------- P0-3 神通授予 ---------- */
@@ -4798,7 +4905,7 @@
     const sp0 = shenTongSpec(nm);
     logLine('得神通：' + stShort(nm) + '（' + sp0.kindName + '）—— 战力上升，交手时「术」里可用。', 'good');
     toast('神通 · ' + stShort(nm) + ' · ' + sp0.kindName);
-    closeModal(); advanceMonth(1); render();
+    closeModal(); advanceXun(1); render();
     // 必须放在 closeModal 之后：先弹会被它自己关掉
     if (!modalBusy()) {
       openGain('得一道神通', [
@@ -5061,7 +5168,7 @@
         logLine('渡过' + gate + '，三关俱过。紫府散尽，气海里那点东西凝成了 —— 晋入 ' + nr4.name + '。', 'good');
         if ((S.daoyin || []).length < 4) tryOpenYin();
         toast('金丹 · ' + nr4.name);
-        advanceMonth(1);
+        advanceXun(1);
         maybeTransmitNow();
         render();
         return;
@@ -5069,7 +5176,7 @@
       S.xStage++;
       logLine('渡过' + gate + '，紫府又开一重。晋 ' + realmName() + '。', 'good');
       if (S.shenTong.length < shenTongLimit()) openShentongPick();
-      else { toast('紫府 · ' + realmName()); advanceMonth(1); render(); }
+      else { toast('紫府 · ' + realmName()); advanceXun(1); render(); }
     } else {
       if (gate === '幻想关') {
         S.xiuwei = 0;
@@ -5084,7 +5191,7 @@
         logLine(gate + '未渡，修为跌半。', 'danger');
         toast(gate + ' · 未渡');
       }
-      advanceMonth(1); render();
+      advanceXun(1); render();
     }
   };
 
@@ -5154,7 +5261,7 @@
     // 还能靠迁到高灵气处白得高灵气。
     syncLingqi();
     logLine('迁往 ' + p.name + '。此地灵气 ' + D.LINGQI[p.lingqi].name + '，危险度 ' + p.danger + '。', '');
-    closeModal(); advanceMonth(1); render();
+    closeModal(); advanceXun(1); render();
   };
 
   /* ---------- P3-25 键盘快捷键 ---------- */
@@ -5237,9 +5344,14 @@
   ACT.do_rest = (n) => {
     n = parseInt(n, 10) || 1;
     closeModal();
+    S.xun = 0;              // 静养按整月算，余下的旬一并吞掉
     for (let i = 0; i < n; i++) {
       if (S.phase !== 'play') break;
       S.meditate = true;
+      /* 静养也是修行：按月给足额，否则「打坐疗伤」就只剩回血，
+         与面板上「把时间换成气血与修为」那句话对不上。 */
+      if (isXian() || S.cultivation === 'both') gainXiuwei(monthXiuwei());
+      if (isShen() || S.cultivation === 'both') gainXianghuo(monthXianghuo().capped);
       advanceMonth(1);
     }
     S.meditate = false;
@@ -5460,7 +5572,7 @@
         else { S.hp = Math.max(1, S.hp - Math.round(S.hpMax * 0.2)); S.stats.insight = Math.max(1, S.stats.insight - 1); msg = '强行解碑，气机逆冲，气血二成、悟性 −1。'; cls = 'danger'; }
         break;
       case 'tx_di:sit':
-        advanceMonth(3);
+        advanceXun(1);
         if (S.phase !== 'play') { render(); return; }
         if (R <= chance + 25) { const g = grantTopGongfa('di'); msg = g ? ('静坐三日，碑文自通——「' + g.name + '」。') : '静坐三日，一无所获。'; cls = g ? 'good' : ''; }
         else { msg = '坐了三天，只坐麻了腿。'; }
@@ -5541,7 +5653,7 @@
     }
 
     if (msg) logLine(msg, cls);
-    if (S.phase === 'play') { advanceMonth(1); }
+    if (S.phase === 'play') { advanceXun(1); }
     render();
   };
 
@@ -5917,7 +6029,7 @@
 
     if (msg) logLine(msg, cls);
     afterCombatCheck();
-    if (S.phase === 'play') { advanceMonth(1); render(); }
+    if (S.phase === 'play') { advanceXun(1); render(); }
     else render();
   };
 
@@ -5968,7 +6080,7 @@
       S.fame = Math.max(0, S.fame - 8);
       logLine('你没开门。他在门外站到天黑，才走。', '');
     }
-    advanceMonth(1);
+    advanceXun(1);
     if (S.phase !== 'play') return render();
     render();
   };
@@ -6419,7 +6531,7 @@
       }
       S.combat = null; S.phase = 'play';
       logLine(combatLine('foeFlee') + '　' + c.foe.name + '遁走了。', '');
-      advanceMonth(1); render(); return false;
+      advanceXun(1); render(); return false;
     }
     dmg = Math.round(dmg);
     S.hp = Math.max(0, S.hp - dmg);
@@ -6435,7 +6547,7 @@
       S.followers = Math.round(S.followers * 0.6);
       logLine('重伤昏迷。醒来时财物尽失。', 'danger');
       toast('重伤 · 财物被劫');
-      advanceMonth(1);   // 时间要往前走（内部可能再次 die，交给调用方 render 兜底）
+      advanceXun(1);   // 时间要往前走（内部可能再次 die，交给调用方 render 兜底）
       return false;
     }
     if (c.foeMark > 0) c.foeMark--;
@@ -6562,7 +6674,7 @@
       } else if (t.kind === 'escape') {
         S.combat = null; S.phase = 'play';
         logLine('贴上「' + t.name + '」，身形一晃便不见了。', 'good');
-        advanceMonth(1); render(); return;
+        advanceXun(1); render(); return;
       } else if (t.kind === 'buff') {
         c.talBuff = (c.talBuff || 0) + (t.v || 0.3);
         note = '贴「' + t.name + '」，杀气涨了三成';
@@ -6573,18 +6685,18 @@
         S.combat = null; S.phase = 'play';
         logLine('你说了几句，对方退了半步，转身走了。', 'good');
         S.fame += 3;
-        advanceMonth(1); render(); return;
+        advanceXun(1); render(); return;
       }
       note = '他不信你';
     } else if (sub === 'defend') { c.defending = true; note = combatLine('guard') + '（守势）'; }
     else if (sub === 'flee') {
       if (S.preBuff && S.preBuff.escape) { S.preBuff.escape = false; 
-        S.combat = null; S.phase = 'play'; logLine('破宝锥开路，你从容遁走。', 'good'); advanceMonth(1); render(); return; }
+        S.combat = null; S.phase = 'play'; logLine('破宝锥开路，你从容遁走。', 'good'); advanceXun(1); render(); return; }
       if (Math.random() < clamp(0.4 + st('speed') * 0.035 + artBonus('move') - gap * 0.18 - diff * 0.02, 0.05, 0.95)) {
         if (combatTierNow(c) === '绝境') bump('escapeDesperate');
         S.combat = null; S.phase = 'play';
         logLine('你遁走成功。', '');
-        advanceMonth(1); render(); return;
+        advanceXun(1); render(); return;
       }
       note = '走不脱';
     } else if (sub === 'observe') { c.observed = true; note = combatLine('observe') + '（看破了破绽）'; }
@@ -6599,7 +6711,7 @@
       if (Math.random() < clamp(0.2 + st('fate') * 0.02 - gap * 0.1 - diff * 0.01, 0.05, 0.6)) {
         S.combat = null; S.phase = 'play';
         logLine(`言语周旋，${c.foe.name}收了杀意。`, 'good');
-        advanceMonth(1); render(); return;
+        advanceXun(1); render(); return;
       }
       note = '不为所动';
     }
@@ -6638,7 +6750,7 @@
           logLine('生死之间有一线明悟，修为 +' + Math.round(g2) + '。', 'good');
         }
       }
-      advanceMonth(1); render(); return;
+      advanceXun(1); render(); return;
     }
     // 修卡死：foeTurn 返回 false 的两条出口（战死/昏迷）也必须刷新界面
     if (!foeTurn()) { render(); return; }
@@ -6647,6 +6759,7 @@
 
   /* ---------- 随机事件 ---------- */
   function maybeEvent() {
+    if (S.phase !== 'play') return;   // 已经死了或进了别处，别再往上面叠事
     if (S.holdEvent) return;   // 破境的诗还没看完，先别插别的事
     /* 仇家堵在门口时先处理这件事——别让一件奇遇把它顶掉，
        那样「死仇」就成了一句永远等不到下文的日志。 */
@@ -7515,7 +7628,7 @@
     const sp = GATHER_SPOTS.find(function (x) { return x.id === spot; });
     if (!sp) return;
     closeModal();
-    advanceMonth(1);
+    advanceXun(1);
     if (S.phase !== 'play') return render();
     const pool = gatherPoolOf(sp);
     if (!pool.length) { toast('此境采不到东西'); return render(); }
@@ -7603,6 +7716,10 @@
       return;
     }
     S.bookRead[id] = rc + 1;
+    /* 读一层道书占一旬。旧版读书不花时间，于是一本道书可以在同一个月里
+       从头读到尾——「参悟」这件事就没有重量了。 */
+    advanceXun(1);
+    if (S.phase !== 'play') { render(); return; }
     // 应用收益
     const gain = layer.gain || '';
     const heartGain = gain.match(/道心\s*\+\s*(\d+)/);
@@ -7808,7 +7925,7 @@
       else if (q.id === 'shang') bump('qShang');
       else if (q.id === 'ji') bump('qJi');
     }
-    advanceMonth(1);
+    advanceXun(1);
     if (S.phase !== 'play') return render();
     maybeEvent();
     render();
@@ -8101,7 +8218,7 @@
     if (total) b += `<div class="small" style="margin-top:6px">合计入账 <b style="color:var(--stone)">${fmtNum(total)}</b> 灵石。</div>`;
     b += divider() + `<div class="small">下一场：${aucNextYear()} 年仲夏。</div>`;
     logLine('拍卖会散场，寄售所得 ' + total + ' 灵石。', total ? 'good' : '');
-    advanceMonth(1);
+    advanceXun(1);
     if (S.phase !== 'play') return render();
     openModal('拍卖会 · 落槌', b);
     render();
@@ -9027,8 +9144,11 @@
   }
 
 
-  /* 导出给自动化测试用：dispatch / render / ACT，正式运行时只依赖 boot */
-  G.WXCS3 = { boot, dispatch, render, ACT, get S() { return S; }, get D() { return D; } };
+  /* 导出给自动化测试用：dispatch / render / ACT，正式运行时只依赖 boot。
+     advanceXun 也导出——测试要精确控制「过了几旬」，用动作间接推进
+     会把修为、事件一起带上，断言就不干净了。 */
+  G.WXCS3 = { boot, dispatch, render, ACT, advanceXun, advanceMonth,
+    get S() { return S; }, get D() { return D; } };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

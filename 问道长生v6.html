@@ -386,6 +386,16 @@
 
   .scene{font-size:14px;color:#5C5548;line-height:1.75;margin-bottom:2px}
 
+  /* ============ 行动预算：本月旬数 ============
+     一月三旬，每旬一次行动。这条带子让「还剩几次」一直看得见——
+     看不见预算的预算，等于没有预算。 */
+  .xunbar{display:flex;align-items:center;gap:6px;margin:9px 0 10px;font-size:12px}
+  .xunbar .xun{padding:2px 9px;border:1px solid var(--edge);border-radius:10px;
+    color:var(--muted);background:var(--paper);letter-spacing:.5px}
+  .xunbar .xun.used{opacity:.35}
+  .xunbar .xun.now{border-color:var(--jade);color:var(--jade);background:#EEF5F2;font-weight:600}
+  .xunbar .xunleft{margin-left:auto;color:var(--muted);font-size:11.5px}
+
   /* ============ O3 境界条（中栏第一视觉层级） ============ */
   .realmbar{padding:0 0 10px;border-bottom:1px solid var(--edge);margin-bottom:12px}
   .realmbar .rb-top{display:flex;align-items:baseline;gap:10px}
