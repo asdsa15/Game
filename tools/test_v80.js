@@ -52,7 +52,8 @@ vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'wxcs3-data.js'), 'utf8'), ctx);
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'wxcs3-game.js'), 'utf8'), ctx);
 const G = window.WXCS3;
-const S = G.S;
+/* 读档会把模块内的 S 换成新对象，所以这里不能一次性捕获引用 */
+let S = G.S;
 const D = G.D;
 
 let pass = 0, fail = 0;
@@ -66,6 +67,7 @@ function restoreRandom() { Math.random = realRandom; }
 
 function setup(cult, opts) {
   opts = opts || {};
+  S = G.S;   // 重新绑定：读档后模块内的 S 已是另一个对象
   S.phase = 'play'; S.started = true; S.age = 16; S.lifeMax = 200;
   S.cultivation = cult || 'shen';
   S.xRealm = 0; S.xStage = 0; S.xiuwei = 0;
@@ -83,6 +85,7 @@ function setup(cult, opts) {
   S.equipped = {}; S.anchors = { wu: 1, ren: 1, shi: 1, yi: 1 };
   S.anchorMiss = { wu: 0, ren: 0, shi: 0, yi: 0 };
   S.stats = { qualify: 8, insight: 8, sense: 8, speed: 8, heart: 8, fate: 8 };
+  S.npcs = {}; S.npcCall = null; S.dying = null; S.dyingUsed = false; S.legacyPact = null;
   S.flags = {};
 }
 
@@ -256,6 +259,115 @@ ok(migrated, '缺 v8.0 字段的旧档能正常读入并渲染');
 ok(S.dArt && typeof S.dArt.staff === 'number', '读档后 dArt 已补齐', JSON.stringify(S.dArt));
 ok(Array.isArray(S.aucSell), '读档后 aucSell 已补齐');
 ok(S.votive && typeof S.votive === 'object', '读档后 votive 已补齐');
+
+/* ==================== 7. NPC 主动事件 ==================== */
+console.log('=== 7. NPC 主动事件 ===');
+const NPC0 = D.NPC_POOL[0];
+
+setup('shen', { stones: 2000 });
+S.npcs = {}; S.npcs[NPC0.id] = { fav: 50, met: true, alive: true, since: 0 };
+S.bag = { heal: 1 };
+
+S.npcCall = { id: NPC0.id, kind: 'hurt' };
+G.ACT.openNpcCall();
+G.ACT.do_npc('heal');
+ok(S.npcs[NPC0.id].fav === 64, '重伤施救 → 好感 +14', S.npcs[NPC0.id].fav);
+ok(S.merit >= 12, '重伤施救 → 功德 +12', S.merit);
+ok(!S.bag.heal || S.bag.heal === 0, '用掉一枚疗伤药', S.bag.heal);
+ok(S.npcCall === null, '处理后事件已清空', S.npcCall);
+
+S.npcCall = { id: NPC0.id, kind: 'hurt' };
+G.ACT.do_npc('leave');
+ok(S.npcs[NPC0.id].fav === 52, '见死不救 → 好感 −12', S.npcs[NPC0.id].fav);
+ok(S.karma === 6, '见死不救 → 业力 +6', S.karma);
+ok(S.npcs[NPC0.id].injured === true, '伤被拖下去 → 标记 injured', S.npcs[NPC0.id].injured);
+
+S.npcCall = { id: NPC0.id, kind: 'break' };
+G.ACT.do_npc('guard');
+ok(S.npcs[NPC0.id].fav >= 70, '护法 → 好感 +18', S.npcs[NPC0.id].fav);
+
+S.npcCall = { id: NPC0.id, kind: 'clash' };
+const st5 = S.stones;
+G.ACT.do_npc('resolve');
+ok(S.stones === st5 - 500, '禳解花 500 灵石', st5 - S.stones);
+
+S.npcCall = { id: NPC0.id, kind: 'marry' };
+S.npcs[NPC0.id].fav = 70;
+G.ACT.do_npc('marry');
+ok(S.npcs[NPC0.id].mate === true, '应下婚约 → 结为道侣', S.npcs[NPC0.id].mate);
+ok(S.npcs[NPC0.id].fav === 120, '道侣好感封顶 120', S.npcs[NPC0.id].fav);
+
+S.npcs[NPC0.id].alive = false;
+S.npcCall = { id: NPC0.id, kind: 'funeral' };
+const m0 = S.merit;
+G.ACT.do_npc('mourn');
+ok(S.merit === m0 + 30, '送葬 → 功德 +30', S.merit - m0);
+ok((S.tally || {}).npcFuneral >= 1, '记入功过格 npcFuneral（ren_song 可达）', (S.tally || {}).npcFuneral);
+
+// 触发：随机数压零 → 必定发生一次主动来访
+setup('shen', { stones: 2000 });
+S.npcs = {}; S.npcs[NPC0.id] = { fav: 80, met: true, alive: true, since: 0, lastCall: -99 };
+S.turn = 20; S.month = 12;
+fixRandom(0);
+G.ACT.cultivate();
+restoreRandom();
+ok(!!S.npcCall, '好感高的 NPC 会主动上门', JSON.stringify(S.npcCall));
+ok(S.npcCall && S.npcCall.kind === 'marry', '好感 ≥60 且无道侣时优先婚约', S.npcCall && S.npcCall.kind);
+
+// 伤重不治 → 葬礼
+setup('shen', { stones: 2000 });
+S.npcs = {}; S.npcs[NPC0.id] = { fav: 80, met: true, alive: true, since: 0, injured: true, lastCall: 99 };
+S.turn = 100; S.month = 12;
+fixRandom(0);
+G.ACT.cultivate();
+restoreRandom();
+ok(S.npcs[NPC0.id].alive === false, '伤重不治会死', S.npcs[NPC0.id].alive);
+ok(S.npcCall && S.npcCall.kind === 'funeral', '死亡转为丧讯', S.npcCall && S.npcCall.kind);
+
+/* ==================== 8. 临终三选 ==================== */
+console.log('=== 8. 临终 ===');
+setup('xian', { stones: 500 });
+S.age = 120; S.lifeMax = 120; S.month = 12; S.turn = 100;
+G.ACT.cultivate();
+ok(S.phase === 'dying', '寿元耗尽先进临终，不直接结束', S.phase);
+ok(S.dying && /寿元/.test(S.dying.reason), '临终原因已记录', S.dying && S.dying.reason);
+G.ACT.do_die('close');
+ok(S.phase === 'over', '闭眼 → 正常结局', S.phase);
+
+// 最后一搏成功：随机压零必过
+setup('xian', { stones: 500 });
+S.phase = 'dying'; S.dying = { reason: '气血耗尽。' }; S.dyingUsed = true;
+S.hp = 0; S.lifeMax = 120;
+fixRandom(0);
+G.ACT.do_die('stand');
+restoreRandom();
+ok(S.phase === 'play', '最后一搏成功 → 回到游戏', S.phase);
+ok(S.hp === 1, '只剩一线气血', S.hp);
+ok(S.lifeMax === 110, '寿元上限 −10', S.lifeMax);
+
+// 最后一搏失败
+setup('xian', { stones: 500 });
+S.phase = 'dying'; S.dying = { reason: '气血耗尽。' }; S.dyingUsed = true;
+fixRandom(0.99);
+G.ACT.do_die('stand');
+restoreRandom();
+ok(S.phase === 'over', '最后一搏失败 → 真死', S.phase);
+ok(/最后一搏未成/.test(S.deathReason || ''), '结局写明搏没搏回来', S.deathReason);
+
+// 传功后人：留下 legacyPact
+setup('xian', { stones: 500 });
+S.npcs = {}; S.npcs[NPC0.id] = { fav: 60, met: true, alive: true, since: 0 };
+S.phase = 'dying'; S.dying = { reason: '气血耗尽。' }; S.dyingUsed = true;
+G.ACT.do_die('pass');
+ok(S.legacyPact === 'pass', '传功后人 → 记下来世加成', S.legacyPact);
+ok(S.phase === 'over', '传功后仍会死', S.phase);
+
+// 一局只给一次临终
+setup('xian', { stones: 500 });
+S.dyingUsed = true;
+S.age = 120; S.lifeMax = 120; S.month = 12;
+G.ACT.cultivate();
+ok(S.phase === 'over', '用过一次后直接死，不再进临终', S.phase);
 
 console.log('\n结果：' + pass + ' 通过 / ' + fail + ' 失败');
 process.exit(fail ? 1 : 0);

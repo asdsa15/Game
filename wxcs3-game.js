@@ -135,6 +135,11 @@
       aucLot: null,       // 本场客籍拍品 id
       aucLotWon: null,    // 已拍得的客籍拍品名
 
+      npcCall: null,      // 待处理的 NPC 主动事件 {id, kind}
+      dying: null,        // 临终状态 {reason}
+      dyingUsed: false,   // 一局只给一次临终选择
+      legacyPact: null,   // 临终所托：pass / daotong，带到来世
+
       // —— v6.7 恩义·钩子 ——
       hooks: [],          // 你欠别人的（可能被收割）
       hooksGiven: [],     // 别人欠你的（可以讨，但可能赖账）
@@ -343,7 +348,7 @@
       if (needsAnchor()) {
         tickAnchors();
         resolveAnchors();
-        if (S.phase === 'over') return;
+        if (S.phase !== 'play') return;
       }
       // —— 气血自然回复（按月，按境界，按伤势打折）
       if (S.hp < S.hpMax && S.hp > 0) {
@@ -357,6 +362,8 @@
       tickShenwei();
       // —— 家族：族人供奉与族运自然增长
       tickClan();
+      // —— v8.0：NPC 主动来访/病故（一次只挂一件，不打断当前面板）
+      if (S.phase === 'play') tickNpcEvents();
       // —— 四艺：行情波动、阵盘维持费
       tickMarket();
       if (Array.isArray(S.disks) && S.disks.length) {
@@ -498,6 +505,21 @@
     toast._h = setTimeout(() => el.classList.remove('show'), 1800);
   }
   function die(reason) {
+    /* v8.0：临终一择。还有一口气时先给玩家三条路——最后一搏、传功后人、托付道统。
+       一局只给一次（S.dyingUsed），用过之后再死就是真死，免得变成反复读命的免死金牌。 */
+    if (S.phase === 'over' || S.phase === 'dying') return;
+    if (!S.dyingUsed) {
+      S.dyingUsed = true;
+      S.dying = { reason: reason };
+      S.phase = 'dying';
+      S.combat = null;
+      try { checkAch(); } catch (e) { }
+      return;
+    }
+    finalizeDeath(reason);
+  }
+
+  function finalizeDeath(reason) {
     // —— v6.6 过格记账：所有死亡都从这里出去 ——
     try {
       const t = tly();
@@ -697,6 +719,7 @@
     }
     stage.className = 'stage';
     if (S.phase === 'over') { stage.innerHTML = renderOver(); renderDial(true); scheduleAutoSave(); return; }
+    if (S.phase === 'dying') { stage.innerHTML = renderDying(); renderDial(true); scheduleAutoSave(); return; }
     if (S.phase === 'combat') {
       if (!S.combat) { S.phase = 'play'; }        // 脏状态直接降级，走下面的正常渲染
       else {
@@ -1143,6 +1166,15 @@
   }
   function dockItems() {
     const list = [];
+    /* 有人上门时排在最前面——这件事不处理，会一直挂着 */
+    if (S.npcCall) {
+      const cn = D.NPC_POOL.find(function (x) { return x.id === S.npcCall.id; });
+      list.push({
+        k: '客', t: '有人来访',
+        s: (cn ? cn.name : '故人') + (S.npcCall.kind === 'funeral' ? ' · 丧讯' : ''),
+        act: 'act:openNpcCall'
+      });
+    }
     list.push({ k: '功', t: '功法', s: getGongfa().name, act: 'act:openGongfa' });
     if (isShen()) list.push({ k: '庙', t: '庙宇', s: S.miaoHao || S.miao, act: 'act:openTemple' });
     else list.push({ k: '府', t: '洞府', s: D.LINGQI[S.lingqi].name, act: 'act:openCave' });
@@ -3162,6 +3194,8 @@
     const rec = S.npcs[n.id] || (S.npcs[n.id] = { fav: 0, met: false });
     if (rec.met) return false;
     rec.met = true;
+    if (rec.since === undefined) rec.since = S.turn || 0;   // ren_100y 要靠它
+    if (rec.alive === undefined) rec.alive = true;
     const mt = n.meet || [];
     let b = '<div class="npcmeet">';
     b += '<div class="nm-name">' + esc(n.name) + '<span class="muted small">　' + esc(n.role) + '</span></div>';
@@ -3306,6 +3340,224 @@
     maybeEvent(); render();
   };
 
+  /* ============================================================
+     v8.0 NPC 主动事件
+     ------------------------------------------------------------
+     旧版 NPC 只是一份「你去点他」的名单：没人会主动来找你，
+     好感涨到 120 也不会发生任何事。这里补上月度主动来访——
+     重伤、突破、婚约、生肖相冲，以及伤重不治后的葬礼。
+     一次只挂一件（S.npcCall），在常驻区提示，不硬顶掉当前面板。
+     ============================================================ */
+  const ZODIAC_NAMES = ['鼠', '牛', '虎', '兔', '龙', '蛇', '马', '羊', '猴', '鸡', '狗', '猪'];
+  /* 玩家生肖由生年推：年 − 岁 = 生年，(生年−4) mod 12 即位次 */
+  function playerZodiac() {
+    const by = S.year - S.age;
+    return ZODIAC_NAMES[(((by - 4) % 12) + 12) % 12];
+  }
+  function npcRec(id) {
+    if (!S.npcs[id]) S.npcs[id] = { fav: 0, met: true };
+    const r = S.npcs[id];
+    if (r.alive === undefined) r.alive = true;
+    if (r.mate === undefined) r.mate = false;
+    if (r.injured === undefined) r.injured = false;
+    if (r.lastCall === undefined) r.lastCall = 0;
+    /* 相识年数：ren_100y 一直不可达，就是因为这个字段从没写过 */
+    if (r.since === undefined) r.since = S.turn || 0;
+    return r;
+  }
+  function npcHasMate() {
+    return Object.keys(S.npcs || {}).some(function (id) { return (S.npcs[id] || {}).mate; });
+  }
+
+  /* 每月一次：先看有没有人熬不过去，再决定这个月谁来敲门 */
+  function tickNpcEvents() {
+    if (S.npcCall) return;
+    const ids = Object.keys(S.npcs || {}).filter(function (id) {
+      const r = S.npcs[id];
+      return r && r.met && r.alive !== false;
+    });
+    if (!ids.length) return;
+    for (const id of ids) {
+      const r = npcRec(id);
+      if (r.injured && Math.random() < 0.12) {
+        const n = D.NPC_POOL.find(function (x) { return x.id === id; }) || { name: id };
+        r.alive = false;
+        S.npcCall = { id: id, kind: 'funeral' };
+        logLine('噩耗传来：' + n.name + '没能熬过这个冬天。', 'danger');
+        return;
+      }
+    }
+    /* 主动来访：好感越高越常来，同一人至少隔十个月，已结道侣的走日常不再走事件 */
+    const pool = ids.filter(function (id) {
+      const r = npcRec(id);
+      return (S.turn - (r.lastCall || 0)) >= 10 && !r.mate;
+    });
+    if (!pool.length) return;
+    const id = pick(pool);
+    const r = npcRec(id);
+    const n = D.NPC_POOL.find(function (x) { return x.id === id; }) || { id: id, name: id };
+    const chance = clamp(0.02 + r.fav / 1600, 0.02, 0.08);
+    if (Math.random() > chance) return;
+    r.lastCall = S.turn;
+
+    let kind = 'hurt';
+    const clashWith = D.ZODIAC_CLASH[playerZodiac()];
+    if (r.fav >= 60 && !npcHasMate() && Math.random() < 0.3) kind = 'marry';
+    else if (clashWith && clashWith === n.zodiac && Math.random() < 0.5) kind = 'clash';
+    else if (Math.random() < 0.45) kind = 'break';
+    S.npcCall = { id: id, kind: kind };
+    logLine(n.name + '来找你了。', '');
+  }
+
+  ACT.openNpcCall = () => {
+    const c = S.npcCall;
+    if (!c) { toast('无人来访'); return; }
+    const n = D.NPC_POOL.find(function (x) { return x.id === c.id; }) || { id: c.id, name: c.id, role: '' };
+    const r = npcRec(c.id);
+    let b = '';
+    const line = function (kind) {
+      const t = npcCtxLine(n, kind);
+      return t ? '<div class="nm-line">' + esc(t) + '</div>' : '';
+    };
+    if (c.kind === 'hurt') {
+      b += '<div class="small">' + esc(n.name) + '站在门口，脸色白得不像话，衣裳下摆是暗的。</div>';
+      b += line('hurt');
+      b += divider() + '<ul class="opts">';
+      const hasPill = (S.bag.heal || 0) > 0;
+      b += optRow('A', hasPill ? '拿疗伤药出来（耗 1 枚）' : '拿出 300 灵石去抓药',
+        { name: '仁', cls: 'peace' }, '好感 +14 · 功德 +12',
+        !hasPill && S.stones < 300, 'do;npc:heal');
+      b += optRow('B', '只留一句话，不插手', { name: '冷', cls: 'warn' },
+        '好感 −12 · 业力 +6 · 伤会拖下去', false, 'do;npc:leave');
+      b += '</ul>';
+    } else if (c.kind === 'break') {
+      b += '<div class="small">' + esc(n.name) + '说他要闭一次死关，问你肯不肯在外面守三日。</div>';
+      b += line('break');
+      b += divider() + '<ul class="opts">';
+      b += optRow('A', '在洞口守三日', { name: '义', cls: 'peace' },
+        '好感 +18 · 悟道 +20 · 三成自己受伤', false, 'do;npc:guard');
+      b += optRow('B', '推说有事', { name: '冷', cls: 'warn' },
+        '好感 −10 · 两成他会走岔', false, 'do;npc:refuse');
+      b += '</ul>';
+    } else if (c.kind === 'marry') {
+      b += '<div class="small">' + esc(n.name) + '把一枚旧簪放在你案上，什么也没说，站着等你开口。</div>';
+      b += line('together');
+      b += divider() + '<ul class="opts">';
+      b += optRow('A', '应下', { name: '缘', cls: 'love' },
+        npcHasMate() ? '你已有道侣' : '结为道侣 · 好感至 120 · 功德 +20',
+        npcHasMate(), 'do;npc:marry');
+      b += optRow('B', '把簪推回去', { name: '冷', cls: 'warn' },
+        '好感 −16 · 业力 +10', false, 'do;npc:reject');
+      b += '</ul>';
+    } else if (c.kind === 'clash') {
+      const z = playerZodiac();
+      b += '<div class="small">你属' + esc(z) + '，' + esc(n.name) + '属' + esc(n.zodiac || '？') +
+        '。有人提了一句「六冲」，这话就传开了。</div>';
+      b += line('part');
+      b += divider() + '<ul class="opts">';
+      b += optRow('A', '请人做一场禳解（500 灵石）', { name: '和', cls: 'peace' },
+        '好感 +10 · 冲解', S.stones < 500, 'do;npc:resolve');
+      b += optRow('B', '顺势疏远', { name: '冷', cls: 'warn' },
+        '好感 −8', false, 'do;npc:drift');
+      b += '</ul>';
+    } else {
+      b += '<div class="small">' + esc(n.name) + '走了。丧仪定在三日后，乡里在等他家里人的一句话。</div>';
+      b += divider() + '<div class="small muted">他最后留下的东西不多：一件旧衣，一只没喝完的酒盏。</div>';
+      b += divider() + '<ul class="opts">';
+      b += optRow('A', '去送他一程', { name: '义', cls: 'peace' }, '功德 +30 · 记入功过格', false, 'do;npc:mourn');
+      b += optRow('B', '不去', { name: '冷', cls: 'warn' }, '业力 +12', false, 'do;npc:skip');
+      b += '</ul>';
+    }
+    openModal('来访 · ' + n.name, b);
+  };
+
+  ACT.do_npc = (choice) => {
+    const c = S.npcCall;
+    if (!c) return;
+    const n = D.NPC_POOL.find(function (x) { return x.id === c.id; }) || { id: c.id, name: c.id };
+    const r = npcRec(c.id);
+    S.npcCall = null;
+    closeModal();
+    const say = function (t) { logLine(n.name + '：' + t, ''); };
+
+    if (c.kind === 'hurt') {
+      if (choice === 'heal') {
+        if ((S.bag.heal || 0) > 0) { S.bag.heal--; }
+        else if (S.stones >= 300) { S.stones -= 300; ledgerAdd('out', '抓药', 300); }
+        else { toast('灵石不足'); S.npcCall = c; return; }
+        r.fav = clamp(r.fav + 14, 0, 120);
+        r.injured = false;
+        S.merit += 12;
+        say('这条命，我记着。');
+        logLine('你替' + n.name + '处理了伤口。好感 +14，功德 +12。', 'good');
+      } else {
+        r.fav = Math.max(0, r.fav - 12);
+        r.injured = true;
+        S.karma += 6;
+        say('……我明白了。');
+        logLine('你没有插手。' + n.name + '的伤拖了下去。好感 −12，业力 +6。', 'danger');
+      }
+    } else if (c.kind === 'break') {
+      if (choice === 'guard') {
+        r.fav = clamp(r.fav + 18, 0, 120);
+        S.insightXp = (S.insightXp || 0) + 20;
+        if (Math.random() < 0.3) {
+          S.hp = Math.max(1, S.hp - Math.round(S.hpMax * 0.25));
+          logLine('洞外有人来过。你替他挡了一下，气血 −25%。', 'danger');
+        }
+        say('三日。多谢。');
+        logLine('你替' + n.name + '守了三日。好感 +18，悟道 +20。', 'good');
+      } else {
+        r.fav = Math.max(0, r.fav - 10);
+        if (Math.random() < 0.2) {
+          r.injured = true;
+          logLine(n.name + '出关时不对，走岔了。', 'danger');
+        } else {
+          logLine('你没有去。' + n.name + '一个人闭了关。好感 −10。', '');
+        }
+      }
+    } else if (c.kind === 'marry') {
+      if (choice === 'marry') {
+        if (npcHasMate()) { toast('你已有道侣'); S.npcCall = c; return; }
+        r.mate = true;
+        r.fav = 120;
+        S.merit += 20;
+        say('那就这样吧。');
+        logLine('你与' + n.name + '结为道侣。', 'good');
+        toast('道侣 · ' + n.name);
+      } else {
+        r.fav = Math.max(0, r.fav - 16);
+        S.karma += 10;
+        say('……好。');
+        logLine('你把簪推了回去。' + n.name + '收得很快。好感 −16，业力 +10。', 'danger');
+      }
+    } else if (c.kind === 'clash') {
+      if (choice === 'resolve') {
+        if (S.stones < 500) { toast('灵石不足'); S.npcCall = c; return; }
+        S.stones -= 500;
+        ledgerAdd('out', '禳解', 500);
+        r.fav = clamp(r.fav + 10, 0, 120);
+        logLine('一场禳解，话头就此压下去。好感 +10。', 'good');
+      } else {
+        r.fav = Math.max(0, r.fav - 8);
+        logLine('你没有解释。往来渐渐稀了。好感 −8。', '');
+      }
+    } else {
+      if (choice === 'mourn') {
+        S.merit += 30;
+        bump('npcFuneral');
+        logLine('你送' + n.name + '走完了最后一程。功德 +30。', 'good');
+      } else {
+        S.karma += 12;
+        logLine('你没有去。丧仪照常办了。业力 +12。', 'danger');
+      }
+      r.funeral = true;
+    }
+    advanceMonth(1);
+    if (S.phase !== 'play') return render();
+    render();
+  };
+
   /* ---------- 自由输入 ---------- */
   ACT.do_free = () => {
     const el = document.getElementById('in-free');
@@ -3435,6 +3687,13 @@
     out.aucFloor = st.aucFloor || 'mid';
     out.aucLot = st.aucLot || null;
     out.aucLotWon = st.aucLotWon || null;
+    // 来访事件是瞬态：存档/刷新时挂着的弹窗要清掉，否则每回合都被它挡住
+    out.npcCall = null;
+    /* 临终状态要留：不然在读档时把「还有一口气」吞掉，等于白送一条命 */
+    out.dying = st.dying || null;
+    if (out.phase === 'dying' && !out.dying) out.phase = 'over';
+    out.dyingUsed = !!st.dyingUsed;
+    out.legacyPact = st.legacyPact || null;
     // 奇遇卡死过的存档会残留 pendingEnc，不清掉的话 maybeEvent 里
     // `!S.pendingEnc` 恒为假，奇遇系统此后永久不再触发。
     out.pendingEnc = null;
@@ -4105,10 +4364,12 @@
     if (['treasure', 'xiuwei', 'life'].indexOf(kind) < 0) { toast('须选一项传承'); return; }
     const pages = Math.max(0, pageCount() - 1);
     const debt = (S.bloodDebt || 0) + 0.1;
+    const pact = S.legacyPact || null;    // 临终所托要跨过 newGame 带到来世
     S = newGame();
     S.draft = draftInit();
     S.pages = pages;
     S.legacy = { kind: kind };
+    S.legacyPact = pact;
     S.bloodDebt = debt;
     if (kind === 'treasure') S.stones = 400;
     closeModal();
@@ -4116,6 +4377,46 @@
     render();
     toast('烧了一页。来世会记得。');
     if (S.legacy || pageCount() < 3) { const _m = unlockedMemories(); if (_m.length) offerMemory(); }
+  };
+
+  /* v8.0 临终结算：最后一搏 / 传功后人 / 托付道统 / 闭眼 */
+  ACT.do_die = (a) => {
+    if (S.phase !== 'dying') return;
+    const reason = (S.dying && S.dying.reason) || '道消身殒。';
+    S.dying = null;
+
+    if (a === 'stand') {
+      if (Math.random() < 0.35) {
+        S.phase = 'play';
+        S.hp = 1;
+        S.lifeMax = Math.max(20, (S.lifeMax || 60) - 10);
+        S.stats.heart = Math.max(1, st('heart') - 2);
+        logLine('你硬撑了回来。气血只剩一线，寿元上限少了十年，道心动了一动。', 'danger');
+        toast('撑过来了');
+        render();
+        return;
+      }
+      logLine('这一搏没有搏回来。', 'danger');
+      finalizeDeath(reason + '　最后一搏未成。');
+      render();
+      return;
+    }
+
+    if (a === 'pass') {
+      const heir = dyingHeir();
+      if (heir) {
+        S.legacyPact = 'pass';
+        S.npcs[heir.id].fav = clamp((S.npcs[heir.id].fav || 0) + 20, 0, 120);
+        logLine('你把一生所学尽数传给了' + heir.name + '。', 'good');
+      }
+    } else if (a === 'daotong') {
+      if (S.sect || S.clan) {
+        S.legacyPact = 'daotong';
+        logLine('道统托付了下去。' + (S.clan ? '族里会有人接着走。' : '宗门会记得这个名字。'), 'good');
+      }
+    }
+    finalizeDeath(reason);
+    render();
   };
 
   /* ---------- P0-4 道胎入口 ---------- */
@@ -5943,6 +6244,17 @@
       logLine('前世烧页之债随此生而来：血债 +10%，寿元上限 −5%。', 'danger');
     }
 
+    // v8.0 临终所托：传功与道统各留一点底子给来世（与烧页传承叠加，不替代）
+    if (S.legacyPact === 'pass') {
+      S.stats.qualify = Math.min(20, (S.stats.qualify || 8) + 1);
+      logLine('前身传功之恩犹在：悟性 +1。', 'good');
+      S.legacyPact = null;
+    } else if (S.legacyPact === 'daotong') {
+      S.stones += 300;
+      logLine('前身道统留下的一点家底：灵石 +300。', 'good');
+      S.legacyPact = null;
+    }
+
     S.mainline = mainlineFor(S.path);
     S.unlockStage = 0;
 
@@ -6005,6 +6317,44 @@
     if (S.xianzun || S.fame >= 500) return pickEnd('xianzun');
     if (S.karma >= 300) return pickEnd('modao');
     return pickEnd('sit');
+  }
+
+  /* v8.0 临终：死之前还有一件事可以做。这里只摆选择，结果由 ACT.do_die 结算。 */
+  function dyingHeir() {
+    let bestId = null, bestFav = -999;
+    Object.keys(S.npcs || {}).forEach(function (id) {
+      const r = S.npcs[id];
+      if (!r || !r.met || r.alive === false) return;
+      const f = r.fav || 0;
+      if (f > bestFav) { bestFav = f; bestId = id; }
+    });
+    if (!bestId || bestFav < 40) return null;
+    return D.NPC_POOL.find(function (x) { return x.id === bestId; }) || null;
+  }
+
+  function renderDying() {
+    const d = S.dying || {};
+    const heir = dyingHeir();
+    const hasOrg = !!(S.sect || S.clan);
+    let b = '';
+    b += '<div class="endingname">临终</div>';
+    b += '<div class="endingtext">' + esc(d.reason || '气血将尽。') + '</div>';
+    b += divider();
+    b += '<div class="small muted">还有一件事没做完。只做一件。</div>';
+    b += '<ul class="opts">';
+    b += optRow('A', '最后一搏', { name: '搏', cls: 'risk' },
+      '三成五活下来 · 寿元上限 −10 · 道心 −2', false, 'do;die:stand');
+    b += optRow('B', '传功后人', { name: '传', cls: 'peace' },
+      heir ? ('尽数传给' + heir.name + '，来世起手悟性 +1') : '身边无人可传',
+      !heir, 'do;die:pass');
+    b += optRow('C', '托付道统', { name: '道', cls: 'peace' },
+      hasOrg ? ((S.clan ? S.clan.name + '氏' : D.SECT.ranks[S.sect.rank].name) + '接下这一脉，来世起手灵石 +300')
+        : '无宗无族可托',
+      !hasOrg, 'do;die:daotong');
+    b += optRow('D', '就此闭眼', { name: '静', cls: 'warn' }, '不再挣扎', false, 'do;die:close');
+    b += '</ul>';
+    b += '<div class="hint">这一局只给一次。搏不回来，就没有第二次了。</div>';
+    return panel('临终 · 最后一件事', b, { cls: 'warn', sub: '一口气还在' });
   }
 
   function renderOver() {

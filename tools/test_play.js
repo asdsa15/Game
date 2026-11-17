@@ -107,6 +107,8 @@ function run(cult, steps) {
       break;
     }
     finite();
+    // v8.0：死前会先进「临终」，测试里直接选闭眼，再重开继续跑
+    if (S.phase === 'dying') { try { G.ACT.do_die('close'); } catch (e) { } }
     if (S.phase === 'over') { setup(cult); }   // 死了重开，继续测
   }
   ok(errors === 0, cult + ' 线 ' + steps + ' 步无异常');
