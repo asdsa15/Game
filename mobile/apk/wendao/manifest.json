@@ -6,7 +6,7 @@
     "name": "问道长生",
     "version": {
         "name": "6.2.0",
-        "code": "641"
+        "code": "643"
     },
     "description": "残酷修仙文字游戏 · 仙道为主 × 神道为辅 × 上古为传说",
     "launch_path": "index.html",
@@ -27,7 +27,7 @@
         "distribute": {
             "google": {
                 "packagename": "com.wendao.changsheng",
-                "versionCode": 641,
+                "versionCode": 643,
                 "permissions": []
             },
             "apple": {},

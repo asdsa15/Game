@@ -175,3 +175,9 @@ body{
   .opt .note{font-size:12px}
   .hint{font-size:12.5px}
 }
+
+/* v8.1 P0 M5：指令坞折叠组（触控友好：整行可点，高度 40px 起） */
+.dockgrp{margin-top:10px}
+.dockgt{min-height:40px;padding:10px 8px;font-size:13px}
+.dockgt .gn{font-size:12px}
+.dockgrp>.dock{margin-top:8px}

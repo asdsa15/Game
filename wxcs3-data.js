@@ -837,15 +837,34 @@
   const GONGFA = GONGFA_EXT.map(function (x) { return { id: x.id, name: x.name, tier: x.tier, el: x.el, eff: x.eff }; });
 
   /* ====== 体质 ====== */
+  /* v8.1 P0 M2：体质从「创角选一次的文本」变成真读数。
+     旧版只有 dao（修为/香火 ×1.5）与 chun（免疫首次反噬）有代码引用，
+     其余六种的 eff 全是死文案——凡体与先天体质在数值上毫无差别。
+     现在每种各给一个明确、可达的落点，字段含义见各自的键名。 */
   const BODIES = [
     { id: 'dao',   name: '先天道体', eff: '修为/香火转化 +50%', mul: 1.5 },
-    { id: 'sword', name: '剑灵体',   eff: '斗法亲和', mul: 1.0 },
-    { id: 'nine',  name: '九阳圣体', eff: '火系法术 +30%', mul: 1.0 },
-    { id: 'ice',   name: '冰魄灵体', eff: '冰系法术 +30%', mul: 1.0 },
-    { id: 'xuan',  name: '玄阴体',   eff: '双修增益', mul: 1.0 },
-    { id: 'chun',  name: '纯阳体',   eff: '双修增益；免疫首次反噬', mul: 1.0 },
-    { id: 'chaos', name: '混沌体',   eff: '传说：五行皆通', mul: 1.1, rare: true },
-    { id: 'plain', name: '凡体',     eff: '无特殊', mul: 1.0 }
+    { id: 'sword', name: '剑灵体',   eff: '斗法亲和：战力 +10%', mul: 1.0, pow: 1.10 },
+    { id: 'nine',  name: '九阳圣体', eff: '火系法术 +30%', mul: 1.0, fire: 1.3 },
+    { id: 'ice',   name: '冰魄灵体', eff: '冰属水：主修水时招式 +15%', mul: 1.0, ice: 1.15 },
+    { id: 'xuan',  name: '玄阴体',   eff: '双修增益 +25%', mul: 1.0, both: 1.25 },
+    { id: 'chun',  name: '纯阳体',   eff: '双修增益；免疫首次反噬', mul: 1.0, both: 1.25 },
+    { id: 'chaos', name: '混沌体',   eff: '传说：五行皆通，不被反克', mul: 1.1, rare: true, keFloor: 1.15 },
+    { id: 'plain', name: '凡体',     eff: '无特殊：淬体花费三倍', mul: 1.0, quenchMul: 3 }
+  ];
+
+  /* ====== 淬体九阶（v8.1 P0 M2） ======
+     凡体也能一路淬上去，只是花三倍（决策点 ①）。每一阶只按「增量倍率」写进气血，
+     反复淬不会复利；block 是战斗卸力加成，累加到 deflectOf 里。 */
+  const QUENCH = [
+    { name: '淬皮', stones: 400,    herb: { id: 'lanyouCao', n: 2 },  hpMul: 1.10, block: 0.02 },
+    { name: '淬肉', stones: 900,    herb: { id: 'lanyouCao', n: 3 },  hpMul: 1.20, block: 0.04 },
+    { name: '淬筋', stones: 1800,   herb: { id: 'lanyouCao', n: 5 },  hpMul: 1.32, block: 0.06 },
+    { name: '洗髓', stones: 3200,   herb: { id: 'lanyouCao', n: 8 },  hpMul: 1.45, block: 0.08 },
+    { name: '换骨', stones: 5600,   herb: { id: 'lanyouCao', n: 12 }, hpMul: 1.60, block: 0.10 },
+    { name: '凝血', stones: 9000,   herb: { id: 'lanyouCao', n: 18 }, hpMul: 1.76, block: 0.12 },
+    { name: '锻脏', stones: 15000,  herb: { id: 'lanyouCao', n: 26 }, hpMul: 1.94, block: 0.14 },
+    { name: '淬神', stones: 24000,  herb: { id: 'lanyouCao', n: 36 }, hpMul: 2.12, block: 0.16 },
+    { name: '不漏', stones: 38000,  herb: { id: 'lanyouCao', n: 50 }, hpMul: 2.32, block: 0.18 }
   ];
 
   /* ====== 天赋 ====== */
@@ -3172,7 +3191,7 @@
     LINGQI, ROOTS, ELEMENTS, MUT_ELEMENTS,
     GONGFA_TIERS, GONGFA, BODIES, TALENTS, ORIGINS,
     FAXIANG, ZODIAC_CLASH,
-    PILLARS, POSITIONS, PIETY, MIAO_COEFF, QIHE, FOLLOW_LIMIT, BREAK_BASE,
+    PILLARS, POSITIONS, PIETY, MIAO_COEFF, QIHE, FOLLOW_LIMIT, BREAK_BASE, QUENCH,
     TIANJIANG, DIZHA, GUOWEI, GUOWEI_RANK,
     ANCHOR_TYPES, ANCHOR_STATES, ANCHOR_STATUS, RITUALS,
     LU, DAOTONG, SANXUAN, SHENTONG,

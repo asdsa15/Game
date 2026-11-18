@@ -342,6 +342,18 @@
   }
   .dockbtn .dt{font-size:12.5px;color:var(--strong);font-weight:700;letter-spacing:.5px}
   .dockbtn .ds{font-size:11px;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* v8.1 P0 M5：指令坞折叠组 —— 常用区常驻，其余四组收起 */
+  .dockgrp{margin-top:9px}
+  .dockgt{
+    display:flex;align-items:baseline;gap:8px;padding:8px 6px;cursor:pointer;border-radius:6px;
+    background:rgba(90,80,60,.035);border:1px dashed var(--edge);
+    color:var(--muted);font-size:12.5px;letter-spacing:1.5px;
+    transition:border-color .14s,color .14s,background .14s;
+  }
+  .dockgt:hover{border-color:var(--jade);color:var(--strong);background:#F4FAF8}
+  .dockgt .gn{margin-left:auto;font-size:11px;letter-spacing:0;opacity:.9}
+  .dockgrp.open .dockgt{border-style:solid;border-color:var(--edge)}
+  .dockgrp>.dock{margin-top:8px}
 
   @media(max-width:880px){
     .dock{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}

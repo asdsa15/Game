@@ -130,6 +130,11 @@
       votMade: 0,         // 本月已制作次数
       votSold: 0,         // 本月已售出件数
 
+      // —— v8.1 P0 M2 淬体 / M5 指令坞折叠 ——
+      quench: 0,          // 淬体阶数 0~9（0 = 未淬）
+      quenchApplied: 0,   // 已写进气血上限的阶数（防重复复利，存档迁移据此算增量倍率）
+      dockOpen: {},       // 指令坞折叠组展开态
+
       // —— v8.0 拍卖会 ——
       aucSell: [],        // 本场寄存的拍品 [{kind,id,q,n,base,qMul}]
       aucYear: 0,         // 已进场的年份（一年只进一次）
@@ -191,6 +196,8 @@
     let v = r.base * qi * qual * root * gf * zt;
     // 体质加成只在这里乘一次（先天道体 +50%）
     if (S.body === 'dao') v *= 1.5;
+    const _bd1 = D.BODIES.filter(function (b) { return b.id === S.body; })[0] || {};
+    if (_bd1.both && S.cultivation === 'both') v *= _bd1.both;   // 玄阴 / 纯阳：双修增益
     if (S.lu && S.lu.name === '行气吞灵') v *= 1.2;
     if (S.cultivation === 'both') v *= 0.8;   // 未定：前两阶 −20%
     if (S.meditate) v *= 2;                   // 闭关 ×2
@@ -215,6 +222,8 @@
     let v = f * S.piety * miaoC * qi * qiheC * zt;
     v *= (1 + 0.08 * miaoUpCount('lu'));          // 铜香炉：每座 +8%
     if (S.body === 'dao') v *= 1.5;
+    const _bd2 = D.BODIES.filter(function (b) { return b.id === S.body; })[0] || {};
+    if (_bd2.both && S.cultivation === 'both') v *= _bd2.both;
     if (S.cultivation === 'both') v *= 0.8;
     if (S.meditate) v *= 1.5;
     const cap = pillar().need / 12;
@@ -708,7 +717,7 @@
       if (as.name === '虚') am = 0.85;
       if (as.name === '将散') am = 0.6;
       if (as.name === '失锚') am = 0.3;
-      return Math.round(base * am);
+      return Math.round(base * am * (bodyDef().pow || 1));
     }
     // 仙道
     const r = xrealm();
@@ -732,7 +741,7 @@
     if (as.name === '虚') am = 0.85;
     if (as.name === '将散') am = 0.6;
     if (as.name === '失锚') am = 0.3;
-    return Math.round(base * stMul * sd * am);
+    return Math.round(base * stMul * sd * am * (bodyDef().pow || 1));
   }
 
   /* 位格：仙道用境界档，神道用柱位 */
@@ -1393,25 +1402,103 @@
     if (S.unlockStage >= 4 && (isShen() || S.xRealm >= 3))
       list.push({ k: '洞', t: '洞天', s: S.inDongtian ? '洞天' : '阳世', act: 'act:openDongtian' });
     if (needsAnchor()) list.push({ k: '锚', t: '锚定', s: anchorStrength().toFixed(1) + '/4', act: 'act:openAnchor' });
+    /* v8.1 P0 M5：五组归类。act / k / t / s 一律不动，只补一个 g 字段——
+       所有入口的 act 值不变，check_actions.py 的断言范围因此不受影响。 */
+    const GROUP = {
+      客: '常用', 引: '常用', 府: '常用', 庙: '常用', 市: '常用', 拍: '常用', 历: '常用', 情: '常用', 锚: '常用',
+      功: '修炼', 艺: '修炼', 书: '修炼', 胎: '修炼',
+      器: '经营', 愿: '经营', 族: '经营', 宝: '经营',
+      缘: '人事', 宗: '人事',
+      图: '更多', 囊: '更多', 洞: '更多'
+    };
+    for (const it of list) it.g = GROUP[it.k] || '更多';
     return list;
+  }
+  /* v8.1 P0 M5：两层分组。
+     常用区常驻平铺（欠账、来访、拍卖会这类出现即急，必须首屏可见）；
+     其余按「修炼 / 经营 / 人事 / 更多」折叠，默认收起，展开态存 S.dockOpen。 */
+  const DOCK_GROUPS = ['修炼', '经营', '人事', '更多'];
+  function dockBtn(it) {
+    return '<div class="dockbtn" data-act="' + esc(it.act) + '">' +
+      '<span class="dk">' + esc(it.k) + '</span>' +
+      '<span class="dt">' + esc(it.t) + '</span>' +
+      '<span class="ds">' + esc(it.s) + '</span></div>';
   }
   function renderDock() {
     const items = dockItems();
+    const open = S.dockOpen || {};
+    const common = items.filter(function (x) { return x.g === '常用'; });
     let b = '<div class="dockhead"><span>常驻指令</span><span class="sub">点开即用，不占主线</span></div>';
     b += '<div class="dock">';
-    for (const it of items) {
-      b += '<div class="dockbtn" data-act="' + esc(it.act) + '">' +
-        '<span class="dk">' + esc(it.k) + '</span>' +
-        '<span class="dt">' + esc(it.t) + '</span>' +
-        '<span class="ds">' + esc(it.s) + '</span></div>';
-    }
+    for (const it of common) b += dockBtn(it);
     b += '</div>';
+    for (const g of DOCK_GROUPS) {
+      const arr = items.filter(function (x) { return x.g === g; });
+      if (!arr.length) continue;
+      const isOpen = !!open[g];
+      b += '<div class="dockgrp' + (isOpen ? ' open' : '') + '">';
+      b += '<div class="dockgt" data-act="do;dockGrp:' + g + '">' +
+        '<span class="gt">' + g + '</span>' +
+        '<span class="gn">' + arr.length + ' 项 · ' + (isOpen ? '收起' : '展开') + '</span></div>';
+      if (isOpen) {
+        b += '<div class="dock">';
+        for (const it of arr) b += dockBtn(it);
+        b += '</div>';
+      }
+      b += '</div>';
+    }
     return b;
   }
+  /* ACT.do_dockGrp 与其它 ACT 一起登记在下方（ACT 表在 1727 行才建，提前赋值会撞 TDZ） */
 
   /* ---------- 环形指令盘 ---------- */
   /* 旧的环形指令盘已弃用（指挥由底部常驻区与右上角「系统」承担） */
   function renderDial() { }
+
+  /* ---------- 体质读数（v8.1 P0 M2） ----------
+     八种体质各有一个可达落点：剑灵体加战力、九阳加火法、冰魄落主修水、
+     玄阴/纯阳加双修、混沌不被反克、凡体淬体贵三倍。 */
+  function bodyDef() {
+    return D.BODIES.filter(function (b) { return b.id === S.body; })[0] || D.BODIES[D.BODIES.length - 1];
+  }
+  function quenchLv() { return clamp(S.quench || 0, 0, D.QUENCH.length); }
+  function quenchDef() { const n = quenchLv(); return n > 0 ? D.QUENCH[n - 1] : null; }
+  function quenchHpMul() { const d = quenchDef(); return d ? d.hpMul : 1; }
+  function quenchBlock() { const d = quenchDef(); return d ? d.block : 0; }
+  /* 下一阶的实付成本：凡体三倍（决策点 ①），其余原价 */
+  function quenchNext() {
+    const lv = quenchLv();
+    if (lv >= D.QUENCH.length) return null;
+    const d = D.QUENCH[lv], mul = bodyDef().quenchMul || 1;
+    return { lv: lv + 1, def: d, stones: Math.round(d.stones * mul), herbN: Math.round(d.herb.n * mul), herbId: d.herb.id };
+  }
+  /* 招式加成：火系看九阳，冰系无对应招式，落在「主修水」上（冰属水） */
+  function bodySpellMul(kind) {
+    const bd = bodyDef();
+    if (kind === 'fire' && bd.fire) return bd.fire;
+    if (bd.ice && mainEl() === 'water') return bd.ice;
+    if (bd.keFloor) return 1.05;
+    return 1;
+  }
+
+  /* ---------- 功能门（v8.1 P0 §2.2） ----------
+     UNLOCK_XIAN / UNLOCK_SHEN 两张表建了很久却零引用：16 条境界词永远不出现。
+     这里只做软门——抬档时把该档的境界词写进纪事，帮助面板按档显示
+     「能做什么 / 还有什么未显」。硬门一概不加：老档被锁在门外比没有门更糟。 */
+  function unlockTable(line) { return line === 'shen' ? D.UNLOCK_SHEN : D.UNLOCK_XIAN; }
+  function unlockRow(line, stage) {
+    const t = unlockTable(line);
+    for (const r of t) if (r.stage === stage) return r;
+    return null;
+  }
+  function bumpUnlock(line, stage) {
+    if (!(stage > (S.unlockStage || 0))) return false;
+    S.unlockStage = stage;
+    const row = unlockRow(line, stage);
+    if (row && row.phrase) logLine('· ' + row.phrase, 'good');
+    if (row && row.name) toast('境 · ' + row.name);
+    return true;
+  }
 
   /* ---------- 创角 ---------- */
   function needEls(k) { return ({ heaven: 1, earth: 2, true_: 3, pseudo: 4, mutate: 1 })[k] || 1; }
@@ -1652,6 +1739,14 @@
 
   /* ============ 行动 ============ */
   const ACT = {};
+
+  /* v8.1 P0 M5：指令坞折叠组开关 */
+  ACT.do_dockGrp = (g) => {
+    if (DOCK_GROUPS.indexOf(g) < 0) return;
+    S.dockOpen = S.dockOpen || {};
+    S.dockOpen[g] = !S.dockOpen[g];
+    render();
+  };
   ACT.openGoals = openGoals;
   ACT.openTut = openTut;
   ACT.do_tut = do_tut;
@@ -2115,8 +2210,11 @@
         const nr = xrealm() || D.XIAN_REALMS[D.XIAN_REALMS.length - 1];
         S.lifeMax = nr.life || 0;
         healOnMajorBreak();   // 只有破大境界才回满
-        if (nr.idx === 2) S.unlockStage = Math.max(S.unlockStage, 3);
-        if (nr.idx === 3) S.unlockStage = Math.max(S.unlockStage, 4);
+        /* v8.1：补 idx === 1（练气）——旧版从 0 直接跳到 3，
+           「胎息」「练气」两档的境界词因此永不可达。 */
+        if (nr.idx === 1) bumpUnlock('xian', 2);
+        if (nr.idx === 2) bumpUnlock('xian', 3);
+        if (nr.idx === 3) bumpUnlock('xian', 4);
         logLine(`破境成功：晋入 ${nr.name}。`, 'good');
         const verse = reciteVerse('breakXian');
         if (verse) logLine('· ' + verse, 'good');   // 弹窗被奇遇顶掉时，纪事里至少还留一句
@@ -2291,7 +2389,7 @@
     S.xRealm = 4; S.xStage = 0; S.xiuwei = 0;
     S.lifeMax = 1200;
     S.jinxing = true;
-    S.unlockStage = Math.max(S.unlockStage, 5);
+    bumpUnlock('xian', 5);
     /* 功过格「孤证」：既无道侣，也无一个交情过 40 的人——
        这一位，是一个人证下来的。 */
     if (!npcHasMate() && !Object.keys(S.npcs || {}).some(function (k) {
@@ -2320,7 +2418,7 @@
     S.xRealm = 5; S.xStage = 0;
     S.lifeMax = 0; S.lifeStop = true;
     S.anchors = { wu: 1, ren: 1, shi: 1, yi: 1 };
-    S.unlockStage = Math.max(S.unlockStage, 6);
+    bumpUnlock('xian', 6);
     logLine('化道胎。寿元栏空了，取而代之的是锚。', 'good');
     toast('道胎 · 无寿元，只有锚');
     closeModal(); advanceXun(1); render();
@@ -2404,7 +2502,8 @@
         S.enemyName = pick(['邻庙庙祝', '血奉执事', '游方邪修']);
         logLine('你砸了' + S.enemyName + '的庙——从此多了一门死仇。', 'danger');
       }
-      S.unlockStage = Math.max(S.unlockStage, Math.min(8, S.pillar + 1));
+      /* 神道：破柱后 pillar 已 ++，一柱对应 stage 1；创角处已置 1，故二柱起从 2 续上 */
+      bumpUnlock('shen', Math.min(8, S.pillar + 1));
       logLine(`破柱成功！晋入 ${realmName()}。`, 'good');
       S.followers = Math.round(S.followers * 1.5);
       S.renGong = (S.renGong || 0) + 200;
@@ -2773,6 +2872,25 @@
         }).join('');
       }
       b += divider();
+      /* v8.1 P0 M2：淬体走洞府，不占指令坞位（M5 分组之后坞位更金贵） */
+      const qn = quenchNext();
+      b += '<div class="small muted">淬体 · 皮肉筋骨</div>';
+      b += '<div class="statline"><span class="k">淬体阶</span><span class="v">' +
+        (quenchLv() ? (esc(D.QUENCH[quenchLv() - 1].name) + '（' + quenchLv() + '/' + D.QUENCH.length + '）') : '未淬') +
+        '　气血 ×' + quenchHpMul().toFixed(2) + '　卸力 +' + Math.round(quenchBlock() * 100) + '%</span></div>';
+      if (qn) {
+        const _hn = (D.MATERIAL_EXT.find(function (x) { return x.id === qn.herbId; }) || {}).name || qn.herbId;
+        const _mine = (S.bagMat && S.bagMat[qn.herbId]) || 0;
+        b += '<div class="small">下一阶 · ' + esc(qn.def.name) + '：' + fmtNum(qn.stones) + ' 灵石 + ' + _hn + ' ' + qn.herbN +
+          ' 株（存 ' + _mine + '）　气血 ×' + qn.def.hpMul.toFixed(2) +
+          (bodyDef().quenchMul ? '<span class="muted">　凡体三倍</span>' : '') + '</div>';
+        b += '<ul class="opts">' + optRow('·', '按方淬体',
+          { name: '淬体', cls: 'peace' }, '每旬一次，耗一旬行动',
+          S.stones < qn.stones || _mine < qn.herbN, 'do;quench') + '</ul>';
+      } else {
+        b += '<div class="small muted">已至不漏，再无可淬。</div>';
+      }
+      b += divider();
     }
     const up = Math.max(parseInt(S.lingqiUp, 10) || 0, placeBaseLingqi(S.place));
     const cost = (up + 1) * 800;
@@ -2782,6 +2900,27 @@
     } else b += `<div class="small muted">灵气已至洞天，再无可升。</div>`;
     b += `<div class="hint">夺灵脉是仙道最常见的战争：一条福地灵脉，够养活一个小宗门。</div>`;
     openModal('洞府 · 灵脉', b);
+  };
+
+  /* v8.1 P0 M2：淬体。每旬一次（advanceXun(1) 即耗掉当旬行动），
+     气血按增量倍率写入上限，同时等比抬当前气血，伤势比值不动。 */
+  ACT.do_quench = () => {
+    const q = quenchNext();
+    if (!q) { toast('淬体已至不漏'); return; }
+    if (S.stones < q.stones) { toast('灵石不足（需 ' + q.stones + '）'); return; }
+    if (((S.bagMat || {})[q.herbId] || 0) < q.herbN) { toast('药材不足（需 ' + q.herbN + ' 株）'); return; }
+    S.stones -= q.stones;
+    S.bagMat[q.herbId] = (S.bagMat[q.herbId] || 0) - q.herbN;
+    ledgerAdd('out', '淬体 · ' + q.def.name, q.stones);
+    const before = quenchHpMul();
+    S.quench = q.lv;
+    const mul = q.def.hpMul / before;
+    S.hpMax = Math.round(S.hpMax * mul);
+    S.hp = Math.min(S.hpMax, Math.round(S.hp * mul));
+    S.quenchApplied = q.lv;
+    logLine('淬体：' + q.def.name + '。气血上限 ' + fmtNum(S.hpMax) + '，卸力 ' + Math.round(quenchBlock() * 100) + '%。', 'good');
+    toast('淬体 · ' + q.def.name);
+    closeModal(); advanceXun(1); if (S.phase !== 'play') return render(); render();
   };
 
   ACT.do_buildfac = (art) => {
@@ -4332,6 +4471,20 @@
     // 缺了就是 undefined.staff → 一进游戏 render 抛错、整屏冻住。
     out.dArt = Object.assign({ staff: 0, mirror: 0, seal: 0 }, st.dArt || {});
     out.votive = Object.assign({}, st.votive || {});
+    out.dockOpen = Object.assign({}, st.dockOpen || {});
+    /* v8.1 P0 M2：淬体存档迁移。
+       只补「尚未写进气血的阶差」，两端同乘一个增量倍率 —— hp / hpMax 比值不变，
+       伤势等级不漂移；quenchApplied === quench 时整段跳过，不重复复利。
+       旧档无 quench 字段，按 0 处理，等于整段不执行。 */
+    out.quench = clamp(parseInt(st.quench, 10) || 0, 0, D.QUENCH.length);
+    out.quenchApplied = clamp(parseInt(st.quenchApplied, 10) || 0, 0, out.quench);
+    if (out.quench > out.quenchApplied) {
+      const _lo = out.quenchApplied > 0 ? D.QUENCH[out.quenchApplied - 1].hpMul : 1;
+      const _qmul = D.QUENCH[out.quench - 1].hpMul / _lo;
+      out.hpMax = Math.round((st.hpMax || 100) * _qmul);
+      out.hp = Math.min(out.hpMax, Math.round((st.hp || 1) * _qmul));
+      out.quenchApplied = out.quench;
+    }
     out.dArtIdle = st.dArtIdle || 0;
     out.votMade = st.votMade || 0;
     out.votSold = st.votSold || 0;
@@ -4702,6 +4855,12 @@
 
   ACT.openHelp = () => {
     let b = '';
+    const uRow = unlockRow(S.cultivation === 'shen' ? 'shen' : 'xian', S.unlockStage || 0);
+    if (uRow) {
+      b += '<div class="small"><b>你如今能做什么</b>　' + esc((uRow.show || []).join(' ｜ ')) + '</div>';
+      if ((uRow.hide || []).length)
+        b += '<div class="small muted"><b>还未显于你面前之事</b>　' + esc(uRow.hide.join(' ｜ ')) + '</div>';
+    }
     b += '<div class="small"><b>修炼·变强</b>　' + (isShen() ? '香火(坐庙) | 升位 | 破柱 | 显圣 | 科仪 | 庙市 | 化香火钱' : '打坐采气 | 破境 | 功法 | 洞府灵脉 | 历练') + '</div>';
     b += '<div class="small"><b>游历·探索</b>　舆图 | 历练 | ' + (isShen() ? '庙市（只此一市）' : '坊市（只认灵石）') + ' | ' + (S.unlockStage >= 4 ? '洞天' : '') + '</div>';
     b += '<div class="small"><b>人际</b>　情缘 | 对话</div>';
@@ -5186,7 +5345,7 @@
         S.xRealm = 4; S.xStage = 0;
         const nr4 = D.XIAN_REALMS[4] || D.XIAN_REALMS[D.XIAN_REALMS.length - 1];
         S.lifeMax = nr4.life || 0;
-        S.unlockStage = Math.max(S.unlockStage, 4);
+        bumpUnlock('xian', 4);
         healOnMajorBreak();
         reciteLiturgy('breakXian');
         logLine('渡过' + gate + '，三关俱过。紫府散尽，气海里那点东西凝成了 —— 晋入 ' + nr4.name + '。', 'good');
@@ -5352,6 +5511,7 @@
     if (S.ownedGongfa && S.ownedGongfa.indexOf('xumai') >= 0) v = Math.round(v * 1.3);
     if (S.yuluHulu) v = Math.round(v * 1.4);            // 灵药葫芦
     if (S.body === 'dao') v = Math.round(v * 1.15);
+    if (quenchBlock() > 0) v = Math.round(v * (1 + quenchBlock() * 2));  // 淬体：伤好得更快
     return Math.max(1, v);
   }
 
@@ -6671,6 +6831,7 @@
     } else {
       d += artBonus('body');                        // 护身法器常驻减伤
       d += clamp(-gap * 0.05, -0.10, 0.15);         // 你位格越高，越扛得住
+      d += quenchBlock();                            // 淬体：皮肉筋骨换来的硬
     }
     return clamp(d, 0.05, 0.55);
   }
@@ -6890,7 +7051,9 @@
 
     let dmg = 0, hit = true, note = '';
     const ratio = clamp(Math.sqrt(computePower() / Math.max(1, c.foe.power)), 0.2, 2.5);
-    const keK = keMul(mainEl(), c.foe.el) || 1;   // P2-19 五行克制
+    let keK = keMul(mainEl(), c.foe.el) || 1;      // P2-19 五行克制
+    const _keFloor = bodyDef().keFloor;
+    if (_keFloor) keK = Math.max(keK, _keFloor);   // 混沌体：五行皆通，不被反克
     const hitBonus = artBonus('hit') - (c.foe.trait === 'veteran' ? 0.12 : 0);
 
     if (sub === 'attack') {
@@ -6918,6 +7081,7 @@
       let sure = false, extra = reson.txt && reson.txt !== '无关' ? '（' + reson.txt + '）' : '';
       if (sk.kind === 'blood') { S.hp = Math.max(1, S.hp - Math.round(S.hpMax * 0.1)); extra = '（耗气血一成）'; }
       if (sk.kind === 'thunder') sure = true;
+      mul2 *= bodySpellMul(sk.kind);
       if (S.preBuff && S.preBuff.fire && sk.kind === 'fire') { mul2 *= (1 + S.preBuff.fire); S.preBuff.fire = 0; extra += '（符箓加成）'; }
       if (S.preBuff && S.preBuff.sureHit) { sure = true; S.preBuff.sureHit = false; extra += '（五雷符）'; }
       hit = true;                                   // v8.1：招式同样必中
@@ -7308,9 +7472,16 @@
     for (const k in S.stats) S.stats[k] = clamp(S.stats[k], 1, 20);
 
     S.dao = genDao();
-    S.hpMax = 100 + (S.hpFlatBonus || 0);
+    S.hpMax = Math.round((100 + (S.hpFlatBonus || 0)) * quenchHpMul());
     S.mpMax = 100 + (S.mpFlatBonus || 0);
     S.hp = S.hpMax; S.mp = S.mpMax;
+    /* 起步就在第一档：仙道胎息 / 神道一柱·立庙。旧版这里留 0，
+       于是 stage 1 的境界词永远走不到。 */
+    S.quenchApplied = quenchLv();
+    S.unlockStage = 1;
+    /* 开局那一档的境界词也要落地，否则 16 条里永远缺第一条 */
+    const _r0 = unlockRow(S.cultivation === 'shen' ? 'shen' : 'xian', 1);
+    if (_r0 && _r0.phrase) logLine('· ' + _r0.phrase, 'good');
 
     // 按主修初始化
     if (isShen()) {

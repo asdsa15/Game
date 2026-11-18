@@ -67,7 +67,7 @@ def main() -> None:
         html = html.replace('<meta charset="utf-8">',
                             '<meta charset="utf-8">\n' + new_vp, 1)
 
-    # ---- 4. PWA 头 ----
+    # ---- 4. PWA 头（清单只在 http(s) 下挂：file:// 直开会让 Chromium 以 ERR_FAILED 拉清单） ----
     pwa_head = (
         '<meta name="theme-color" content="#5E9689">\n'
         '<meta name="apple-mobile-web-app-capable" content="yes">\n'
@@ -75,7 +75,7 @@ def main() -> None:
         '<meta name="format-detection" content="telephone=no">\n'
         '<link rel="icon" href="./icons/icon-192.png">\n'
         '<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">\n'
-        '<link rel="manifest" href="./manifest.webmanifest">\n'
+        '<script>(function(){if(!/^https?:$/.test(location.protocol))return;var l=document.createElement("link");l.rel="manifest";l.href="./manifest.webmanifest";document.head.appendChild(l);})();</script>\n'
     )
     html = html.replace('</head>', pwa_head + '</head>', 1)
 

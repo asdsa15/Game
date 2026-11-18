@@ -1,0 +1,19 @@
+{
+  "name": "wendao-changsheng",
+  "productName": "问道长生",
+  "version": "8.1.0",
+  "description": "问道长生 · 修仙文字游戏（Electron 桌面版）",
+  "main": "main.js",
+  "private": true,
+  "author": "雾见川",
+  "license": "UNLICENSED",
+  "scripts": {
+    "sync": "node scripts/sync-app.js",
+    "start": "npm run sync && electron .",
+    "pack": "npm run sync && electron-packager . 问道长生 --platform=win32 --arch=x64 --out=release --overwrite --asar --icon=assets/icon.ico --app-version=8.1.0 --app-copyright=\"雾见川\" --win32metadata.CompanyName=雾见川 --win32metadata.ProductName=问道长生 --ignore=\"^/(release|node_modules/\\.cache)\""
+  },
+  "devDependencies": {
+    "@electron/packager": "^18.3.6",
+    "electron": "^33.4.11"
+  }
+}

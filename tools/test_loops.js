@@ -101,21 +101,24 @@ const baseRate = S.hdRate;
 
 setup();
 S.karma = 100;
+/* 随机数要罩住整个动作链：do_hd 末尾会进 resolveXianBreak 再 advanceXun(1)，
+   若此处已 restore，破境成功跨月后的月度随机事件（旧怨寻至等）会改动业力与道心，
+   断言读到的就不是「这个动作」的增量了。定住随机数，xun 停在 1，不跨月。 */
 fix(0);
 G.ACT.do_xbreak();
-restore();
 const kBefore = S.karma;
 G.ACT.do_hd('borrow');
+restore();
 ok(S.karma === kBefore + 15, '「借」加业力 15', S.karma - kBefore);
 ok(S.merit >= 0, '功德不为负', S.merit);
 
 setup();
 S.karma = 100;
-fix(0);
+fix(0);                       // 同上：连同破境判定与月度推进一起定住
 G.ACT.do_xbreak();
-restore();
 const hBefore = S.stats.heart;
 G.ACT.do_hd('fight');
+restore();
 ok(S.stats.heart === hBefore + 2, '「抗」加道心 2', S.stats.heart);
 
 /* ==================== 2. 业力 → 仇家 ==================== */
