@@ -109,7 +109,8 @@ ok(S.dArt.staff === 3, '三级为顶，不能超', S.dArt.staff);
 S.year = 388; S.month = 1; S.turn = 12;
 const st0 = S.stones;
 G.advanceXun(3);   // 一月三旬：过一整月
-ok(S.stones === st0 - 180, '每月维护 60×3 = 180 灵石', st0 - S.stones);
+/* v8.1 起月度多了固定开销：这里一并算进来，神器维护 180 仍是其中最大一笔 */
+ok(S.stones === st0 - 198, '月支出 = 神器 180 + 庙宇修缮 18（野祀 ×0.6）', st0 - S.stones);
 S.stones = 0;
 G.advanceXun(3);   // 一月三旬：过一整月
 ok(S.dArtIdle === 1, '付不起维护 → 停供', S.dArtIdle);
@@ -489,6 +490,66 @@ ok(S.enemy === true, '否认旧账会结下仇家', S.enemy);
 ok(G.D.VERSES.breakXian.length >= 20, '破境诗不少于 20 首（现 ' + G.D.VERSES.breakXian.length + '）', G.D.VERSES.breakXian.length);
 ok(G.D.DAOSHU.length >= 7, '道书不少于 7 部（现 ' + G.D.DAOSHU.length + '）', G.D.DAOSHU.length);
 ok(G.D.NPC_POOL.length >= 12, 'NPC 不少于 12 人（现 ' + G.D.NPC_POOL.length + '）', G.D.NPC_POOL.length);
+
+
+/* ==================== v8.1 · 固定开销 ==================== */
+console.log('=== v8.1 · 固定开销 ===');
+
+setup('xian', { stones: 1000 });
+S.lingqi = 0; S.sect = null; S.clan = null; S.cave = { facilities: {} };
+S.arrears = 0; S.sectArrears = 0;
+fixRandom(0.999);
+const xSt = S.stones;
+G.advanceXun(3);
+restoreRandom();
+ok(xSt - S.stones === 10, '仙道洞府维护：贫瘠灵脉每月 10 石（实扣 ' + (xSt - S.stones) + '）');
+
+setup('xian', { stones: 1000 });
+S.lingqi = 1; S.sect = { rank: 2, contrib: 100, hall: 0 }; S.clan = null;
+S.cave = { facilities: { dan: 1 } }; S.arrears = 0; S.sectArrears = 0;
+fixRandom(0.999);
+const ySt = S.stones;
+G.advanceXun(3);
+restoreRandom();
+ok(S.sect.contrib === 50, '宗门月课扣贡献 50（100 → ' + S.sect.contrib + '）');
+ok(ySt - S.stones === 35, '洞府维护 = 灵脉 15 + 作坊 20 = 35（实扣 ' + (ySt - S.stones) + '）');
+
+setup('xian', { stones: 1000 });
+S.lingqi = 0; S.sect = null;
+S.clan = { name: 'TEST', lv: 1, pop: 120, luck: 60, ident: 'di', rules: [], founded: 0,
+  ind: { farm: 0, work: 0, trade: 0, study: 0 } };
+S.cave = { facilities: {} }; S.arrears = 0; S.sectArrears = 0;
+fixRandom(0.999);
+const cSt = S.stones;
+G.advanceXun(3);
+restoreRandom();
+const foodRow = (S.ledger.expense || []).filter(function (x) { return x.label === '家族口粮'; })[0];
+ok(!!foodRow && foodRow.amount === 30, '家族口粮入账：族人 120 × 0.25 = 30 石（' + (foodRow ? foodRow.amount : '缺') + '）');
+/* 净额要把族产算进来：族产 42 − 口粮 30 − 洞府 10 = +2 */
+ok(cSt - S.stones === -2, '族产 42 抵掉口粮与洞府后净 +2（实为 ' + (cSt - S.stones) + '）');
+
+setup('xian', { stones: 0 });
+S.lingqi = 0; S.sect = null; S.clan = null; S.cave = { facilities: {} };
+S.arrears = 0;
+fixRandom(0.999);
+G.advanceXun(3);
+restoreRandom();
+ok(S.arrears === 1, '付不起洞府维护 → 欠费记 1 月（' + S.arrears + '）');
+ok(S.stones === 0, '欠费不会把灵石扣成负数');
+
+S.stones = 5000;
+fixRandom(0.999);
+G.advanceXun(3);
+restoreRandom();
+ok(S.arrears === 0, '补上灵石后欠费清零（' + S.arrears + '）');
+
+setup('shen', { stones: 0 });
+S.sect = { rank: 2, contrib: 0, hall: 0, peak: null, joinedTurn: 0 };
+S.sectArrears = 0; S.arrears = 0; S.clan = null; S.cave = { facilities: {} };
+fixRandom(0.999);
+for (let i = 0; i < 3; i++) G.advanceXun(3);
+restoreRandom();
+ok(S.sect.rank === 1, '连欠三月月课 → 宗门位次降一阶（' + S.sect.rank + '）');
 
 console.log('\n结果：' + pass + ' 通过 / ' + fail + ' 失败');
 process.exit(fail ? 1 : 0);

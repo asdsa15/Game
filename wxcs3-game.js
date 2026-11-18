@@ -131,6 +131,10 @@
       votSold: 0,         // 本月已售出件数
 
       // —— v8.1 P0 M2 淬体 / M5 指令坞折叠 ——
+      tribLock: 0,        // 天劫未过后还有几旬不能再破
+      trib: null,         // 本次破境撞上的那类劫
+      sectArrears: 0,     // 宗门欠课连月数（满 3 降一阶）
+      arrears: 0,         // 固定开销欠缴连月数（影响修行效率）
       quench: 0,          // 淬体阶数 0~9（0 = 未淬）
       quenchApplied: 0,   // 已写进气血上限的阶数（防重复复利，存档迁移据此算增量倍率）
       dockOpen: {},       // 指令坞折叠组展开态
@@ -202,6 +206,8 @@
     if (S.cultivation === 'both') v *= 0.8;   // 未定：前两阶 −20%
     if (S.meditate) v *= 2;                   // 闭关 ×2
     if (S.cultBonus && S.cultBonus > 1) v *= S.cultBonus; // 日月玄浆：本月有效
+    const _arr1 = Math.max(0, S.arrears || 0);
+    if (_arr1) v *= Math.max(D.FIXED_COST.arrearsFloor, 1 - D.FIXED_COST.arrearsStep * _arr1);
     if (hasDebuff('borrowed_luck')) v *= 1.2;  // 借来的运：快，但会走火
     return v;
   }
@@ -226,6 +232,8 @@
     if (_bd2.both && S.cultivation === 'both') v *= _bd2.both;
     if (S.cultivation === 'both') v *= 0.8;
     if (S.meditate) v *= 1.5;
+    const _arr2 = Math.max(0, S.arrears || 0);
+    if (_arr2) v *= Math.max(D.FIXED_COST.arrearsFloor, 1 - D.FIXED_COST.arrearsStep * _arr2);
     const cap = pillar().need / 12;
     return { raw: v, capped: Math.min(v, cap), cap };
   }
@@ -367,6 +375,8 @@
   function advanceXun(n) {
     n = n || 1;
     for (let i = 0; i < n; i++) {
+      /* 天劫余威按「旬」走：锁的是三旬，不是三月 */
+      if (S.tribLock > 0) { S.tribLock--; if (!S.tribLock) logLine('天劫余威散了，可以再试。', ''); }
       S.xun = (S.xun || 0) + 1;
       if (S.xun >= XUN_PER_MONTH) {
         S.xun = 0;
@@ -513,6 +523,9 @@
           ledgerAdd('in', '香火钱', g2);
         }
       }
+
+      // —— 固定开销（v8.1 收尾项 2）：不做事也要付的钱
+      applyFixedCosts();
 
       // —— 香火反噬
       if (isShen() && S.karma > 50 && !S.sui) {
@@ -1455,6 +1468,165 @@
   /* 旧的环形指令盘已弃用（指挥由底部常驻区与右上角「系统」承担） */
   function renderDial() { }
 
+  /* ---------- 固定开销（v8.1 收尾项 2） ----------
+     时间预算只解决「做事有成本」，「不做事零成本」还留着——于是最省的打法是不出门。
+     这里补四笔月度固定开销：宗门月课、家族口粮、庙宇修缮、洞府维护。
+     四笔都「能付就付、付不起只降效率不删档」，避免把老档逼死。 */
+  function sectDue() {
+    if (!S.sect || !(S.sect.rank > 0)) return 0;
+    const r = D.SECT.ranks[S.sect.rank] || {};
+    return Math.max(10, Math.round((r.need || 0) / D.FIXED_COST.sectDueNeedDiv));
+  }
+  function clanFoodCost() {
+    if (!S.clan) return 0;
+    return Math.max(1, Math.round((S.clan.pop || 1) * D.FIXED_COST.clanFoodPerPop));
+  }
+  function templeUpkeep() {
+    if (!usesShenLine()) return 0;
+    const c = D.MIAO_COEFF[S.miao] || 1;
+    return Math.max(10, Math.round(D.FIXED_COST.templeBase * c));
+  }
+  function caveUpkeep() {
+    if (!hasXianLine()) return 0;
+    const qi = (D.LINGQI[S.lingqi] || D.LINGQI[0]).v || 1;
+    const fac = (S.cave && S.cave.facilities) || {};
+    return Math.max(10, Math.round(D.FIXED_COST.caveBase * qi + D.FIXED_COST.cavePerFacility * Object.keys(fac).length));
+  }
+  function fixedCostList() {
+    return [
+      { id: 'sect', name: '宗门月课', contrib: sectDue() },
+      { id: 'clan', name: '家族口粮', stones: clanFoodCost() },
+      { id: 'temple', name: '庙宇修缮', stones: templeUpkeep() },
+      { id: 'cave', name: '洞府维护', stones: caveUpkeep() }
+    ].filter(function (x) { return (x.stones || 0) > 0 || (x.contrib || 0) > 0; });
+  }
+  /* 月度结算：能付就付，付不起只记账不删档；四笔全清则欠费清零。 */
+  function applyFixedCosts() {
+    const items = fixedCostList();
+    if (!items.length) { S.arrears = 0; return; }
+    let unpaid = 0;
+    for (const it of items) {
+      if (it.id === 'sect') {
+        const due = it.contrib;
+        if ((S.sect.contrib || 0) >= due) {
+          S.sect.contrib -= due;
+          logLine('宗门月课：贡献 −' + due + '。', '');
+          continue;
+        }
+        const cash = due * D.FIXED_COST.sectCashPerContrib;
+        if (S.stones >= cash) {
+          S.stones -= cash;
+          ledgerAdd('out', '宗门月课（灵石抵缴）', cash);
+          S.sect.contrib = Math.max(0, (S.sect.contrib || 0) - due);
+          logLine('贡献不够，月课折了 ' + cash + ' 灵石。', '');
+          continue;
+        }
+        S.sectArrears = (S.sectArrears || 0) + 1;
+        unpaid++;
+        if (S.sectArrears >= D.FIXED_COST.sectArrearsMax && S.sect.rank > 0) {
+          S.sect.rank = Math.max(0, S.sect.rank - 1);
+          S.sectArrears = 0;
+          logLine('连欠三月月课，宗门把你的位次降了一阶。', 'danger');
+        } else {
+          logLine('月课没缴上，宗门记了一笔。', 'danger');
+        }
+        continue;
+      }
+      const cost = it.stones || 0;
+      if (S.stones >= cost) {
+        S.stones -= cost;
+        ledgerAdd('out', it.name, cost);
+      } else {
+        unpaid++;
+        logLine(it.name + '没付上，气息跟着滞了一层。', 'danger');
+      }
+    }
+    if (unpaid) S.arrears = Math.min(9, (S.arrears || 0) + 1);
+    else {
+      if (S.arrears) logLine('欠账都清了，气机重新顺过来。', 'good');
+      S.arrears = 0;
+    }
+  }
+
+  /* 欠费惩罚：每欠一月，修行效率 -10%，最低七成。还清即清零。 */
+  function arrearsMul() {
+    const a = Math.max(0, S.arrears || 0);
+    return a ? Math.max(D.FIXED_COST.arrearsFloor, 1 - D.FIXED_COST.arrearsStep * a) : 1;
+  }
+
+  /* ---------- 天劫五类（v8.1 P0 批次 2） ----------
+     旧版破境只有一个骰子；这里给骰子加一个「看得见的对手」：
+     每一类劫验一件事，克法按仙/神分列，命中就涨成功率，没命中就只能硬扛。
+     只在跨大境界时来，同境小阶不打断节奏。 */
+  function isMajorXianBreak() {
+    const r = xrealm();
+    return !!r && S.xStage >= (r.stages || []).length - 1;
+  }
+  function tribDetail(id) {
+    return D.TRIBULATION.filter(function (x) { return x.id === id; })[0] || D.TRIBULATION[0];
+  }
+  function rollTribulation() {
+    const W = D.TRIB_WEIGHT;
+    let total = 0;
+    for (const k in W) total += W[k];
+    let r = Math.random() * total;
+    for (const k in W) { r -= W[k]; if (r <= 0) return tribDetail(k); }
+    return tribDetail('lei');
+  }
+  /* 克法读数：同一类劫，仙道与神道各有一条活路；没有就写明「无克法」。 */
+  function tribCounter(id) {
+    const shen = isShen();
+    if (id === 'lei') {
+      const h = st('heart');
+      return { bonus: h >= 12 ? 0.12 : 0, text: '道心 ' + h + (h >= 12 ? '，雷声不乱' : '，心先怯了') };
+    }
+    if (id === 'shui') {
+      if (!shen) {
+        const g = getDaogong();
+        const el = (g && g.el) || null;
+        return { bonus: el === 'water' ? 0.12 : 0, text: el === 'water' ? '道基属水，河声认你' : '道基非水，水势压人' };
+      }
+      const p = S.piety || 1;
+      return { bonus: p >= 1.5 ? 0.10 : 0, text: '信众虔诚 ×' + p.toFixed(1) + (p >= 1.5 ? '，香火压得住水' : '，香火压不住') };
+    }
+    if (id === 'huo') {
+      if (!shen) return { bonus: 0, text: '仙道无神器，灯火照不到你' };
+      const artN = (S.dArt ? (S.dArt.staff || 0) + (S.dArt.mirror || 0) + (S.dArt.seal || 0) : 0);
+      return { bonus: artN > 0 ? 0.12 : 0, text: artN ? '神器 ' + artN + ' 级，灯自明' : '无神器，灯灭了' };
+    }
+    if (id === 'feng') {
+      const q = quenchLv();
+      const b = q >= 6 ? 0.16 : q >= 3 ? 0.10 : 0;
+      return { bonus: b, text: '淬体 ' + q + ' 阶' + (b ? '，骨已换过' : '，皮肉未坚') };
+    }
+    if (id === 'gu') {
+      const n = hookUnsettled().length;
+      return { bonus: n === 0 ? 0.12 : 0, text: n ? '还有 ' + n + ' 笔恩义未了' : '恩义皆清' };
+    }
+    return { bonus: 0, text: '无' };
+  }
+  /* 天劫未过的三重代价：气血落一成、修为再跌三成、三旬不得再破。 */
+  function tribFailPenalty() {
+    S.hp = Math.max(1, Math.round(S.hpMax * 0.10));
+    S.xiuwei = Math.round((S.xiuwei || 0) * 0.7);
+    /* 含本次这一旬：破境本身要走一旬，所以记 4，玩家实等 3 旬 */
+    S.tribLock = 4;
+    logLine('天劫未过：气血只剩一成，修为再跌三成，三旬之内不得再破。', 'danger');
+  }
+  function openTribulation(rate) {
+    const t = S.trib || rollTribulation();
+    const c = tribCounter(t.id);
+    let b = '<div class="small">' + esc(t.line) + '</div>';
+    b += '<div class="statline"><span class="k">劫</span><span class="v">' + esc(t.name) + '（验' + esc(t.test) + '）</span></div>';
+    b += '<div class="statline"><span class="k">克法</span><span class="v">' + esc(c.text) + '　' +
+      (c.bonus ? '<span class="good">+' + Math.round(c.bonus * 100) + '%</span>' : '<span class="danger">无</span>') + '</span></div>';
+    b += '<div class="statline"><span class="k">成功率</span><span class="v">' + Math.round(rate * 100) + '% → <b>' +
+      Math.round(clamp(rate + c.bonus, 0.05, 0.95) * 100) + '%</b></span></div>';
+    b += '<div class="hint">过不去：气血落一成，修为再跌三成，三旬之内不得再破境。</div>';
+    b += '<ul class="opts">' + optRow('A', '过劫', { name: '风险', cls: 'risk' }, '该来的总要来', false, 'do;tribGo') + '</ul>';
+    openModal('天劫 · ' + t.name, b, true);
+  }
+
   /* ---------- 体质读数（v8.1 P0 M2） ----------
      八种体质各有一个可达落点：剑灵体加战力、九阳加火法、冰魄落主修水、
      玄阴/纯阳加双修、混沌不被反克、凡体淬体贵三倍。 */
@@ -2080,10 +2252,18 @@
 
   ACT.do_xbreak = () => {
     closeModal();
+    if (S.tribLock > 0) { toast('天劫余威未散，还需 ' + S.tribLock + ' 旬'); return; }
+    /* 跨大境界先过天劫：给骰子一个看得见的对手，再谈准备与丹药 */
+    if (isMajorXianBreak() && !S.trib && S.xRealm < 5) {
+      S.trib = rollTribulation();
+      openTribulation(xianBreakRate());
+      return;
+    }
     // 破障丹加成只影响「这一次」破境；筑基丹的 +15 也要真的加进去。
     // 旧代码 breakBonus 只加不减、consumeBreakBonus 从未被调用，
     // 吃一颗小破障丹等于此后每次破境永久 +12%。
-    const rate = xianBreakRate();
+    let rate = xianBreakRate();
+    if (S.trib) rate = clamp(rate + tribCounter(S.trib.id).bonus, 0.05, 0.95);
     /* —— 准备在这里兑现：丹药扣掉、人情欠下、地方用掉。
        旧版这里有一段「手里有筑基丹就自动吃」的特判，
        等于玩家连吃药这一步都不用想。现在药要自己选，选了才吃。 */
@@ -2169,6 +2349,8 @@
     openModal('心魔 · ' + realmName(), b, true);
   }
 
+  ACT.do_tribGo = () => { closeModal(); ACT.do_xbreak(); };
+
   ACT.do_hd = (kind) => {
     const base = S.hdRate || 0.5;
     S.hdRate = 0;
@@ -2232,6 +2414,7 @@
         };
       }
       S.renGong = (S.renGong || 0) + 80;
+      if (S.trib) { logLine('天劫过了：' + S.trib.name + '这一关，你走的是活路。', 'good'); S.trib = null; }
       toast('破境 · ' + realmName());
       // 借来的运：钩子给的功法让你走得快，也让你走火
       if (hasDebuff('borrowed_luck') && Math.random() < 0.15) {
@@ -2259,6 +2442,7 @@
       logLine('· ' + fline, 'danger');
       S.lastLiturgy = fline;
       logLine('破境失败，气血逆冲 -' + dmg + '，修为跌回七成。', 'danger');
+      if (S.trib) { tribFailPenalty(); S.trib = null; }
       S.holdEvent = true;
       S.breakPop = {
         title: '破境未成 · ' + realmName(),
@@ -2489,7 +2673,13 @@
   ACT.do_pilbreak = (mode) => {
     closeModal();
     if (S.pillar >= D.PILLARS.length - 1) { openZhenjunEnd(); return; }
-    const rate = pillarRate(mode);
+    if (S.tribLock > 0) { toast('天劫余威未散，还需 ' + S.tribLock + ' 旬'); return; }
+    /* 神道破柱同样是跨大境：天劫在柱前落，克法按神道那一列读 */
+    const tb = rollTribulation(), tc = tribCounter(tb.id);
+    S.trib = tb;
+    let rate = pillarRate(mode);
+    rate = clamp(rate + tc.bonus * 100, 5, 95);
+    logLine('破柱当日天劫至：' + tb.name + '（' + tc.text + '）。', '');
     if (rnd100() <= rate) {
       S.pillar++; S.pos = 0; S.xianghuo = 0;
       S.miao = D.PILLARS[S.pillar].miao;
@@ -2532,6 +2722,9 @@
       S.sui = true; S.karma += 20;
       logLine('破柱失败：你堕落为「祟」。', 'danger');
     }
+    S.trib = null;
+    S.tribLock = 4;   // 含本次这一旬，玩家实等 3 旬
+    logLine('天劫未过：三旬之内不得再破柱。', 'danger');
     advanceXun(1); maybeEvent(); render();
   };
 
@@ -2874,6 +3067,8 @@
       b += divider();
       /* v8.1 P0 M2：淬体走洞府，不占指令坞位（M5 分组之后坞位更金贵） */
       const qn = quenchNext();
+      b += '<div class="small muted">每月维护 ' + fmtNum(caveUpkeep()) + ' 灵石（灵脉 ×' +
+        ((D.LINGQI[S.lingqi] || D.LINGQI[0]).v || 1) + ' ＋ 每间作坊 20）</div>';
       b += '<div class="small muted">淬体 · 皮肉筋骨</div>';
       b += '<div class="statline"><span class="k">淬体阶</span><span class="v">' +
         (quenchLv() ? (esc(D.QUENCH[quenchLv() - 1].name) + '（' + quenchLv() + '/' + D.QUENCH.length + '）') : '未淬') +
@@ -2954,6 +3149,7 @@
     let b = `<div class="statline"><span class="k">神庙</span><span class="v">${esc(S.miaoHao || '野庙')}　${esc(S.miao)}</span></div>`;
     b += `<div class="statline"><span class="k">托付守庙</span><span class="v">${S.trustee ? '<span class="good">有人守着</span>' : '<span class="danger">无人（坐庙 -3%/月）</span>'}</span></div>`;
     if (S.templeBroken) b += `<div class="small danger">庙宇破损：香火系数 ×0.6</div>`;
+    b += `<div class="small muted">修缮 ${fmtNum(templeUpkeep())} 灵石／月（按庙阶计）</div>`;
     b += divider();
     b += `<ul class="opts">`;
     b += optRow('A', S.trustee ? '托付已有人守着' : '托付他人守庙', { name: '平和', cls: 'peace' }, '流失降到 -0.3%', S.trustee, 'do;trustee');
@@ -3400,6 +3596,9 @@
     b += '<div class="statline"><span class="k">贡献</span><span class="v">' + fmtNum(S.sect.contrib) +
       (r.need ? ' / ' + fmtNum(r.need) : '') + '</span></div>';
     if (S.sect.rank > 0) b += '<div class="small muted">月俸 ' + r.pay + ' 灵石 · 可装配招式 ' + r.equip + ' 道</div>';
+    if (sectDue() > 0) b += '<div class="small muted">月课 ' + fmtNum(sectDue()) + ' 贡献（不足则以 ' +
+      fmtNum(sectDue() * D.FIXED_COST.sectCashPerContrib) + ' 灵石抵缴）' +
+      (S.sectArrears ? '　<span class="danger">已欠 ' + S.sectArrears + ' 月</span>' : '') + '</div>';
     b += '<div class="muted small" style="margin:4px 0">' + esc(r.desc) + '</div>';
     b += divider();
     b += '<ul class="opts">';
@@ -3639,6 +3838,7 @@
     b += '<div class="statline"><span class="k">祠堂</span><span class="v">' + esc(hall.name) + '（' + S.clan.lv + ' 级）</span></div>';
     b += '<div class="statline"><span class="k">身份</span><span class="v">' + esc(ident.name) + '</span></div>';
     b += '<div class="statline"><span class="k">族人</span><span class="v">' + S.clan.pop + ' / ' + hall.pop + '</span></div>';
+    b += '<div class="small muted">口粮 ' + fmtNum(clanFoodCost()) + ' 灵石／月（按族人计）</div>';
     b += '<div class="statline"><span class="k">族运</span><span class="v">' + Math.round(S.clan.luck) + ' / ' + hall.luck + '</span></div>';
     b += '<div class="muted small" style="margin:4px 0">每月族人供奉 ' +
       Math.round(S.clan.pop * D.CLAN.income.stonePerPop) + ' 灵石（未派活时），族运 +' +
@@ -4472,6 +4672,8 @@
     out.dArt = Object.assign({ staff: 0, mirror: 0, seal: 0 }, st.dArt || {});
     out.votive = Object.assign({}, st.votive || {});
     out.dockOpen = Object.assign({}, st.dockOpen || {});
+    out.tribLock = clamp(parseInt(st.tribLock, 10) || 0, 0, 9);
+    out.trib = null;    // 天劫是临场状态，读档不继承
     /* v8.1 P0 M2：淬体存档迁移。
        只补「尚未写进气血的阶差」，两端同乘一个增量倍率 —— hp / hpMax 比值不变，
        伤势等级不漂移；quenchApplied === quench 时整段跳过，不重复复利。
@@ -9658,7 +9860,13 @@
      advanceXun 也导出——测试要精确控制「过了几旬」，用动作间接推进
      会把修为、事件一起带上，断言就不干净了。 */
   G.WXCS3 = { boot, dispatch, render, ACT, advanceXun, advanceMonth,
-    get S() { return S; }, get D() { return D; } };
+    get S() { return S; }, get D() { return D; },
+    /* 只读探针：给测试与模拟脚本看「这类劫对谁有利」 */
+    tribInfo: function (id) {
+      const t = tribDetail(id), c = tribCounter(id);
+      return { id: id, name: t.name, test: t.test, bonus: c.bonus, text: c.text };
+    },
+    tribRoll: function () { return rollTribulation().id; } };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

@@ -70,7 +70,7 @@ function setup() {
   S.stones = 2000; S.fame = 0; S.karma = 0; S.merit = 0;
   S.hp = S.hpMax = 400; S.mp = S.mpMax = 200;
   S.month = 5; S.year = 395; S.turn = 90;
-  S.xun = 0; S.xiuAcc = 0;
+  S.xun = 0; S.xiuAcc = 0; S.trib = null; S.tribLock = 0;
   S.log = []; S.chronicle = []; S.ledger = { income: [], expense: [] };
   S.bag = {}; S.bagMat = {}; S.talismans = {}; S.arts = []; S.disks = []; S.craftedQ = {};
   S.equipped = {}; S.stats = { qualify: 8, insight: 8, sense: 8, speed: 8, heart: 8, fate: 8 };
@@ -82,19 +82,25 @@ function setup() {
   S.miaoUp = {}; S.clan = null; S.sect = null;
 }
 
+/* v8.1：跨大境界要先过天劫（弹窗）。测试里替玩家点掉那一步。 */
+function goBreak() {
+  G.ACT.do_xbreak();
+  if (S.trib) G.ACT.do_tribGo();
+}
+
 /* ==================== 1. 业力 → 心魔劫 ==================== */
 console.log('=== 1. 业力 → 心魔 ===');
 setup();
 S.karma = 0;
 fix(0);
-G.ACT.do_xbreak();
+goBreak();
 restore();
 ok(!S.hdRate, '无业力时不触发心魔', S.hdRate);
 
 setup();
 S.karma = 100;
 fix(0);                       // 掷骰子压到 0，必触发
-G.ACT.do_xbreak();
+goBreak();
 restore();
 ok(S.hdRate > 0, '业力 100 时破境先问心魔', S.hdRate);
 const baseRate = S.hdRate;
@@ -105,7 +111,7 @@ S.karma = 100;
    若此处已 restore，破境成功跨月后的月度随机事件（旧怨寻至等）会改动业力与道心，
    断言读到的就不是「这个动作」的增量了。定住随机数，xun 停在 1，不跨月。 */
 fix(0);
-G.ACT.do_xbreak();
+goBreak();
 const kBefore = S.karma;
 G.ACT.do_hd('borrow');
 restore();
@@ -115,7 +121,7 @@ ok(S.merit >= 0, '功德不为负', S.merit);
 setup();
 S.karma = 100;
 fix(0);                       // 同上：连同破境判定与月度推进一起定住
-G.ACT.do_xbreak();
+goBreak();
 const hBefore = S.stats.heart;
 G.ACT.do_hd('fight');
 restore();
@@ -222,13 +228,13 @@ ok(pairedRate > looseRate, '四印成对提高破境率', pairedRate + '% vs ' +
 setup();
 S.xRealm = 4; S.xStage = 0; S.xiuwei = 1000; S.jinxing = false;
 fix(0.999);
-G.ACT.do_xbreak();
+goBreak();
 restore();
 const lostNoJin = S.xiuwei;
 setup();
 S.xRealm = 4; S.xStage = 0; S.xiuwei = 1000; S.jinxing = true;
 fix(0.999);
-G.ACT.do_xbreak();
+goBreak();
 restore();
 ok(S.xiuwei > lostNoJin, '金性让破境失败少散修为', S.xiuwei + ' vs ' + lostNoJin);
 
@@ -282,7 +288,7 @@ S.bag = { xiaoPo: 1 };
 S.xRealm = 2; S.xStage = 0; S.xiuwei = 300;
 S.prep = { place: 'cave', pill: 'xiaoPo', guard: null };
 fix(0.99);
-G.ACT.do_xbreak();
+goBreak();
 restore();
 ok((S.bag.xiaoPo || 0) === 0, '开坛后丹药被吃掉', S.bag.xiaoPo);
 ok(S.prep === null, '开坛后准备清空', S.prep);
@@ -302,7 +308,7 @@ S.npcs = { guqingxuan: { fav: 70, met: true, alive: true, since: 0 } };
 S.xRealm = 2; S.xStage = 0; S.xiuwei = 300;
 S.prep = { place: 'wild', pill: null, guard: 'guqingxuan' };
 fix(0.99);
-G.ACT.do_xbreak();
+goBreak();
 restore();
 ok(S.npcs.guqingxuan.fav === 55, '护法的代价是欠 15 好感', S.npcs.guqingxuan.fav);
 
@@ -404,6 +410,75 @@ ok(/S\.enemySect/.test(gcode) && (gcode.match(/S\.enemySect/g) || []).length >= 
 ok(/function openHeartDemon/.test(gcode), '心魔劫有面板');
 ok(/function openVengeance/.test(gcode), '寻仇有面板');
 ok(/isVengeance/.test(gcode), '战斗能识别这是不是寻仇');
+
+
+/* ==================== 5. 天劫五类 ==================== */
+console.log('=== 5. 天劫五类 ===');
+ok(G.D.TRIBULATION.length === 5, '五类劫齐备');
+ok(Object.values(G.D.TRIB_WEIGHT).reduce(function (a, b) { return a + b; }, 0) === 100, '权重合计 100');
+ok(G.D.TRIBULATION.every(function (t) { return t.name && t.test && t.line; }), '每类都有名目、验项与文案');
+
+/* 克法读数：同一类劫，两条线各有一条活路 */
+setup(); S.stats.heart = 8;
+ok(G.tribInfo('lei').bonus === 0, '道心 8：雷劫无克法');
+S.stats.heart = 12;
+ok(G.tribInfo('lei').bonus === 0.12, '道心 12：雷劫可克');
+
+setup(); S.cultivation = 'xian';
+const waterGf = G.D.GONGFA.filter(function (g) { return g.el === 'water'; })[0];
+S.daogong = waterGf ? waterGf.id : 'juqi';
+ok(G.tribInfo('shui').bonus === (waterGf ? 0.12 : 0), '道基属水：倒天河可克（' + G.tribInfo('shui').text + '）');
+S.cultivation = 'shen'; S.piety = 1.5; S.dArt = { staff: 1, mirror: 0, seal: 0 };
+ok(G.tribInfo('shui').bonus === 0.10, '神道虔诚 1.5：香火压水');
+ok(G.tribInfo('huo').bonus === 0.12, '神道有神器：无灯焰可克');
+S.cultivation = 'xian';
+ok(G.tribInfo('huo').bonus === 0, '仙道无神器：无灯焰无克法（死值改为如实说明）');
+
+setup(); S.quench = 0;
+ok(G.tribInfo('feng').bonus === 0, '未淬体：折骨风无克法');
+S.quench = 3; ok(G.tribInfo('feng').bonus === 0.10, '淬体 3 阶：折骨风 +10%');
+S.quench = 6; ok(G.tribInfo('feng').bonus === 0.16, '淬体 6 阶：折骨风 +16%');
+
+setup(); S.hooks = [];
+ok(G.tribInfo('gu').bonus === 0.12, '恩义皆清：故人关可克');
+
+/* 只在跨大境界触发：同境小阶不打断 */
+setup(); S.xRealm = 2; S.xStage = 0; S.hpMax = 400; S.hp = 400; S.tribLock = 0;
+fix(0);
+goBreak();
+restore();
+ok(!S.trib, '同境小阶不触发天劫');
+ok(S.xStage === 1, '同境小阶直接推进（xStage ' + S.xStage + '）');
+
+/* 跨大境界：先弹劫，劫类落定 */
+setup(); S.xRealm = 3; S.xStage = 2; S.hpMax = 400; S.hp = 400; S.xiuwei = 1000; S.jinxing = false; S.xun = 0;
+fix(0.999);
+G.ACT.do_xbreak();
+restore();
+ok(!!S.trib, '跨大境界先过天劫（' + (S.trib ? S.trib.name : '无') + '）');
+ok(G.S.phase === 'play', '劫中仍是 play 态，未误入别的面板');
+
+/* 失败：气血落一成 + 修为再跌三成 + 三旬锁 */
+fix(0.999);
+G.ACT.do_tribGo();
+restore();
+ok(S.hp === 40, '天劫未过：气血落至一成（' + S.hp + '）');
+ok(S.xiuwei === 490, '天劫未过：修为再跌三成（1000 → 700 → ' + S.xiuwei + '）');
+ok(S.tribLock === 3, '天劫未过：锁住三旬（' + S.tribLock + '）');
+ok(S.trib === null, '失败后清掉劫的状态');
+
+/* 锁住期间不能破境 */
+const lx = S.xiuwei, lk = S.tribLock;
+fix(0.999);
+goBreak();
+restore();
+ok(S.xiuwei === lx && S.tribLock === lk, '锁内破境被挡住');
+
+/* 锁按月递减 */
+fix(0.999);
+G.advanceXun(1);
+restore();
+ok(S.tribLock === lk - 1, '一旬之后余威减一（' + S.tribLock + '）');
 
 console.log('\n结果：' + pass + ' 通过 / ' + fail + ' 失败');
 process.exit(fail ? 1 : 0);

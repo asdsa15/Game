@@ -167,7 +167,7 @@ ok(els['stage'].innerHTML.indexOf('收起') < 0, '再点一次收回去');
 console.log('=== v8.1 · 功能门 ===');
 setup('xian'); S.unlockStage = 1; S.karma = 0; S.xRealm = 0; S.xStage = 5; S.xiuwei = 0;
 let realRnd = Math.random; Math.random = function () { return 0; };
-try { G.ACT.do_xbreak(); } catch (e) { }
+try { G.ACT.do_xbreak(); if (S.trib) G.ACT.do_tribGo(); } catch (e) { }
 Math.random = realRnd;
 ok(S.xRealm === 1, '胎息六轮圆满 → 晋练气（xRealm ' + S.xRealm + '）');
 ok(S.unlockStage >= 2, '练气档已解锁（unlockStage ' + S.unlockStage + '）');

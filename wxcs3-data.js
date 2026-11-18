@@ -855,6 +855,34 @@
   /* ====== 淬体九阶（v8.1 P0 M2） ======
      凡体也能一路淬上去，只是花三倍（决策点 ①）。每一阶只按「增量倍率」写进气血，
      反复淬不会复利；block 是战斗卸力加成，累加到 deflectOf 里。 */
+  /* ====== 固定开销（v8.1 P0 批次 2 前置） ======
+     「不做事也要付钱」：宗门月课、家族口粮、庙宇修缮、洞府维护。
+     数值刻意压低——目的是让「闲着」有成本，不是让玩家破产。 */
+  /* ====== 天劫五类（v8.1 P0 批次 2） ======
+     只在大境界突破时来。克法按仙/神分列：同一类劫，两条线各有各的活路。
+     定向不再按主修五行——雷与风根本不在五行里，那一套没有可实现的映射。 */
+  const TRIBULATION = [
+    { id: 'lei',  name: '三问雷', test: '道心', line: '雷不问你修为，只问你怕不怕。' },
+    { id: 'shui', name: '倒天河', test: '气海', line: '河从天上来，冲的是你气海里那点根。' },
+    { id: 'huo',  name: '无灯焰', test: '神器', line: '灯灭之后，黑里有什么在看你。' },
+    { id: 'feng', name: '折骨风', test: '肉身', line: '风过如刀，先削皮，再折骨。' },
+    { id: 'gu',   name: '故人关', test: '恩义', line: '来的人你认得，他问你当年那句话。' }
+  ];
+  /* 权重：五类固定，合计 100；主修五行不参与（无雷/风映射） */
+  const TRIB_WEIGHT = { lei: 22, shui: 20, huo: 20, feng: 18, gu: 20 };
+
+  const FIXED_COST = {
+    sectDueNeedDiv: 40,      // 月课贡献 = 本阶所需贡献 / 40（最低 10）
+    sectCashPerContrib: 5,   // 贡献不够时，1 贡献折 5 灵石补缴
+    sectArrearsMax: 3,       // 连欠三月降一阶
+    clanFoodPerPop: 0.25,    // 每族人每月 0.25 灵石口粮
+    templeBase: 30,          // 庙宇每月修缮基数（× 庙阶系数）
+    caveBase: 15,            // 洞府每月维护（× 灵脉系数）
+    cavePerFacility: 20,     // 每间作坊再加 20
+    arrearsFloor: 0.7,       // 欠费时修行效率下限（每欠一月 -10%）
+    arrearsStep: 0.10
+  };
+
   const QUENCH = [
     { name: '淬皮', stones: 400,    herb: { id: 'lanyouCao', n: 2 },  hpMul: 1.10, block: 0.02 },
     { name: '淬肉', stones: 900,    herb: { id: 'lanyouCao', n: 3 },  hpMul: 1.20, block: 0.04 },
@@ -3191,7 +3219,7 @@
     LINGQI, ROOTS, ELEMENTS, MUT_ELEMENTS,
     GONGFA_TIERS, GONGFA, BODIES, TALENTS, ORIGINS,
     FAXIANG, ZODIAC_CLASH,
-    PILLARS, POSITIONS, PIETY, MIAO_COEFF, QIHE, FOLLOW_LIMIT, BREAK_BASE, QUENCH,
+    PILLARS, POSITIONS, PIETY, MIAO_COEFF, QIHE, FOLLOW_LIMIT, BREAK_BASE, QUENCH, FIXED_COST, TRIBULATION, TRIB_WEIGHT,
     TIANJIANG, DIZHA, GUOWEI, GUOWEI_RANK,
     ANCHOR_TYPES, ANCHOR_STATES, ANCHOR_STATUS, RITUALS,
     LU, DAOTONG, SANXUAN, SHENTONG,
