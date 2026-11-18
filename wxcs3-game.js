@@ -10,17 +10,55 @@
   const D = G.WXCS3_DATA;
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  /* v8.1 P0 M4：clamp 会原样放行 NaN（Math.min(NaN, x) → NaN）。
+     御兽/师徒这批字段是后加的，旧档与旧测试里可能是 undefined；
+     一旦 NaN 写进状态，后续每条公式都会静默变成 NaN，且不会抛错。
+     凡是从存档读出来的数值，一律先过 numOr。 */
+  const numOr = (v, d) => (typeof v === 'number' && isFinite(v)) ? v : d;
+  const clampNum = (v, a, b, d) => clamp(numOr(v, d === undefined ? a : d), a, b);
   /* 版本号只在这里定义一次。旧代码把 '6.2' 硬编码在 envelope、checkSaveVersion、
      导出文件名、帮助面板四处——改一处忘三处，就会出现「新档被判成旧版」。 */
   const VER = '8.0';
 
-  const rnd = (n) => Math.floor(Math.random() * n) + 1;
+  const rnd = (n) => Math.floor(rng() * n) + 1;
   const rnd100 = () => rnd(100);
-  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  const pick = (a) => a[Math.floor(rng() * a.length)];
+  /* v9.0 M0：统一可复现随机数。
+     背景：全项目 61 处裸 Math.random，天劫、拍卖、NPC 来访、遗迹都不可复现，
+     出了问题只能靠猜。这里换成一层可注入的 rng()：
+       · 不注入时 rng = Math.random，普通玩家体验一字不变；
+       · 注入 seed 后走 mulberry32，同一存档同一序列必定复现。
+     只换「随机源」，所有概率公式、判定顺序一律不动——
+     这样 M0 不会改变任何数值平衡，只是让随机变得可对账。 */
+  let _rngSeed = null;      // null = 未注入，走系统随机
+  let _rngState = 0;
+  let _rngImpl = null;      // 当前 PRNG 实例
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function rng() { return _rngImpl ? _rngImpl() : Math.random(); }
+  /* 注入/清除种子。seed 变化后序列从头开始，便于「同一测试存档复现」。 */
+  function setSeed(seed) {
+    if (seed === null || seed === undefined) { _rngSeed = null; _rngImpl = null; _rngState = 0; return null; }
+    const n = (typeof seed === 'number' && isFinite(seed)) ? (seed | 0) : hashStr(String(seed));
+    _rngSeed = n; _rngState = n; _rngImpl = mulberry32(n);
+    return n;
+  }
+  function hashStr(s) {
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h | 0;
+  }
+  function currentSeed() { return _rngSeed; }
   const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   function pickN(arr, n) {
     const c = arr.slice(), out = [];
-    while (out.length < n && c.length) out.push(c.splice(Math.floor(Math.random() * c.length), 1)[0]);
+    while (out.length < n && c.length) out.push(c.splice(Math.floor(rng() * c.length), 1)[0]);
     return out;
   }
 
@@ -31,6 +69,8 @@
     return {
       started: false, phase: 'create', createStep: 0, draft: null,
       year: 387, month: 3, turn: 0, age: 16,
+      /* v9.0 M0：本局随机种子。写下之后，本世的每一次随机都能复现。 */
+      seed: (Math.floor(Math.random() * 1e9) + 1),
       xun: 0,             // 本月已过几旬（0=上旬，1=中旬，2=下旬）
       xiuAcc: 0,          // 修为小数累积器：每旬给月修为/3，取整时不留误差
 
@@ -111,6 +151,12 @@
       txHistory: [], pendingTx: null, lastLiturgy: '',
       breakBonus: 0, cultBonus: 1,  // 丹药临时加成
       pendingEnc: null, yaoshou: false, miaoSites: 0, debt: 0,   // debt 已废弃，仅旧档兼容
+      /* v8.1 P0 批次3：御兽。barn 是兽栏（最多 BEAST_BARN[灵脉档] 头），
+         bond 亲密 / power 妖力是两条互不替代的养成轴。 */
+      barn: [], beastBond: 0, beastPower: 1,
+      /* v8.1 P0 批次4：师徒。disciple 每项 {id,name,days,stage,bond,alive}，
+         与 NPC 好感（S.npcs[id].fav）分开存——师徒是人锚，情缘是另一条线。 */
+      disciples: [], masterId: null,
       anchorDone: { wu: false, ren: false, shi: false, yi: false },
       luHistory: [],               // 已受过的箓
       daoyinOk: false,             // 四印是否配成对
@@ -467,11 +513,11 @@
       if (S.phase === 'play' && !S.combat && !S.pendingVengeance) {
         if (S.enemy) {
           const chase = clamp(0.02 + S.karma / 2000, 0.02, 0.08);
-          if (Math.random() < chase) S.pendingVengeance = 'person';
+          if (rng() < chase) S.pendingVengeance = 'person';
         }
         /* 叛门的账也要有人来收。旧版 S.enemySect 写了一次就再没人读过，
            等于「立过的誓会咬人」只是面板上的一句话。 */
-        if (!S.pendingVengeance && S.enemySect && Math.random() < 0.03) {
+        if (!S.pendingVengeance && S.enemySect && rng() < 0.03) {
           S.pendingVengeance = 'sect';
         }
       }
@@ -676,6 +722,32 @@
       <span class="key">${esc(k)}</span>${t}<span class="txt">${esc(txt)}</span>
       ${note ? `<span class="note">${esc(note)}</span>` : ''}</li>`;
   }
+  /* v9.0 M0：行动预览。
+     目的不是加装饰，是消灭「点完才发现少了一旬」。
+     口径与 docs/03_玩法设计/行动预算_分档表.md 严格一致：
+       xun: 0 表示顺手（不占旬），1 表示占一旬。
+     成本只写「这一下真正要付的」，不重复计月度固定开销——
+     固定开销另有账本，这里混进来玩家会以为被收两次。 */
+  function costLine(c) {
+    if (!c) return '';
+    const p = [];
+    if (c.xun) p.push('占 ' + c.xun + ' 旬');
+    else if (c.xun === 0) p.push('不占旬');
+    if (c.stones) p.push(c.stones + ' 石');
+    if (c.contrib) p.push(c.contrib + ' 贡献');
+    if (c.xianghuo) p.push(c.xianghuo + ' 香火');
+    if (c.herb) p.push(c.herb);
+    return p.join(' · ');
+  }
+  /* 带预览的动作行：正文一行，成本另作一行小字。390 宽下不会把标题挤成竖排。 */
+  function optRowX(k, txt, tag, note, dis, act, cost) {
+    const t = tag ? `<span class="tag ${tag.cls}">${esc(tag.name)}</span>` : '';
+    const cl = costLine(cost);
+    return `<li class="opt"${dis ? ' disabled' : ''} data-act="${esc(act)}">
+      <span class="key">${esc(k)}</span>${t}<span class="txt">${esc(txt)}</span>
+      ${cl ? `<br><span class="muted" style="font-size:12px">${esc(cl)}</span>` : ''}
+      ${note ? `<span class="note">${esc(note)}</span>` : ''}</li>`;
+  }
   /* 两行货架行：名与价同一行，说明另起一行。
      庙市的说明比坊市长（香火/石/已置数），用 optRow 会在 390 宽把名称挤成竖排。 */
   function shopRow(name, meta, desc, dis, act) {
@@ -812,6 +884,7 @@
   function render() {
     const stage = document.getElementById('stage');
     const clockEl = document.getElementById('clock');
+    _scenePlaceMemo = null;   // 插画横幅与场景文本同景：每次重绘重掷地点
 
     /* 兜底：气血归零却还停在 'play' —— 目前只有 foeTurn 会把血打到 0 并立刻处理，
        但这类「状态机漏一条出口」正是本作反复栽的坑（foeTurn 不 render、
@@ -827,18 +900,18 @@
 
     if (S.phase === 'create') {
       stage.className = 'stage-create';
-      stage.innerHTML = renderCreate();
+      stage.innerHTML = renderSceneArt('create', 'create') + renderCreate();
       renderDial(true);
       return;
     }
     stage.className = 'stage';
-    if (S.phase === 'over') { stage.innerHTML = renderOver(); renderDial(true); scheduleAutoSave(); return; }
-    if (S.phase === 'dying') { stage.innerHTML = renderDying(); renderDial(true); scheduleAutoSave(); return; }
+    if (S.phase === 'over') { stage.innerHTML = renderOverArt() + renderOver(); renderDial(true); scheduleAutoSave(); return; }
+    if (S.phase === 'dying') { stage.innerHTML = renderSceneArt('dying', 'backdrop') + renderDying(); renderDial(true); scheduleAutoSave(); return; }
     if (S.phase === 'combat') {
       if (!S.combat) { S.phase = 'play'; }        // 脏状态直接降级，走下面的正常渲染
       else {
         stage.className = 'stage stage-fight';     // 左右双栏
-        stage.innerHTML = renderCombat();
+        stage.innerHTML = renderSceneArt('combat', 'combat') + renderCombat();
         scheduleAutoSave();
         return;
       }
@@ -1209,6 +1282,9 @@
 
   function renderMainCol() {
     let b = '';
+    /* 横幅先取图键（只读标记不消费），随后 .scene 文本才消费 justBroke 等一次性标记——
+       次序颠倒会出现「图是破境、文是山野」的错位。 */
+    b += renderSceneArt(sceneArtKey(), 'banner');
     b += renderRealmBar();
     b += renderVitals();
     b += renderGoalCard();
@@ -1411,6 +1487,17 @@
       const _g = (S.hooksGiven || []).filter(function (x) { return !x.done; }).length;
       list.push({ k: '情', t: '人情', s: _o ? ('欠 ' + _o) : ('人欠 ' + _g), act: 'act:openHooks' });
     }
+    /* v8.1 P0 M4：师徒。门下有人才常驻显示，没有时不占坞位——
+       与「洞天」「锚定」同一套出现规则，不给空面板留位置。 */
+    if (discipleList().length) {
+      const _d = discipleList();
+      const _dn = _d[0] ? discipleStageOf(_d[0]).name : '';
+      list.push({
+        k: '徒', t: '门下',
+        s: _d.length + '/' + discipleLimit() + ' · ' + _dn,
+        act: 'act:openDisciple'
+      });
+    }
     list.push({ k: '囊', t: '乾坤袋', s: bagCountText(), act: 'act:openBag' });
     if (S.unlockStage >= 4 && (isShen() || S.xRealm >= 3))
       list.push({ k: '洞', t: '洞天', s: S.inDongtian ? '洞天' : '阳世', act: 'act:openDongtian' });
@@ -1421,7 +1508,7 @@
       客: '常用', 引: '常用', 府: '常用', 庙: '常用', 市: '常用', 拍: '常用', 历: '常用', 情: '常用', 锚: '常用',
       功: '修炼', 艺: '修炼', 书: '修炼', 胎: '修炼',
       器: '经营', 愿: '经营', 族: '经营', 宝: '经营',
-      缘: '人事', 宗: '人事',
+      缘: '人事', 宗: '人事', 徒: '人事',
       图: '更多', 囊: '更多', 洞: '更多'
     };
     for (const it of list) it.g = GROUP[it.k] || '更多';
@@ -1569,7 +1656,7 @@
     const W = D.TRIB_WEIGHT;
     let total = 0;
     for (const k in W) total += W[k];
-    let r = Math.random() * total;
+    let r = rng() * total;
     for (const k in W) { r -= W[k]; if (r <= 0) return tribDetail(k); }
     return tribDetail('lei');
   }
@@ -1651,6 +1738,200 @@
     if (bd.ice && mainEl() === 'water') return bd.ice;
     if (bd.keFloor) return 1.05;
     return 1;
+  }
+
+  /* ---------- 御兽（v8.1 P0 批次 3） ----------
+     三条实现口径：
+     1) 兽栏上限跟灵脉档走（D.BEAST_BARN），洞府投资第一次有了「能多养一头」的正反馈；
+     2) 亲密/妖力两轴分开：喂只涨亲密，调教只涨妖力还跌亲密——换着养才是常态；
+     3) 战斗里它只做「第四位」：护主（挡一下）或反噬（咬你一口），
+        概率全部从 D.BEAST_BOND 读，不在战斗代码里写魔法数。 */
+  function barnCap() {
+    const q = clamp(S.lingqi || 0, 0, D.BEAST_BARN.length - 1);
+    return D.BEAST_BARN[q] || 1;
+  }
+  function barnList() { return Array.isArray(S.barn) ? S.barn : (S.barn = []); }
+  function beastGated(b) {
+    const pack = D.BEAST_STOCK.find(function (x) { return x.id === b.id; });
+    if (!pack) return 1;
+    /* gated 是「需要的最低灵脉档」，灵脉不够时收得住但养不熟 */
+    return (S.lingqi || 0) >= (pack.gated || 0);
+  }
+  function beastBondTier(bond) {
+    const b = numOr(bond == null ? S.beastBond : bond, 0);
+    let t = D.BEAST_BOND[0];
+    D.BEAST_BOND.forEach(function (x) { if (b >= x.min) t = x; });
+    return t;
+  }
+  function beastPowerMul() {
+    /* 妖力是乘法累积，但封顶在 BEAST_CARE.powerCap，防反噬/输出失控 */
+    return clampNum(S.beastPower, 0.5, D.BEAST_CARE.powerCap, 1);
+  }
+  function beastAtkBonus() {
+    /* 上场的那一头：默认取兽栏第一头已「认」的 */
+    const list = barnList().filter(function (b) { return numOr(b.bond, 0) >= 0; });
+    if (!list.length) return 0;
+    const b = list[0];
+    const pack = D.BEAST_STOCK.find(function (x) { return x.id === b.id; }) || { atk: 1 };
+    /* 妖力 × 族群系数，再乘一个「认不认你」的折扣：
+       野的只出一半力，契的才满打。 */
+    const tier = beastBondTier(numOr(b.bond, 0));
+    const trust = clamp(0.5 + tier.guard * 0.6, 0.5, 1);
+    return Math.max(0, (pack.atk * beastPowerMul() * trust) - 1);
+  }
+  function beastAdd(id) {
+    const pack = D.BEAST_STOCK.find(function (x) { return x.id === id; });
+    if (!pack) return { ok: false, why: '没有这种妖物' };
+    const list = barnList();
+    if (list.length >= barnCap()) return { ok: false, why: '兽栏满了（灵脉只养得起 ' + barnCap() + ' 头）' };
+    list.push({ id: pack.id, name: pack.name, el: pack.el, bond: 10, power: 1 });
+    S.yaoshou = true;
+    return { ok: true, beast: pack };
+  }
+  function beastFeed() {
+    const list = barnList();
+    if (!list.length) return { ok: false, why: '兽栏是空的' };
+    const c = D.BEAST_CARE;
+    if (S.stones < c.feedStone) return { ok: false, why: '灵石不足 ' + c.feedStone };
+    S.stones -= c.feedStone;
+    ledgerAdd('out', '喂养妖物', c.feedStone);
+    list.forEach(function (b) { b.bond = clampNum(numOr(b.bond, 0) + c.feedBond, -99, 100, 0); });
+    S.beastBond = clampNum(numOr(S.beastBond, 0) + c.feedBond, -99, 100, 0);
+    return { ok: true };
+  }
+  function beastTrain() {
+    const list = barnList();
+    if (!list.length) return { ok: false, why: '兽栏是空的' };
+    const c = D.BEAST_CARE;
+    list.forEach(function (b) {
+      b.bond = clampNum(numOr(b.bond, 0) + c.trainBond, -99, 100, 0);
+    });
+    S.beastPower = clampNum(numOr(S.beastPower, 1) * (1 + c.trainPower), 0.5, c.powerCap, 1);
+    S.beastBond = clampNum(numOr(S.beastBond, 0) + c.trainBond, -99, 100, 0);
+    return { ok: true };
+  }
+  function beastRelease(idx) {
+    const list = barnList();
+    if (idx < 0 || idx >= list.length) return false;
+    const b = list.splice(idx, 1)[0];
+    S.yaoshou = list.length > 0;
+    return b;
+  }
+
+  /* ---------- 师徒（v8.1 P0 批次 4） ----------
+     刻意不复用 FOLLOW_LIMIT（信众上限，量级差四个数量级）。
+     四条出路都要能结算：授业（涨进度）→ 出师（独立门户）→ 叛师 / 先死。
+     逆徒、杀师两条成就的计数器就挂在这里。 */
+  function discipleLimit() { return D.DISCIPLE_LIMIT; }
+  function discipleList() { return Array.isArray(S.disciples) ? S.disciples : (S.disciples = []); }
+  function discipleStageOf(d) {
+    let st = D.DISCIPLE_STAGE[0];
+    D.DISCIPLE_STAGE.forEach(function (x) { if (numOr(d.days, 0) >= x.need) st = x; });
+    return st;
+  }
+  function discipleAdd(name, bond) {
+    const list = discipleList();
+    if (list.length >= discipleLimit()) return { ok: false, why: '门下已满（上限 ' + discipleLimit() + ' 人）' };
+    const b = numOr(bond, 0);
+    const d = {
+      id: 'dp_' + Date.now().toString(36) + '_' + list.length,
+      name: name || '无名弟子',
+      days: 0, bond: b, alive: true, stage: 'ru'
+    };
+    list.push(d);
+    /* 「逆徒」：收一个好感 ≤ −40 的人为徒。条件写在成就表里，这里只负责记账。 */
+    if (b <= -40) bump('badDisciple');
+    return { ok: true, disciple: d };
+  }
+  function discipleTeach(id) {
+    const list = discipleList();
+    const d = list.find(function (x) { return x.id === id; });
+    if (!d || !d.alive) return { ok: false, why: '没有这个弟子' };
+    d.days = numOr(d.days, 0) + 30;
+    d.bond = clampNum(numOr(d.bond, 0) + 8, -99, 100, 0);
+    d.stage = discipleStageOf(d).key;
+    return { ok: true, stage: discipleStageOf(d) };
+  }
+  function discipleGraduate(id) {
+    const list = discipleList();
+    const i = list.findIndex(function (x) { return x.id === id; });
+    if (i < 0) return { ok: false, why: '没有这个弟子' };
+    const d = list[i];
+    const st = discipleStageOf(d);
+    if (st.key !== 'chu') return { ok: false, why: '还没到出师的火候（' + st.name + '）' };
+    /* 出师：给一笔「束脩」，弟子离开门下但记在仙谱里（不删记录，改 alive 语义为已出师） */
+    list.splice(i, 1);
+    S.disciplesOut = (S.disciplesOut || []).concat([{ name: d.name, bond: d.bond, at: S.year + '年' }]);
+    S.stones += 300;
+    ledgerAdd('in', '弟子出师束脩', 300);
+    return { ok: true, name: d.name };
+  }
+  function discipleBetray(id) {
+    const list = discipleList();
+    const i = list.findIndex(function (x) { return x.id === id; });
+    if (i < 0) return { ok: false, why: '没有这个弟子' };
+    const d = list.splice(i, 1)[0];
+    bump('badDisciple');
+    return { ok: true, name: d.name };
+  }
+
+  /* 拜师与弑师：师徒关系的另一半——你自己也可以是别人的徒弟。
+     这两条存在的理由只有一个：让「杀师」这个判定有真实来源，
+     而不是靠一个永远为 0 的计数器占着成就表。 */
+  function masterTaken(npcId) {
+    if (S.masterId) return { ok: false, why: '你已有师承' };
+    const n = D.NPC_POOL.find(function (x) { return x.id === npcId; });
+    if (!n) return { ok: false, why: '查无此人' };
+    const r = (S.npcs || {})[npcId];
+    if (!r || !r.met) return { ok: false, why: '尚未见过此人' };
+    if (numOr(r.fav, 0) < 30) return { ok: false, why: '好感不足（需 30）' };
+    S.masterId = npcId;
+    return { ok: true, name: n.name };
+  }
+  /* 弑师：只有在你确有师承、且此人还活着时成立。
+     不写「击杀记录」的判定链——这里只记账，战斗结算另有其处。 */
+  function masterKilled(npcId) {
+    if (!S.masterId || S.masterId !== npcId) return { ok: false, why: '此人并非你的授业者' };
+    const r = (S.npcs || {})[npcId];
+    if (r && r.alive === false) return { ok: false, why: '他已不在' };
+    if (r) r.alive = false;
+    S.masterId = null;
+    bump('killMaster');
+    return { ok: true };
+  }
+  /* 弑师需要一个能动手的场合，不能是一个凭空按钮：
+     由战斗结算调用，判定「对面正是我的师父」。
+     现在仇家/叛门/寻仇三条都会走 startCombat，这里作为统一钩子。 */
+  function masterCheckOnKill(foeName) {
+    if (!S.masterId) return false;
+    const n = D.NPC_POOL.find(function (x) { return x.id === S.masterId; });
+    if (!n || n.name !== foeName) return false;
+    const r = masterKilled(S.masterId);
+    return !!r.ok;
+  }
+
+  /* ---------- 属性分档（v8.1 P0 第 6 项） ----------
+     属性不再只影响成功率，也决定「你看得见什么」。
+     statTier 返回 low/mid/high，insightAt 按门槛挑线索——
+     门槛不达标就一个字都不给，达标才多一行。 */
+  function statTier(k) {
+    const v = st(k);
+    let t = D.STAT_TIER[0];
+    D.STAT_TIER.forEach(function (x) { if (v >= x.min) t = x; });
+    return t;
+  }
+  function tierLabel(k) { return statTier(k).label; }
+  function insightAt(statKey, minV) {
+    const row = D.INSIGHT_LINES.find(function (x) { return x.stat === statKey && x.min === minV; });
+    return row ? row.text : '';
+  }
+  /* 某属性在门槛之上才返回线索，否则空串。渲染处直接拼，空串等于没这行。 */
+  function clue(statKey) {
+    const rows = D.INSIGHT_LINES.filter(function (x) { return x.stat === statKey; });
+    if (!rows.length) return '';
+    let best = '';
+    rows.forEach(function (r) { if (st(statKey) >= r.min) best = r.text; });
+    return best;
   }
 
   /* ---------- 功能门（v8.1 P0 §2.2） ----------
@@ -1844,20 +2125,59 @@
     if (m <= 11) return 'autumn';
     return 'winter';
   }
+  /* 图随文走：同一次渲染里 scenePlace 只掷一次骰子，横幅与文本必同景 */
+  var _scenePlaceMemo = null;
   function scenePlace() {
+    if (_scenePlaceMemo) return _scenePlaceMemo;
     /* 洞天是独立地点：旧版把它并进 temple，人在洞天里读到的却是庙前的雪。
        SCENES.dongtian 已经按素材补了八条（影子比人先动、石的墨迹未干）。 */
-    if (S.inDongtian) return 'dongtian';
-    if (isShen()) return 'temple';
-    if (S.clan && S.place === 'qingyue' && Math.random() < 0.2) return 'cave';
-    const p = S.place || 'qingyue';
-    if (S.phase === 'combat') return 'wild';
-    if (S.cultPlace === 'market') return 'market';
-    /* 宗门场景写了四十条，但旧版这里从来没返回过 'sect'——
-       入了宗门的人读到的还是「洞府」与「山野」。
-       入了宗门且不在别处，就该看见宗门。 */
-    if (S.sect && S.xRealm >= 1 && Math.random() < 0.5) return 'sect';
-    return (S.xRealm >= 1 ? 'cave' : 'wild');
+    var k;
+    if (S.inDongtian) k = 'dongtian';
+    else if (isShen()) k = 'temple';
+    else if (S.clan && S.place === 'qingyue' && rng() < 0.2) k = 'cave';
+    else {
+      const p = S.place || 'qingyue';
+      if (S.phase === 'combat') k = 'wild';
+      else if (S.cultPlace === 'market') k = 'market';
+      /* 宗门场景写了四十条，但旧版这里从来没返回过 'sect'——
+         入了宗门的人读到的还是「洞府」与「山野」。
+         入了宗门且不在别处，就该看见宗门。 */
+      else if (S.sect && S.xRealm >= 1 && rng() < 0.5) k = 'sect';
+      else k = (S.xRealm >= 1 ? 'cave' : 'wild');
+    }
+    _scenePlaceMemo = k;
+    return k;
+  }
+
+  /* ---------- 水墨插画层（纯渲染，逻辑零改动） ----------
+     键优先级与 scene() 的特殊场景链完全对齐——图文永远匹配。
+     WXCS3_ART 缺失（Node 测试桩只装 data+game 两文件）时静默回退纯文字。 */
+  function sceneArtKey() {
+    if (S.justBroke) return 'break';
+    if (S.hp / S.hpMax < 0.33) return 'hurt';
+    if (S.justClosed) return 'closed';
+    if (S.visitorIncoming) return 'visitor';
+    if (S.famine) return 'drought';
+    return scenePlace();
+  }
+  function artSeasonCls() {
+    const m = S.month;
+    if (m >= 3 && m <= 5) return 'spring';
+    if (m >= 6 && m <= 8) return 'summer';
+    if (m >= 9 && m <= 11) return 'autumn';
+    return 'winter';
+  }
+  function renderSceneArt(key, variant) {
+    const A = (typeof WXCS3_ART !== 'undefined') ? WXCS3_ART : null;
+    if (!A || !A.has(key)) return '';
+    return '<div class="sceneart sceneart--' + (variant || 'banner') +
+      ' sceneart--' + artSeasonCls() + '">' +
+      '<img src="' + esc(A.src(key)) + '" alt="" onerror="this.parentNode.style.display=\'none\'">' +
+      '</div>';
+  }
+  function renderOverArt() {
+    const end = resolveEnding();
+    return renderSceneArt(end ? 'end_' + end.id : 'over', 'backdrop');
   }
   function scene() {
     // 洞天特殊
@@ -2300,7 +2620,7 @@
        ============================================================ */
     if (S.karma >= 30) {
       const odds = clamp(S.karma / 100, 0.30, 0.85);
-      if (Math.random() < odds) {
+      if (rng() < odds) {
         S.hdRate = rate;
         openHeartDemon();
         return;
@@ -2375,7 +2695,7 @@
   };
 
   function resolveXianBreak(rate) {
-    if (Math.random() < rate) {
+    if (rng() < rate) {
       const r = xrealm();
       if (S.xStage < r.stages.length - 1) {
         S.xStage++;
@@ -2417,7 +2737,7 @@
       if (S.trib) { logLine('天劫过了：' + S.trib.name + '这一关，你走的是活路。', 'good'); S.trib = null; }
       toast('破境 · ' + realmName());
       // 借来的运：钩子给的功法让你走得快，也让你走火
-      if (hasDebuff('borrowed_luck') && Math.random() < 0.15) {
+      if (hasDebuff('borrowed_luck') && rng() < 0.15) {
         const z = Math.round(S.hpMax * 0.3);
         S.hp = Math.max(1, S.hp - z);
         S.xiuwei = Math.round((xrealm().need || 100) * 0.2);
@@ -2434,7 +2754,7 @@
       const keep = S.jinxing ? 0.88 : 0.70;
       if (S.jinxing) logLine('金性不动。修为没有散，只是这一夜过不去。', 'good');
       S.xiuwei = Math.round((xrealm().need || 100) * keep);
-      const dmg = Math.round(S.hpMax * (0.12 + Math.random() * 0.15));
+      const dmg = Math.round(S.hpMax * (0.12 + rng() * 0.15));
       S.hp = Math.max(1, S.hp - dmg);   // 破境失败不致死，最低留 1 血
       let extra = '';
       if (S.xRealm === 1) { extra = '六轮退回气海，需重修一段'; }
@@ -2557,7 +2877,7 @@
     const g = D.GUOWEI.find(x => x.n === name);
     if (!g) { closeModal(); return; }
     const rate = jindanRate(g);
-    if (Math.random() >= rate) {
+    if (rng() >= rate) {
       /* 证位失败：丹没结成，这一身修为全散了。
          旧版这里没有任何判定——点一下就白得一个果位，
          金丹是整个仙道最重的门槛，却也是唯一不设关卡的地方。 */
@@ -2627,7 +2947,7 @@
 
   ACT.do_posbreak = () => {
     closeModal();
-    if (Math.random() < posRate()) {
+    if (rng() < posRate()) {
       S.pos++;
       S.xianghuo = Math.round(S.xianghuo * 0.6);   // 升位只折损六成，不清零
       S.renGong = (S.renGong || 0) + 120;
@@ -2718,7 +3038,7 @@
       S.templeBroken = true; bump('templeBroken');
       logLine('破柱失败：香火散 50%，塑像碎裂，跌回上一阶。', 'danger');
     } else {
-      if (Math.random() < 0.5) { die('法相崩解，你化成一堆香灰。'); return; }
+      if (rng() < 0.5) { die('法相崩解，你化成一堆香灰。'); return; }
       S.sui = true; S.karma += 20;
       logLine('破柱失败：你堕落为「祟」。', 'danger');
     }
@@ -2782,7 +3102,7 @@
     if (S.phase !== 'play') return render();
     let base = { small: 0.75, mid: 0.6, big: 0.42 }[lv] + st('fate') * 0.015;
     if (S.benmingQuanbing.length) base += 0.05;
-    if (Math.random() < clamp(base, 0.15, 0.95)) {
+    if (rng() < clamp(base, 0.15, 0.95)) {
       /* 摄心神杖：显圣所得信众 ×(1+20%/级)，只放大「灵验」那一半的收获 */
       const raw = Math.round({ small: 20 + rnd(80), mid: 120 + rnd(380), big: 600 + rnd(1400) }[lv] * followerScale());
       const gain = Math.round(raw * dArtStaffMul());
@@ -2975,7 +3295,7 @@
     advanceXun(1);
     if (S.phase !== 'play') return render();
     // 有概率被打断
-    if (Math.random() < 0.12) {
+    if (rng() < 0.12) {
       S.anchors.ren = Math.min(S.anchors.ren, 0.5);
       S.hp = Math.round(S.hp * 0.7);
       S.stats.heart = Math.max(1, S.stats.heart - 1);
@@ -2999,6 +3319,9 @@
       '<span class="tier" style="background:' + D.GONGFA_TIERS[g.tier].color + '">' +
       esc(D.GONGFA_TIERS[g.tier].name) + ' ×' + D.GONGFA_TIERS[g.tier].mul + '</span></div>';
     b += '<div class="slotnote">' + esc(g.eff) + '　｜　境界上限 ' + esc(cap.to) + '</div>';
+    /* v8.1 P0 第6项：悟性够了才看得出这门功法自身的毛病 */
+    const _gc = clue('insight');
+    if (_gc) b += '<div class="hint">' + esc(_gc) + '</div>';
     b += divider();
     b += '<div class="small muted">换道基功法会重算境界上限。修到上限之上会被卡住——这不是 bug，是设定。</div>';
     b += '<div class="selgrid" style="margin-top:6px">';
@@ -3050,9 +3373,10 @@
       b += '<div class="small muted">作坊</div><ul class="opts">';
       D.CRAFT_ARTS.forEach(function (a) {
         const has2 = !!facs[a.id];
-        b += optRow('·', a.name + (has2 ? '（已设）' : '（未设）'), { name: '设施', cls: 'peace' },
-          has2 ? '制作成功率 +5%' : '800 石',
-          has2 || S.stones < 800, 'do;buildfac:' + a.id);
+        b += optRowX('·', a.name + (has2 ? '（已设）' : '（未设）'), { name: '设施', cls: 'peace' },
+          has2 ? '制作成功率 +5%' : '制作成功率 +5%',
+          has2 || S.stones < 800, 'do;buildfac:' + a.id,
+          has2 ? null : { xun: 1, stones: 800 });
       });
       b += '</ul>';
       // 阵盘
@@ -3079,11 +3403,40 @@
         b += '<div class="small">下一阶 · ' + esc(qn.def.name) + '：' + fmtNum(qn.stones) + ' 灵石 + ' + _hn + ' ' + qn.herbN +
           ' 株（存 ' + _mine + '）　气血 ×' + qn.def.hpMul.toFixed(2) +
           (bodyDef().quenchMul ? '<span class="muted">　凡体三倍</span>' : '') + '</div>';
-        b += '<ul class="opts">' + optRow('·', '按方淬体',
-          { name: '淬体', cls: 'peace' }, '每旬一次，耗一旬行动',
-          S.stones < qn.stones || _mine < qn.herbN, 'do;quench') + '</ul>';
+        b += '<ul class="opts">' + optRowX('·', '按方淬体',
+          { name: '淬体', cls: 'peace' }, '气血 ×' + qn.def.hpMul.toFixed(2),
+          S.stones < qn.stones || _mine < qn.herbN, 'do;quench',
+          { xun: 1, stones: qn.stones, herb: _hn + ' ' + qn.herbN + ' 株（存 ' + _mine + '）' }) + '</ul>';
       } else {
         b += '<div class="small muted">已至不漏，再无可淬。</div>';
+      }
+      b += divider();
+      /* v8.1 P0 M4：兽栏。挂在洞府，因为「养得起」本身就是洞府投资的一部分。 */
+      const barn = barnList();
+      b += '<div class="small muted">兽栏 · ' + barn.length + '/' + barnCap() +
+        '（上限随灵脉档：' + esc((D.LINGQI[S.lingqi] || D.LINGQI[0]).name) + '）</div>';
+      if (barn.length) {
+        barn.forEach(function (bt, i) {
+          const tier = beastBondTier(bt.bond || 0);
+          const pack = D.BEAST_STOCK.find(function (x) { return x.id === bt.id; }) || {};
+          b += '<div class="sl"><span class="k">' + esc(bt.name) + '</span><span class="v">' +
+            esc(tier.name) + '（' + Math.round(bt.bond || 0) + '）· 妖力 ×' +
+            beastPowerMul().toFixed(2) + ' · ' + esc(pack.el ? (D.ELEMENTS[pack.el] || {}).name || '' : '') +
+            '</span></div>';
+        });
+        b += '<ul class="opts">';
+        b += optRowX('·', '喂养一次', { name: '亲密', cls: 'peace' },
+          '亲密 +' + D.BEAST_CARE.feedBond,
+          S.stones < D.BEAST_CARE.feedStone, 'do;beastfeed',
+          { xun: 0, stones: D.BEAST_CARE.feedStone });
+        b += optRowX('·', '调教一次', { name: '妖力', cls: 'risk' },
+          '妖力 +' + Math.round(D.BEAST_CARE.trainPower * 100) + '% · 亲密 ' + D.BEAST_CARE.trainBond,
+          false, 'do;beasttrain', { xun: 1 });
+        b += '</ul>';
+        b += '<div class="hint">' + esc(beastBondTier(S.beastBond || 0).note) +
+          '　亲密高才护主，太生分它会咬你。</div>';
+      } else {
+        b += '<div class="small muted">兽栏空着。负伤的妖物认了你，才会自己走进来。</div>';
       }
       b += divider();
     }
@@ -3128,6 +3481,22 @@
     S.cave.facilities[art] = 1;
     ledgerAdd('out', '兴建' + artName(art) + '作坊', 800);
     logLine('洞府里多了一间' + artName(art) + '作坊。', 'good');
+    closeModal(); advanceXun(1); if (S.phase !== 'play') return render(); render();
+  };
+
+  /* v8.1 P0 M4：御兽两条养成动作。
+     喂养不占旬（是顺手的事），调教占一旬（是正经事）——口径与 check_time.py 一致。 */
+  ACT.do_beastfeed = () => {
+    const r = beastFeed();
+    if (!r.ok) { toast(r.why); return; }
+    logLine('你把灵石搁在槽边，它低头吃了。', 'good');
+    closeModal(); render();
+  };
+
+  ACT.do_beasttrain = () => {
+    const r = beastTrain();
+    if (!r.ok) { toast(r.why); return; }
+    logLine('你逼它扑了三回。它扑了，回窝时没看你。', '');
     closeModal(); advanceXun(1); if (S.phase !== 'play') return render(); render();
   };
 
@@ -3514,6 +3883,24 @@
   /* ---------- 地图 ---------- */
   ACT.openMap = () => {
     let b = `<div class="small">当前：<b>${esc(curPlace())}</b>　灵气 ${esc(D.LINGQI[S.lingqi].name)}（×${D.LINGQI[S.lingqi].v}）</div>` + divider();
+    /* 舆图：四个空白圆点是压缩原图里就有的标记位，州名由 HTML 叠加，中州居中 */
+    if (typeof WXCS3_ART !== 'undefined' && WXCS3_ART.has('map')) {
+      const spots = [
+        { id: 'beiyuan', x: 33.4, y: 23 },
+        { id: 'qingyue', x: 67.5, y: 22.6 },
+        { id: 'xisha', x: 41.1, y: 81.7 },
+        { id: 'nanyue', x: 65.5, y: 81.2 },
+        { id: 'zhongzhou', x: 50.6, y: 52 }
+      ];
+      b += '<div class="mapart"><img src="' + esc(WXCS3_ART.src('map')) +
+        '" alt="" onerror="this.parentNode.style.display=\'none\'">';
+      for (const sp of spots) {
+        const reg = D.REGIONS.find(function (r) { return r.id === sp.id; }) || {};
+        b += '<span class="mapart-name' + ((S.place || 'qingyue') === sp.id ? ' here' : '') +
+          '" style="left:' + sp.x + '%;top:' + sp.y + '%">' + esc(reg.name || '') + '</span>';
+      }
+      b += '</div>' + divider();
+    }
     b += '<div class="small muted">迁地即换灵气档与危险度。低境闯高阶地界，真会死。</div>';
     b += '<ul class="opts">';
     for (const p of PLACES) {
@@ -3525,6 +3912,10 @@
         dq.suggest || '', here || !ok, 'do;travel:' + p.id);
     }
     b += '</ul>';
+    /* v8.1 P0 第6项：属性进文本。神识不够就一个字都不给——
+       这不是「少一行装饰」，是「你在同一张地图上比别人少看见一条路」。 */
+    const _mc = clue('sense');
+    if (_mc) b += '<div class="hint">' + esc(_mc) + '</div>';
     openModal('九州舆图', b);
   };
 
@@ -3663,8 +4054,8 @@
     logLine('完成' + t.name + '：贡献 +' + gain + '，并得 ' + matMsg.join('、') + '。', '');
     S.gainQueue = S.gainQueue || [];
     queueGain('宗门贡献', gain, '可换功法/丹药', true);
-    if (Math.random() < t.risk) {
-      const dmg = Math.round(S.hpMax * (0.10 + Math.random() * 0.20));
+    if (rng() < t.risk) {
+      const dmg = Math.round(S.hpMax * (0.10 + rng() * 0.20));
       S.hp = Math.max(1, S.hp - dmg);
       logLine(t.name + '途中出了岔子，气血 −' + dmg + '。', 'danger');
     }
@@ -3787,7 +4178,7 @@
     }
     // 内门以上要挑峰
     S.sect.rank++;
-    if (S.sect.rank >= 2 && S.sect.peak == null) S.sect.peak = Math.floor(Math.random() * D.SECT.peaks.length);
+    if (S.sect.rank >= 2 && S.sect.peak == null) S.sect.peak = Math.floor(rng() * D.SECT.peaks.length);
     logLine('晋升' + next.name + '。' + next.desc + '。', 'good');
     toast(next.name);
     closeModal(); advanceXun(1); if (S.phase !== 'play') return render(); render();
@@ -3875,7 +4266,7 @@
     // 开局自定族规：随机取三条，玩家在族谱里能看到
     const rules = [];
     const pool2 = D.CLAN.rules.slice();
-    for (let i = 0; i < 3 && pool2.length; i++) rules.push(pool2.splice(Math.floor(Math.random() * pool2.length), 1)[0].id);
+    for (let i = 0; i < 3 && pool2.length; i++) rules.push(pool2.splice(Math.floor(rng() * pool2.length), 1)[0].id);
     S.clan = { name: nm, lv: 1, pop: 120, luck: 60, ident: 'di', rules: rules, founded: S.turn, peaks: null,
       ind: { farm: 0, work: 0, trade: 0, study: 0 },
       elder: pick(['shou', 'jin', 'li']) };
@@ -3962,7 +4353,7 @@
     if (xp > 0) S.insightXp = (S.insightXp || 0) + xp;
     /* 跑商有风险，贪利族老把风险也放大了 */
     const risk = elder === 'li' ? 0.10 : 0.05;
-    if ((ind.trade || 0) > 0 && Math.random() < risk) {
+    if ((ind.trade || 0) > 0 && rng() < risk) {
       S.clan.luck = Math.max(0, S.clan.luck - 40);
       logLine('族人跑商折了本，族运 −40。', 'danger');
     }
@@ -4073,6 +4464,149 @@
     logLine('遇见' + n.name + '。' + (n.role || ''), '');
     return true;
   }
+
+  /* ============================================================
+     v8.1 P0 M4：师徒
+     四条出路都要能结算：授业（涨进度）/ 出师（独立门户）/ 叛师 / 先死。
+     与情缘 NPC 刻意分两套数据：师徒走 S.disciples，好感走 S.npcs[id].fav。
+     共用一套会让「这个人是我的徒弟还是我的道侣」在存档里无法区分。
+     ============================================================ */
+  ACT.openDisciple = () => {
+    const list = discipleList();
+    let b = '<div class="statline"><span class="k">门下</span><span class="v">' +
+      list.length + ' / ' + discipleLimit() + '</span></div>';
+    b += '<div class="small muted">师徒是人锚的一种。教出来的，比捡来的近。</div>' + divider();
+
+    if (!list.length) {
+      b += '<div class="small muted">门下无人。要收徒，先得有个愿意磕头的人——去情缘里找一个信你的。</div>' + divider();
+    } else {
+      list.forEach(function (d) {
+        const st = discipleStageOf(d);
+        const tier = favorTier(d.bond || 0);
+        b += '<div class="npcline">' + esc(d.name) + '　<span class="muted">' +
+          esc(st.name) + ' · ' + esc(tier) + '（' + Math.round(d.bond || 0) + '）· 已教 ' +
+          (d.days || 0) + '</span></div>';
+        b += '<div class="small muted">' + esc(st.note) + '</div>';
+        b += '<ul class="opts">';
+        b += optRowX('·', '授业一次', { name: '教', cls: 'peace' }, '进度 +30 · 亲密 +8', false,
+          'do;dpteach:' + d.id, { xun: 1 });
+        const canGrad = st.key === 'chu';
+        b += optRow('·', '准其出师', { name: '出师', cls: 'chance' },
+          canGrad ? '得束脩 300 石，记入仙谱' : ('火候未到（' + esc(st.name) + '）'),
+          !canGrad, 'do;dpgrad:' + d.id);
+        b += optRow('·', '逐出门墙', { name: '断', cls: 'risk' }, '亲密清零，记一笔逆徒', false,
+          'do;dpbetray:' + d.id);
+        b += '</ul>';
+      });
+      b += divider();
+    }
+
+    /* 收徒：从已见过且好感够的 NPC 里挑。门槛 20 = FAVOR_TIERS 的「相熟」一档，
+       太低会让路边点头之交也来磕头。 */
+    const cands = Object.keys(S.npcs || {}).filter(function (id) {
+      const r = S.npcs[id];
+      if (!r || !r.met) return false;
+      if (!r.alive) return false;
+      if ((r.fav || 0) < 20) return false;
+      return !list.some(function (d) { return d.name === (D.NPC_POOL.find(function (x) { return x.id === id; }) || {}).name; });
+    });
+    if (list.length < discipleLimit() && cands.length) {
+      b += '<div class="small muted">可收为门下</div><ul class="opts">';
+      cands.forEach(function (id) {
+        const n = D.NPC_POOL.find(function (x) { return x.id === id; });
+        if (!n) return;
+        b += optRow('·', n.name, { name: '收徒', cls: 'chance' },
+          '好感 ' + Math.round(S.npcs[id].fav || 0) + ' · ' + (n.role || ''),
+          false, 'do;dpadd:' + id);
+      });
+      b += '</ul>';
+    } else if (list.length < discipleLimit()) {
+      b += '<div class="small muted">暂无可收之人。好感到「相熟」（20）之上，才谈得上托付。</div>';
+    } else {
+      b += '<div class="small muted">门下已满（' + discipleLimit() + ' 人）。教得过来才叫教。</div>';
+    }
+
+    if ((S.disciplesOut || []).length) {
+      b += divider() + '<div class="small muted">已出师</div>';
+      (S.disciplesOut || []).forEach(function (x) {
+        b += '<div class="sl"><span class="k">' + esc(x.name) + '</span><span class="v">' +
+          esc(x.at || '') + ' 出师　别时好感 ' + Math.round(x.bond || 0) + '</span></div>';
+      });
+    }
+
+    /* 你也可以是别人的徒弟。这一栏存在的意义是让「杀师」有真实来源。 */
+    b += divider();
+    if (S.masterId) {
+      const mn = D.NPC_POOL.find(function (x) { return x.id === S.masterId; });
+      b += '<div class="statline"><span class="k">师承</span><span class="v">' +
+        esc(mn ? mn.name : '（已故）') + '</span></div>';
+      b += '<div class="small muted">授业者仍在世。你若对他动手，账会记在「杀师」上。</div>';
+    } else {
+      const ms = Object.keys(S.npcs || {}).filter(function (id) {
+        const r = S.npcs[id];
+        return r && r.met && r.alive !== false && (r.fav || 0) >= 30;
+      });
+      if (ms.length) {
+        b += '<div class="small muted">可拜为师</div><ul class="opts">';
+        ms.forEach(function (id) {
+          const n = D.NPC_POOL.find(function (x) { return x.id === id; });
+          if (!n) return;
+          b += optRow('·', '拜 ' + n.name + ' 为师', { name: '师承', cls: 'chance' },
+            '好感 ' + Math.round(S.npcs[id].fav || 0), false, 'do;dpmaster:' + id);
+        });
+        b += '</ul>';
+      } else {
+        b += '<div class="small muted">无可拜之人。好感 30 之上，才有人肯收你。</div>';
+      }
+    }
+    b += '<div class="hint">徒弟会死在你前头，也可能先对你动手。这一条路没有善终的保证。</div>';
+    openModal('门下 · 授业与出师', b);
+  };
+
+  ACT.do_dpadd = (id) => {
+    const n = D.NPC_POOL.find(function (x) { return x.id === id; });
+    if (!n) return;
+    const r = S.npcs[id];
+    /* 面板只列出好感够的人，但动作本身也必须自己把关——
+       面板过滤是「不给你点」，这里才是「点了也不算」。两者缺一，就有绕过路径。 */
+    if (!r || !r.met) { toast('尚未见过此人'); return; }
+    if (numOr(r.fav, 0) < 20) { toast('好感不足（需 20），他还没到肯磕头的地步'); return; }
+    const res = discipleAdd(n.name, numOr(r.fav, 0));
+    if (!res.ok) { toast(res.why); return; }
+    logLine(n.name + '跪下去，磕了三个头。你受了。', 'good');
+    /* 人锚：收徒是「人」这一锚的现实来源之一 */
+    S.anchors = S.anchors || {};
+    S.anchors.ren = Math.max(S.anchors.ren || 0, (S.anchors.ren || 0));
+    closeModal(); advanceXun(1); if (S.phase !== 'play') return render(); render();
+  };
+
+  ACT.do_dpteach = (id) => {
+    const res = discipleTeach(id);
+    if (!res.ok) { toast(res.why); return; }
+    logLine('你教了一旬。他学得慢，但没走神。', '');
+    closeModal(); advanceXun(1); if (S.phase !== 'play') return render(); render();
+  };
+
+  ACT.do_dpgrad = (id) => {
+    const res = discipleGraduate(id);
+    if (!res.ok) { toast(res.why); return; }
+    logLine(res.name + '出师了。走的时候回头看了一眼，没说话。', 'good');
+    closeModal(); advanceXun(1); if (S.phase !== 'play') return render(); render();
+  };
+
+  ACT.do_dpbetray = (id) => {
+    const res = discipleBetray(id);
+    if (!res.ok) { toast(res.why); return; }
+    logLine('你把他逐出门墙。他站在门外，很久才走。', 'danger');
+    closeModal(); render();
+  };
+
+  ACT.do_dpmaster = (id) => {
+    const res = masterTaken(id);
+    if (!res.ok) { toast(res.why); return; }
+    logLine('你向' + res.name + '行了礼。他受了，也没多说什么。', 'good');
+    closeModal(); advanceXun(1); if (S.phase !== 'play') return render(); render();
+  };
 
   ACT.openLove = () => {
     // 开局那位还没正式见过面——先让他说两句话
@@ -4196,7 +4730,7 @@
     let d = 0;
     if (kind === 'talk') d = 2 + rnd(4);
     else if (kind === 'gift') { if (S.stones < 80) { toast('灵石不足'); return; } S.stones -= 80; d = 6 + rnd(7); }
-    else { if (Math.random() < 0.7) d = 5 + rnd(11); else { d = 2; S.hp = Math.max(1, S.hp - Math.round(S.hpMax*0.2)); } }
+    else { if (rng() < 0.7) d = 5 + rnd(11); else { d = 2; S.hp = Math.max(1, S.hp - Math.round(S.hpMax*0.2)); } }
     if (S.talents.includes('peach')) d = Math.round(d * 1.2);
     const favBefore2 = S.npcs[id].fav || 0;
     S.npcs[id].fav = clamp(S.npcs[id].fav + d, 0, 120);
@@ -4252,7 +4786,7 @@
     if (!ids.length) return;
     for (const id of ids) {
       const r = npcRec(id);
-      if (r.injured && Math.random() < 0.12) {
+      if (r.injured && rng() < 0.12) {
         const n = D.NPC_POOL.find(function (x) { return x.id === id; }) || { name: id };
         r.alive = false;
         S.npcCall = { id: id, kind: 'funeral' };
@@ -4270,14 +4804,14 @@
     const r = npcRec(id);
     const n = D.NPC_POOL.find(function (x) { return x.id === id; }) || { id: id, name: id };
     const chance = clamp(0.02 + r.fav / 1600, 0.02, 0.08);
-    if (Math.random() > chance) return;
+    if (rng() > chance) return;
     r.lastCall = S.turn;
 
     let kind = 'hurt';
     const clashWith = D.ZODIAC_CLASH[playerZodiac()];
-    if (r.fav >= 60 && !npcHasMate() && Math.random() < 0.3) kind = 'marry';
-    else if (clashWith && clashWith === n.zodiac && Math.random() < 0.5) kind = 'clash';
-    else if (Math.random() < 0.45) kind = 'break';
+    if (r.fav >= 60 && !npcHasMate() && rng() < 0.3) kind = 'marry';
+    else if (clashWith && clashWith === n.zodiac && rng() < 0.5) kind = 'clash';
+    else if (rng() < 0.45) kind = 'break';
     S.npcCall = { id: id, kind: kind };
     logLine(n.name + '来找你了。', '');
   }
@@ -4374,7 +4908,7 @@
       if (choice === 'guard') {
         r.fav = clamp(r.fav + 18, 0, 120);
         S.insightXp = (S.insightXp || 0) + 20;
-        if (Math.random() < 0.3) {
+        if (rng() < 0.3) {
           S.hp = Math.max(1, S.hp - Math.round(S.hpMax * 0.25));
           logLine('洞外有人来过。你替他挡了一下，气血 −25%。', 'danger');
         }
@@ -4382,7 +4916,7 @@
         logLine('你替' + n.name + '守了三日。好感 +18，悟道 +20。', 'good');
       } else {
         r.fav = Math.max(0, r.fav - 10);
-        if (Math.random() < 0.2) {
+        if (rng() < 0.2) {
           r.injured = true;
           logLine(n.name + '出关时不对，走岔了。', 'danger');
         } else {
@@ -4475,7 +5009,7 @@
     if (!pool.length) pool = it.outs.slice();
     let total = 0;
     pool.forEach(function (o) { total += (o.w || 1); });
-    let r = Math.random() * total;
+    let r = rng() * total;
     for (const o of pool) {
       r -= (o.w || 1);
       if (r <= 0) return o;
@@ -4580,7 +5114,7 @@
     const line = o.text + (notes.length ? '（' + notes.join('，') + '）' : '');
     /* v8.0：造业到一定程度，总有人记着。
        这条线把「业力」接到「仇家」上，再接到「寻仇」上——三段原本互不相干的东西串成一个回路。 */
-    if (!S.enemy && S.karma >= 50 && Math.random() < 0.12) {
+    if (!S.enemy && S.karma >= 50 && rng() < 0.12) {
       S.enemy = true;
       S.enemyName = pick(['苦主之子', '同门的兄弟', '游方剑客', '货郎的雇主', '那家人的长兄']);
       logLine('有人在暗处记下了你的样子。', 'danger');
@@ -4672,7 +5206,25 @@
     out.dArt = Object.assign({ staff: 0, mirror: 0, seal: 0 }, st.dArt || {});
     out.votive = Object.assign({}, st.votive || {});
     out.dockOpen = Object.assign({}, st.dockOpen || {});
+    /* v8.1 P0 M4：御兽字段是后加的。旧档只有布尔 S.yaoshou ——
+       「妖物认了你」这个布尔本身就是一头兽，只是从来没进过兽栏。
+       显式把它抬成一头狐妖（最常见的那类），而不是靠默认值把它丢掉：
+       老玩家读档后不该发现自己洞口那只不见了。 */
+    if (!Array.isArray(out.barn)) out.barn = [];
+    if (out.yaoshou && out.barn.length === 0) {
+      out.barn.push({ id: 'huyao', name: '狐妖', el: 'wood', bond: 20, power: 1 });
+    }
+    out.yaoshou = out.barn.length > 0;
+    if (typeof out.beastBond !== 'number') out.beastBond = out.barn.length ? (out.barn[0].bond || 0) : 0;
+    if (typeof out.beastPower !== 'number') out.beastPower = out.barn.length ? (out.barn[0].power || 1) : 1;
+    /* v8.1 P0 M4：师徒字段同理，缺就是没徒弟，但不能是 undefined */
+    if (!Array.isArray(out.disciples)) out.disciples = [];
+    if (out.masterId === undefined) out.masterId = null;
     out.tribLock = clamp(parseInt(st.tribLock, 10) || 0, 0, 9);
+    /* v9.0 M0：存档带随机种子。
+       新局写入一个 seed，读档时按它恢复序列——同一存档重放同一段剧情，
+       结果一致。旧档没有 seed 就补一个（补的是当时的随机，不追溯）。 */
+    if (!out.seed) out.seed = (Math.floor(Math.random() * 1e9) + 1);
     out.trib = null;    // 天劫是临场状态，读档不继承
     /* v8.1 P0 M2：淬体存档迁移。
        只补「尚未写进气血的阶差」，两端同乘一个增量倍率 —— hp / hpMax 比值不变，
@@ -4831,6 +5383,9 @@
     if (typeof out.pillar !== 'number') out.pillar = 0;
     if (!out.started) { toast('这份存档还没有开局'); return false; }
     S = out;
+    /* v9.0 M0：读档即恢复随机序列。放在 S = out 之后，
+       保证注入的是「这份存档的种子」，而不是上一份的。 */
+    setSeed(S.seed);
     closeModal();
     render();
     return true;
@@ -5422,7 +5977,7 @@
     S.dying = null;
 
     if (a === 'stand') {
-      if (Math.random() < 0.35) {
+      if (rng() < 0.35) {
         S.phase = 'play';
         S.hp = 1;
         S.lifeMax = Math.max(20, (S.lifeMax || 60) - 10);
@@ -5508,7 +6063,7 @@
 
   ACT.do_zhenjun = () => {
     closeModal();
-    if (S.merit < 300 && Math.random() < 0.35) {
+    if (S.merit < 300 && rng() < 0.35) {
       S.merit += 50;
       logLine('法相未认你——神位空了一夜。功德 +50。', 'danger');
       render(); return;
@@ -5539,7 +6094,7 @@
     closeModal();
     const gate = zifuGateName();
     const rate = clamp(0.55 + st('heart') * 0.02 + st('insight') * 0.012 - S.xStage * 0.06, 0.15, 0.9);
-    if (Math.random() < rate) {
+    if (rng() < rate) {
       S.xiuwei = 0;
       if (zifuIsLastGate()) {
         // 第三关（幻想关）渡过后直入金丹。之前这里只 xStage++，
@@ -5608,7 +6163,26 @@
     /* 按道途筛池子。旧版 22 条事件里 12 条是神道专属（上香、香火、庙会），
        仙道玩家抽到只会觉得「这不是我的事」——名义上有事件，其实没有内容。 */
     const shen = isShen(), xian = isXian(), both = isBoth();
+    /* v9.0 M0：事件结构数据化第一步——把 when 真正读起来。
+       旧机制只有 path 一道筛，任何「条件不满足就不该出现」的想法都无处安放，
+       于是没人会写条件字段（写了也是死字段）。这里给 when 一个可执行的语义：
+         when: { minRealm, maxRealm, month, place, flag, needSect, needTemple }
+       判断全部走已有状态，不新增存档字段、不引入新状态机。
+       条件不满足的事件不进池，因此也不会被抽到——而不是抽到了再判否。 */
+    const whenOk = function (e) {
+      const w = e.when;
+      if (!w) return true;
+      if (w.minRealm != null && myRealmIdx() < w.minRealm) return false;
+      if (w.maxRealm != null && myRealmIdx() > w.maxRealm) return false;
+      if (w.month != null && S.month !== w.month) return false;
+      if (w.place && S.place !== w.place) return false;
+      if (w.needSect && !S.sect) return false;
+      if (w.needTemple && !(S.miaoSites > 0)) return false;
+      if (w.flag && !(S.flags && S.flags[w.flag])) return false;
+      return true;
+    };
     const list = all.filter(function (e) {
+      if (!whenOk(e)) return false;
       if (!e.path) return true;
       if (e.path === 'shen') return shen || both;
       if (e.path === 'xian') return xian || both;
@@ -6218,7 +6792,7 @@
     const my = D.ELEMENTS[g.el];
     if (my && my.ke === sk.kind) {
       // 相克不是纯减益：逆用得当，反而能杀个措手不及
-      return Math.random() < 0.30
+      return rng() < 0.30
         ? { mul: 1.50, txt: '相克逆用' }
         : { mul: 0.85, txt: '相克' };
     }
@@ -6252,7 +6826,7 @@
       const fresh = pool.filter(function (e) { return seen.indexOf(e.id) < 0; });
       if (fresh.length) pickPool = fresh;
     }
-    const e = pickPool[Math.floor(Math.random() * pickPool.length)];
+    const e = pickPool[Math.floor(rng() * pickPool.length)];
     S.encSeen = (S.encSeen || []).concat([e.id]).slice(-6);
     openEncounter(e);
     return true;
@@ -6373,7 +6947,18 @@
         if (opt === 'heal') {
           if (S.stones < 300) { toast('灵石不足 300'); return render(); }
           S.stones -= 300;
-          if (hit(55)) { S.yaoshou = true; msg = '妖物伤愈后没走，蹲在你洞口。它认你了。'; cls = 'good'; }
+          if (hit(55)) {
+            /* v8.1 P0 M4：救活的妖物真正进兽栏，不再是一个孤立布尔。
+               兽栏满或灵脉不济时明说，而不是静默把「它认你了」吞掉。 */
+            const add = beastAdd('huyao');
+            if (add.ok) {
+              bump('beastTame');
+              msg = '妖物伤愈后没走，蹲在你洞口。它认你了。'; cls = 'good';
+            } else {
+              S.merit += 20;
+              msg = '它伤好了，嗅了嗅槽边的空处，转身走了——' + add.why + '。功德 +20。'; cls = 'good';
+            }
+          }
           else { S.merit += 20; msg = '它伤太重，还是死了。功德 +20。'; cls = 'good'; }
         } else if (opt === 'kill') {
           S.karma += 12; addMat('mudanYao', 1);
@@ -6771,7 +7356,7 @@
        仇家 1.25~2.0 倍（下风，打得过也逃得掉）。
        这样最差也只是"下风"，不会出现 R<0.4 的必死局。 */
     const maxRealm = isShen() ? 7 : (D.XIAN_REALMS || []).length - 1;
-    let up = Math.random() < 0.28 ? 1 : 0;
+    let up = rng() < 0.28 ? 1 : 0;
     if (isCounter) up = 1;
     const foeRealm = clamp(myRealmIdx() + up, 0, maxRealm);
     const pool = isShen() ? D.PILLARS : D.XIAN_REALMS;
@@ -6780,7 +7365,7 @@
     const myPow = Math.max(1, computePower());
     let lo = isCounter ? 1.25 : 0.55, hi = isCounter ? 2.00 : 1.55;
     if (hasDebuff('marked_rich')) { lo *= 1.15; hi *= 1.15; }   // 被人惦记：来的更狠
-    let foePower = Math.round(myPow * (lo + Math.random() * Math.max(0.05, hi - lo)));
+    let foePower = Math.round(myPow * (lo + rng() * Math.max(0.05, hi - lo)));
     // 上限取「该境界的名义战力」而不是玩家倍数：
     // 高你一个大境的人名义上强 3~4 倍，但刚破境/带伤的散修打不出那个数。
     // 这样 R 落在 0.5~0.8（下风，能打能逃），既残酷又不会一遇就死档。
@@ -6788,7 +7373,7 @@
 
     const foeStages = ((pool[foeRealm] || {}).stages || []).length || 1;
     const foeBase = isShen() ? foeRealm * 4 : rankBaseXian()[foeRealm];
-    const foeR = foeBase + Math.floor(Math.random() * Math.min(foeStages, 4));
+    const foeR = foeBase + Math.floor(rng() * Math.min(foeStages, 4));
     const names = ['邻庙庙祝', '散修', '血奉执事', '游方邪修', '宗门执法', '野祀孤魂'];
     S.combat = {
       foe: (function () {
@@ -6797,8 +7382,8 @@
         const traits = ['brute', 'veteran', 'slippery', 'normal'];
     return { name: pick(names), rank: foeR, power: foePower,
           hp: hpMax, hpMax: hpMax,
-          trait: traits[Math.floor(Math.random() * traits.length)],
-          el: elKeys[Math.floor(Math.random() * elKeys.length)] };
+          trait: traits[Math.floor(rng() * traits.length)],
+          el: elKeys[Math.floor(rng() * elKeys.length)] };
       })(),
       round: 0, observed: false, defending: false
     };
@@ -6835,6 +7420,9 @@
     });
     if (!ones.length && !pills.length) b += '<div class="small muted">身上没有任何可用之物——那就这么上吧。</div>';
     b += '</ul>';
+    /* v8.1 P0 第6项：遁速够快，才看得见他身上的旧伤 */
+    const _pc = clue('speed');
+    if (_pc) b += '<div class="hint">' + esc(_pc) + '</div>';
     b += '<div class="hint">战前只会耗一次，进入战斗后无法再补。</div>';
     openModal('战前准备', b);
   }
@@ -7186,7 +7774,7 @@
     const ratio = clamp(Math.sqrt(computePower() / Math.max(1, c.foe.power)), 0.2, 2.5);
     /* v8.1：基础值保持 0.15。旧版玩家的期望伤害是 0.20×0.72=0.144，
        去掉空挥后若不同步回调这里，战斗会整体变简单。 */
-    let dmg = S.hpMax * 0.15 * (1 / ratio) * (0.8 + Math.random() * 0.4) * momMul;
+    let dmg = S.hpMax * 0.15 * (1 / ratio) * (0.8 + rng() * 0.4) * momMul;
     if (gap >= 1) dmg *= 1.6;
     if (gap <= -1) dmg *= 0.35;
     if (c.foeWeaken > 0) dmg *= 0.7;   // 术神通压住了他的势
@@ -7203,7 +7791,7 @@
     }
     if (c.talShield) c.talShield = 0;
     // 滑头：血量低于一半会试着跑
-    if (c.foe.trait === 'slippery' && c.foe.hp <= c.foe.hpMax * 0.5 && Math.random() < 0.35) {
+    if (c.foe.trait === 'slippery' && c.foe.hp <= c.foe.hpMax * 0.5 && rng() < 0.35) {
       if (c.noFoeFlee) {
         logLine(c.foe.name + '想遁走，却被锁灵阵逼了回来。', 'good');
         c.foe.trait = 'normal';
@@ -7216,13 +7804,43 @@
     }
     dmg = Math.round(dmg);
     S.hp = Math.max(0, S.hp - dmg);
+    /* v8.1 P0 M4：第四位出手。
+       妖物在敌我之间插一手：亲密够了就护主挡一次，太生分则回头咬你。
+       概率全部读 D.BEAST_BOND，不在战斗里写魔法数；每场只判一次。 */
+    if (!c.beastDone && barnList().length) {
+      c.beastDone = true;
+      const tier = beastBondTier(S.beastBond || 0);
+      const b0 = barnList()[0];
+      const roll = rng();
+      if (roll < tier.guard) {
+        /* 护主：这一击由它挡下，玩家零伤 */
+        logLine(esc(b0.name) + '从斜里扑出来，替他挡了这一下。', 'good');
+        c.defending = false;
+        if (c.foeMark > 0) c.foeMark--;
+        if (c.foeWeaken > 0) c.foeWeaken--;
+        c.round++;
+        return true;
+      }
+      if (roll < tier.guard + tier.bite) {
+        /* 反噬：它咬的是你。伤害按妖力走，但封顶，不至于一击毁档。 */
+        const bite = Math.max(1, Math.round(S.hpMax * 0.06 * beastPowerMul()));
+        S.hp = Math.max(0, S.hp - bite);
+        logLine(esc(b0.name) + '忽然回头咬了你一口——它还没认你。气血 −' + bite, 'danger');
+        if (S.hp <= 0) {
+          S.combat = null; S.phase = 'play'; S.hp = 1;
+          logLine('你被自家兽咬倒在半途。它蹲在一边看你，没有靠近。', 'danger');
+          toast('被反噬');
+          advanceXun(1); return false;
+        }
+      }
+    }
     /* v8.1：敌方回合以前只扣血、不报数，玩家看不见自己挨了多少。
        现在给一句画面 + 一个数字，卸力成功时换一种写法。 */
     logLine((myDefl >= 0.25 ? combatLine('fDefl') : combatLine('fHit')) +
       '　气血 −' + dmg + (myDefl >= 0.25 ? '（卸去 ' + Math.round(myDefl * 100) + '%）' : ''), 'danger');
     c.defending = false;
     if (S.hp <= 0) {
-      if (Math.random() < 0.4) { die(`被${c.foe.name}当场击杀，血溅当场。`); return false; }
+      if (rng() < 0.4) { die(`被${c.foe.name}当场击杀，血溅当场。`); return false; }
       S.combat = null; S.phase = 'play'; S.hp = 1;
       S.stones = Math.floor(S.stones * 0.5);
       S.followers = Math.round(S.followers * 0.6);
@@ -7253,6 +7871,9 @@
 
     let dmg = 0, hit = true, note = '';
     const ratio = clamp(Math.sqrt(computePower() / Math.max(1, c.foe.power)), 0.2, 2.5);
+    /* v8.1 P0 M4：妖物助战。只加「输出」不加「判定」——
+       它让这一刀更重，但不改变你打不打得中，避免把命中体系搅乱。 */
+    const beastBonus = beastAtkBonus();
     let keK = keMul(mainEl(), c.foe.el) || 1;      // P2-19 五行克制
     const _keFloor = bodyDef().keFloor;
     if (_keFloor) keK = Math.max(keK, _keFloor);   // 混沌体：五行皆通，不被反克
@@ -7264,10 +7885,10 @@
       if (c.talBuff) { mult *= (1 + c.talBuff); }
       /* 看破破绽时无视卸力；太阴宝鉴这类命中加成按一半抵掉对方卸力 */
       const defl = c.observed ? 0 : clamp(deflectOf(c, 'foe') - hitBonus * 0.5, 0, 0.55);
-      let raw = c.foe.hpMax * Math.max(0.10, 0.19 * r) * mult * keK * (1 + artBonus('atk'));
+      let raw = c.foe.hpMax * Math.max(0.10, 0.19 * r) * mult * keK * (1 + artBonus('atk') + beastBonus);
       raw *= (1 - defl);
       if (c.observed) raw *= 1.6;
-      dmg = Math.round(raw * (0.94 + Math.random() * 0.12));
+      dmg = Math.round(raw * (0.94 + rng() * 0.12));
       if (c.observed) note = '看破了破绽，' + combatLine('pHit');
       else if (defl >= 0.20) note = combatLine('pDefl') + '（卸去 ' + Math.round(defl * 100) + '%）';
       else note = combatLine('pHit');
@@ -7289,10 +7910,10 @@
       hit = true;                                   // v8.1：招式同样必中
       const defl2 = (sure || c.observed) ? 0 : clamp(deflectOf(c, 'foe') - hitBonus * 0.5, 0, 0.55);
       const r2 = ratio;
-      let raw2 = c.foe.hpMax * Math.max(0.11, 0.21 * r2) * mul2 * mult * keK * (1 + artBonus('atk'));
+      let raw2 = c.foe.hpMax * Math.max(0.11, 0.21 * r2) * mul2 * mult * keK * (1 + artBonus('atk') + beastBonus);
       raw2 *= (1 - defl2);
       if (c.observed) raw2 *= 1.6;
-      dmg = Math.round(raw2 * (0.94 + Math.random() * 0.12));
+      dmg = Math.round(raw2 * (0.94 + rng() * 0.12));
       c.observed = false;
       note = '「' + nm + '」' + (defl2 >= 0.20 ? '（卸去 ' + Math.round(defl2 * 100) + '%）' : '') + extra;
     } else if (sub === 'shentong') {
@@ -7365,7 +7986,7 @@
       }
     } else if (sub === 'bluff') {
       const odds = clamp(0.25 + st('insight') * 0.02 + S.fame / 2000 - diff * 0.05, 0.05, 0.7);
-      if (Math.random() < odds) {
+      if (rng() < odds) {
         S.combat = null; S.phase = 'play';
         logLine('你说了几句，对方退了半步，转身走了。', 'good');
         S.fame += 3;
@@ -7376,7 +7997,7 @@
     else if (sub === 'flee') {
       if (S.preBuff && S.preBuff.escape) { S.preBuff.escape = false; 
         S.combat = null; S.phase = 'play'; logLine('破宝锥开路，你从容遁走。', 'good'); advanceXun(1); render(); return; }
-      if (Math.random() < clamp(0.4 + st('speed') * 0.035 + artBonus('move') - gap * 0.18 - diff * 0.02, 0.05, 0.95)) {
+      if (rng() < clamp(0.4 + st('speed') * 0.035 + artBonus('move') - gap * 0.18 - diff * 0.02, 0.05, 0.95)) {
         if (combatTierNow(c) === '绝境') bump('escapeDesperate');
         S.combat = null; S.phase = 'play';
         logLine('你遁走成功。', '');
@@ -7392,7 +8013,7 @@
       bump('pillUsed'); S.pillThisMonth = true; c.usedPill = true;
       note = '服 ' + p.name + '：' + applyPill(p);
     } else if (sub === 'talk') {
-      if (Math.random() < clamp(0.2 + st('fate') * 0.02 - gap * 0.1 - diff * 0.01, 0.05, 0.6)) {
+      if (rng() < clamp(0.2 + st('fate') * 0.02 - gap * 0.1 - diff * 0.01, 0.05, 0.6)) {
         S.combat = null; S.phase = 'play';
         logLine(`言语周旋，${c.foe.name}收了杀意。`, 'good');
         advanceXun(1); render(); return;
@@ -7412,10 +8033,14 @@
     if (note) logLine(note, '');
     if (c.foe.hp <= 0) {
       noteCombatWin(c);
+      /* v8.1 P0 M4：如果倒下的正是你的授业者，「杀师」在这里成立。
+         判定放在结算最前，因为它要改的是「谁还活着」这件事。 */
+      const _slayMaster = masterCheckOnKill(c.foe.name);
       S.combat = null; S.phase = 'play';
       const loot = 100 + c.foe.rank * 200;
       S.stones += loot; S.fame += 5;
       logLine(combatLine('kill') + '。', 'danger');
+      if (_slayMaster) logLine('倒下的是教你的人。他没有叫你的名字。', 'danger');
       logLine(isShen() ? `散去对方的香火，得灵石 ${loot}。` : `一剑了结${c.foe.name}，得灵石 ${loot}。`, 'danger');
       // 生死之间有一线明悟：打赢同一境的对手，不该只值几块灵石
       const insight = Math.max(1, Math.round(c.foe.power * 0.35));
@@ -7475,7 +8100,7 @@
       logLine(ev.log || ev.name, ev.kind === 'good' ? 'good' : 'danger');
       S.lastEventText = ev.text;
       S.lastEventAfter = ev.after || '';
-      if (Math.random() < 0.35) {
+      if (rng() < 0.35) {
         // 只偶尔弹窗，不然每回合都打断
         openModal('事 · ' + ev.name, '<div class="npcmeet"><div class="nm-line">' +
           esc(ev.text) + '</div>' + (ev.after ? '<div class="nm-look">' + esc(ev.after) + '</div>' : '') +
@@ -7742,6 +8367,10 @@
     if (S.talents.includes('peach')) S.npcs[n0.id].fav = Math.round(S.npcs[n0.id].fav * 1.2);
 
     S.started = true; S.phase = 'play'; S.turn = 0;
+    /* v9.0 M0：开局就把本局种子注入随机源。
+       创角阶段的随机（灵根、外貌）已按种子走，开局后继续同一条序列。 */
+    if (!S.seed) S.seed = (Math.floor(Math.random() * 1e9) + 1);
+    setSeed(S.seed);
     S.tutStep = 0;      // 新手引导从头开始
     // v6.6：百世书页数烧掉之后，这一世开局可以带一项前世残忆
     if (S.legacy || pageCount() < 3) {
@@ -7759,7 +8388,7 @@
   function genDao() {
     const a = ['清','玄','无','云','素','沧','白','紫','了','妙'];
     const b = ['微','裳','尘','衣','心','涯','霜','阳','真','一'];
-    return a[Math.floor(Math.random()*10)] + b[Math.floor(Math.random()*10)];
+    return a[Math.floor(rng()*10)] + b[Math.floor(rng()*10)];
   }
 
   function mainlineFor(p) {
@@ -7968,7 +8597,7 @@
   /* 品相判定 */
   function qualityRoll(rate, bonus) {
     bonus = bonus || 0;
-    const r = Math.random();
+    const r = rng();
     // 失败率越高，废品率越高
     const failBonus = (0.95 - rate) * 0.5;
     let acc = 0;
@@ -8330,7 +8959,7 @@
     }
     // 稀有一份：境界与灵气都加成
     const rareOdds = 0.10 + S.xRealm * 0.05 + (S.lingqi || 0) * 0.04;
-    if (Math.random() < rareOdds && pool.length > 1) {
+    if (rng() < rareOdds && pool.length > 1) {
       const top = pool[pool.length - 1];
       addMat(top, 1);
     }
@@ -8593,7 +9222,7 @@
         const back = Math.max(1, Math.round(m[k] * 0.2));
         addMat(k, back);
       }
-      if (r.risk === 'explode' && Math.random() < 0.5) {
+      if (r.risk === 'explode' && rng() < 0.5) {
         S.hp = Math.max(1, S.hp - Math.round(S.hpMax * 0.2));
         S.stats.heart = Math.max(1, S.stats.heart - 1);
         S.heartDebuff = 3;
@@ -8748,9 +9377,9 @@
     let best = 0, bidders = 0;
     const heat = clamp(1.6 - 0.35 * (aucFloorMul() - 0.9) / 0.7, 0.45, 1.6);
     for (let i = 0; i < 3; i++) {
-      if (Math.random() < 0.62 * heat) {
+      if (rng() < 0.62 * heat) {
         bidders++;
-        const p = it.base * it.qMul * (0.95 + Math.random() * 0.95);
+        const p = it.base * it.qMul * (0.95 + rng() * 0.95);
         if (p > best) best = p;
       }
     }
@@ -8867,7 +9496,7 @@
     if (!lot || bid <= 0) return;
     if (S.stones < bid) { toast('灵石不足'); return; }
     /* 密封竞价：对手的心理价在 1.0 ~ 1.6 倍之间，出到 1.55 也未必稳拿 */
-    const rival = lot.base * (1.0 + Math.random() * 0.6);
+    const rival = lot.base * (1.0 + rng() * 0.6);
     if (bid >= rival) {
       S.stones -= bid;
       ledgerAdd('out', '拍得' + lot.name, bid);
@@ -8937,7 +9566,7 @@
   };
 
   function auctionOpen() { return S.year % 3 === 0; }
-  function auctionPassed() { return sellCh().id !== 'auction' || Math.random() >= 0.15; }
+  function auctionPassed() { return sellCh().id !== 'auction' || rng() >= 0.15; }
   function sellMul() {
     return (S.market && S.market.mul) || { dan: 1, qi: 1, fu: 1, zhen: 1 };
   }
@@ -9127,7 +9756,7 @@
     if (S.month === 1) {
       const m = S.market.mul;
       ['dan', 'qi', 'fu', 'zhen'].forEach(function (k) {
-        m[k] = clamp((m[k] || 1) + (Math.random() - 0.5) * 0.2, 0.7, 1.5);
+        m[k] = clamp((m[k] || 1) + (rng() - 0.5) * 0.2, 0.7, 1.5);
       });
     }
     // 事件放大
@@ -9866,7 +10495,27 @@
       const t = tribDetail(id), c = tribCounter(id);
       return { id: id, name: t.name, test: t.test, bonus: c.bonus, text: c.text };
     },
-    tribRoll: function () { return rollTribulation().id; } };
+    tribRoll: function () { return rollTribulation().id; },
+    /* v8.1 P0 M4/M6：只读探针。测试要能验「兽养没养成、属性看不看得见」，
+       而这些函数在模块内是私有的——不给出口，就只能靠面板 HTML 猜。 */
+    applyState,
+    clue,
+    statTier,
+    beastAtkBonus,
+    barnCap,
+    masterKilled,
+    masterCheckOnKill,
+    discipleStageOf,
+    tallyInit,
+    /* v9.0 M0：随机源探针。测试要验「同 seed 可复现」，
+       必须能自己设种子、读当前种子，而不是靠外部改 Math.random。 */
+    setSeed,
+    getSeed: currentSeed,
+    rng,
+    costLine,
+    /* v9.0 M0：事件池探针。验的是「when 真的在筛事件」，
+       否则条件字段又会变成写不读的死字段。 */
+    eventSlot };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

@@ -58,13 +58,13 @@ function readKeysOf(src) {
    一旦有人真的做出了对应玩法，请把这一条从这里删掉、把 bump 接上。 */
 const ARCHIVED = {
   takeXianji: '需要「夺仙基」玩法（击败他人后夺取其仙基）',
-  killMaster: '需要「弑师」判定（师徒关系与击杀记录）',
+
   foundedSect: '需要「开宗立派」玩法（自立门户、立规矩、收弟子）',
   relic: '需要「上古遗迹发现」玩法（舆图浮现遗迹、入内探查）',
   killMortals: '需要「凡人杀戮」场景（现无凡人战斗单位）',
   bloodRite: '需要「血祭」玩法（献 99 绝材的祭祀流程）',
   quanbingLost: '需要「权柄被夺」事件（本命权柄可被外力剥夺）',
-  badDisciple: '需要「收徒」系统（师徒关系尚未建立）',
+
   nameBorrow: '需要「自定庙号」玩法（现庙号由系统随机生成，撞不上真君名）',
   oldGrudge: '需要「旧仇寻仇与击杀」流程（S.enemy 只置位，无击杀路径）'
 };

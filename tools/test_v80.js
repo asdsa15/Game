@@ -62,7 +62,12 @@ function ok(cond, name, extra) {
   else { fail++; console.log('  ✘', name, extra === undefined ? '' : extra); }
 }
 const realRandom = Math.random;
-function fixRandom(v) { Math.random = function () { return v; }; }
+/* v9.0 M0：游戏改走可注入的 rng()。要固定随机值，必须先清掉种子
+   （setSeed(null)），否则 rng() 走 PRNG、根本读不到这个桩。 */
+function fixRandom(v) {
+  if (G.setSeed) G.setSeed(null);
+  Math.random = function () { return v; };
+}
 function restoreRandom() { Math.random = realRandom; }
 
 function setup(cult, opts) {

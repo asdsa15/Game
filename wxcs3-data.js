@@ -1807,7 +1807,7 @@
     { id: 'beastDown', name: '妖兽下山', kind: 'risk', eff: { hpPct: -0.12, stones: 60, fame: 2 },
       text: '山下来了一头独角的山猪，拱翻了半亩田，撞塌一堵矮墙。村里人拿着锄头围住它，谁也不敢先上。',
       after: '你出手的时候它正低头拱土。收手之后，村里人还是站了很久才敢靠近。' },
-    { id: 'rivalVisit', name: '同门来访', kind: 'good', eff: { fav: 6, insight: 1 },
+    { id: 'rivalVisit', name: '同门来访', when: { needSect: true, minRealm: 1 }, kind: 'good', eff: { fav: 6, insight: 1 },
       text: '一个同门师兄来了，带着一壶酒和一身尘土。他说是路过，可这条路并不通他要去的任何地方。',
       after: '喝到半夜，他才说：「听说你要破境了。我来看看。」' },
     { id: 'strayPurse', name: '路边拾遗', kind: 'good', eff: { stones: 90, karma: 2 },
@@ -1819,7 +1819,7 @@
     { id: 'rainOnRoad', name: '山道遇雨', kind: 'risk', eff: { hp: -12, heart: 1 },
       text: '雨来得急，躲进一个石洞时衣裳已经湿透。洞里有人生过火的痕迹，灰还是温的。',
       after: '你把火重新点着，烘衣裳烘到天亮。那件衣裳后来一直有股烟味。' },
-    { id: 'oldStele', name: '古碑残字', kind: 'good', eff: { insight: 2 },
+    { id: 'oldStele', name: '古碑残字', when: { maxRealm: 2 }, kind: 'good', eff: { insight: 2 },
       text: '坡上一块断碑，字被风雨磨得只剩几笔。你蹲下去看了半个时辰，认出了中间两个字。',
       after: '那两个字是「莫争」。你站起来的时候，膝头麻了，天也暗了。' },
     { id: 'beggarChild', name: '乞儿叩门', kind: 'risk', eff: { merit: 6, stones: -20 },
@@ -1841,7 +1841,7 @@
       text: '巡查署的人挨摊查税，动作很慢，慢得像故意让所有人看着。卖符老者多补了三文，手抖着数了两遍。',
       after: '查完那日，坊市静了三日。第四日吆喝声又起，比先前还响。',
       log: '坊市查税，物价暂稳。', eff: { stones: -20, fame: 1 } },
-    { id: 'fieldBugs', name: '灵田虫害', kind: 'risk',
+    { id: 'fieldBugs', name: '灵田虫害', when: { place: 'qingyue', minRealm: 2 }, kind: 'risk',
       text: '灵田的叶子被虫啃出一排排月牙口。那虫专挑最壮的苗啃，像懂行。',
       after: '你没用药，蹲在田里捉了三夜虫。手熟了，虫也少了。',
       log: '灵田虫害，手捉三夜。', eff: { hp: -10, insightXp: 1 } },
@@ -1857,7 +1857,7 @@
       text: '山下多了三间草庐，散修住的。他们白日采药，夜里轮流守夜，规矩是自家的，比宗门的松。',
       after: '他们想换你一本《聚气诀》。你用一碗米就换了，他们说宗门的米香。',
       log: '散修结庐，以米换诀。', eff: { merit: 5, fame: 2 } },
-    { id: 'sectTourney', name: '宗门大比', kind: 'good', path: 'xian',
+    { id: 'sectTourney', name: '宗门大比', when: { needSect: true, minRealm: 2 }, kind: 'good', path: 'xian',
       text: '大比前夜，演武场的灯一直亮到三更。二十几人练同一招，谁的影子里都出剑。',
       after: '你赢了三场，输了两场。输的那两场，都输给同一个瘦子。',
       log: '宗门大比，三胜二败。', eff: { fame: 4, xiuweiMul: 0.3 } },
@@ -3212,6 +3212,76 @@
     ]
   };
 
+  /* ====== 御兽（v8.1 P0 批次 3） ======
+     设计口径三条：
+     一、妖物来源不新开玩法，复用既有的「负伤妖物」奇遇与猎妖；
+     二、养成两条轴——亲密（会不会护主）与妖力（能打多少），互不替代；
+     三、兽栏挂在洞府，上限按灵脉档位——灵脉越旺才养得起更多，这是洞府投资的正反馈。 */
+  const BEAST_STOCK = [
+    { id: 'huyao',  name: '狐妖',   el: 'wood',  desc: '尾多一条，心多一窍。',        atk: 0.85, hp: 0.9,  gated: 0 },
+    { id: 'jiaolong', name: '蛟',   el: 'water', desc: '未化龙，先有龙脾气。',        atk: 1.10, hp: 1.15, gated: 2 },
+    { id: 'shixiong', name: '石熊', el: 'earth', desc: '走一步，地响一声。',          atk: 1.00, hp: 1.45, gated: 1 },
+    { id: 'yanque', name: '焰雀',   el: 'fire',  desc: '落在肩上，羽毛烫人。',        atk: 1.20, hp: 0.75, gated: 2 },
+    { id: 'xuangui', name: '玄龟',  el: 'water', desc: '一年长一寸，活得比谁都久。',  atk: 0.70, hp: 1.60, gated: 3 },
+    { id: 'leiying', name: '雷鹰',  el: 'metal', desc: '翅展开时，云里有响声。',      atk: 1.30, hp: 0.85, gated: 4 }
+  ];
+  /* 兽栏上限：按灵脉档（LINGQI 下标）取，灵脉越旺养得越多 */
+  const BEAST_BARN = [1, 2, 2, 3, 3];
+  /* 亲密分档：护主概率与反噬概率都从这里读，不在战斗里写魔法数 */
+  const BEAST_BOND = [
+    { min: -99, name: '野',   guard: 0.10, bite: 0.30, note: '它只是还没走。' },
+    { min: 0,   name: '认',   guard: 0.30, bite: 0.12, note: '它认得你的气味。' },
+    { min: 30,  name: '亲',   guard: 0.50, bite: 0.04, note: '你出门它会跟到门口。' },
+    { min: 60,  name: '契',   guard: 0.70, bite: 0.00, note: '它替你挡过一回，没退。' }
+  ];
+  /* 喂养与调教：两条轴各自的道具与代价，走洞府兽栏面板 */
+  const BEAST_CARE = {
+    feedStone: 120,        // 喂一次：灵石
+    feedBond: 6,           // 喂一次：亲密
+    trainXun: 1,           // 调教：占一旬
+    trainPower: 0.06,      // 调教：妖力 +6%（乘法，收益递减）
+    trainBond: -2,         // 调教：亲密小跌（被逼着练）
+    powerCap: 1.80         // 妖力上限，防反噬/输出失控
+  };
+
+  /* ====== 师徒（v8.1 P0 批次 4） ======
+     刻意不复用 FOLLOW_LIMIT——那是信众上限，量级差四个数量级，
+     混用会让「收一个徒弟」变成「收三万信众」。 */
+  const DISCIPLE_LIMIT = 2;
+  /* 四条出路：授业→出师→（叛师 | 先死）。每条都要能结算，不能只写文案。 */
+  const DISCIPLE_TEACH = [
+    { id: 'gongfa', name: '授功法', cost: 1, need: '有可授功法', gain: '弟子修为大涨，亲密 +8' },
+    { id: 'art',    name: '授技艺', cost: 1, need: '已通一门四艺', gain: '弟子技艺入门，亲密 +6，将来可代做' },
+    { id: 'heart',  name: '点道心', cost: 1, need: '道心 ≥ 10', gain: '弟子道心 +2，亲密 +10（他记你一句）' }
+  ];
+  const DISCIPLE_STAGE = [
+    { key: 'ru',  name: '入门', need: 0,  note: '刚磕过头，还不敢抬头看你。' },
+    { key: 'cheng', name: '承教', need: 40, note: '会自己抄书了。' },
+    { key: 'cheng2', name: '登堂', need: 90, note: '能替你回一封帖子。' },
+    { key: 'chu', name: '出师', need: 150, note: '可以走了。' }
+  ];
+
+  /* ====== 属性分档（v8.1 P0 第 6 项） ======
+     目的不是加数值，是让属性决定「你能看到什么」。
+     三档：低（看不清）/中（看得出）/高（看得透）。
+     门槛取 8 为中线——创角默认 8，所以「不堆属性=看不出」，
+     堆了才会在同一段文字里多出一行线索。 */
+  const STAT_TIER = [
+    { key: 'low',  min: 0,  label: '不见' },
+    { key: 'mid',  min: 8,  label: '可见' },
+    { key: 'high', min: 13, label: '洞见' }
+  ];
+  /* 线索表：每条挂一个属性与门槛，同一处地/人/物在不同档位露出不同信息。
+     这是「属性进入文本」的最小实现——不改任何公式，只多给一行字。 */
+  const INSIGHT_LINES = [
+    { id: 'ins_link',  stat: 'insight', min: 13, text: '你看出此地灵脉有一处断口，像是被人截过。' },
+    { id: 'ins_gf',    stat: 'insight', min: 10, text: '这套功法的第三步与第一步暗中相冲，练久了要出事。' },
+    { id: 'ins_sense', stat: 'sense',   min: 13, text: '屋里有第三个人的气息，比你来得早，也还没走。' },
+    { id: 'ins_heart', stat: 'heart',   min: 13, text: '你压住了心里那点跃跃欲试——那不是你的念头。' },
+    { id: 'ins_fate',  stat: 'fate',    min: 13, text: '这名字你听过，在你还不知道自己在修行的时候。' },
+    { id: 'ins_speed', stat: 'speed',   min: 13, text: '他的步法右重左轻，右腿有旧伤。' }
+  ];
+
   /* ====== 导出 ====== */
   G.WXCS3_DATA = {
     STATS, CULTIVATION,
@@ -3220,6 +3290,9 @@
     GONGFA_TIERS, GONGFA, BODIES, TALENTS, ORIGINS,
     FAXIANG, ZODIAC_CLASH,
     PILLARS, POSITIONS, PIETY, MIAO_COEFF, QIHE, FOLLOW_LIMIT, BREAK_BASE, QUENCH, FIXED_COST, TRIBULATION, TRIB_WEIGHT,
+    BEAST_STOCK, BEAST_BARN, BEAST_BOND, BEAST_CARE,
+    DISCIPLE_LIMIT, DISCIPLE_TEACH, DISCIPLE_STAGE,
+    STAT_TIER, INSIGHT_LINES,
     TIANJIANG, DIZHA, GUOWEI, GUOWEI_RANK,
     ANCHOR_TYPES, ANCHOR_STATES, ANCHOR_STATUS, RITUALS,
     LU, DAOTONG, SANXUAN, SHENTONG,
