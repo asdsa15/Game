@@ -202,9 +202,16 @@ def main():
     done = missing = failed = 0
 
     for key in keys:
-        src = os.path.join(src_dir, f"{key}.png")
+        # 源图可能是 PNG 也可能是 JPEG（生成工具按扩展名决定），
+        # 按 .png → .jpg → .webp 顺序取第一个存在的。
+        src = None
+        for ext in (".png", ".jpg", ".jpeg", ".webp"):
+            cand = os.path.join(src_dir, f"{key}{ext}")
+            if os.path.exists(cand):
+                src = cand
+                break
         dst = os.path.join(dst_dir, f"{key}.jpg")
-        if not os.path.exists(src):
+        if src is None:
             print(f"  {key:<9} 跳过（无源图）")
             missing += 1
             continue

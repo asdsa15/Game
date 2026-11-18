@@ -75,9 +75,25 @@ for (const k of usedIcons) {
   else if (!SUBJ[k].subject || SUBJ[k].subject.length < 7) errors.push('主体描述过短：' + k);
 }
 
+/* ---- 7. 校验交付图已生成 ----
+   映射表对了、主体描述对了，但 art/icons/ 里没有文件时，
+   界面会静默退化成纯文字 —— 这正是要防的。 */
+const ICON_DIR = path.join(ROOT, 'art', 'icons');
+let delivered = 0;
+for (const k of usedIcons) {
+  const f = path.join(ICON_DIR, k + '.jpg');
+  if (fs.existsSync(f)) {
+    delivered++;
+    if (fs.statSync(f).size < 500) errors.push('交付图异常小（可能是空图）：' + k);
+  } else {
+    errors.push('缺交付图：art/icons/' + k + '.jpg');
+  }
+}
+
 /* ---- 报告 ---- */
 console.log('条目总数   ', M.entries.length);
 console.log('图标总数   ', usedIcons.size);
+console.log('交付图     ', delivered + ' / ' + usedIcons.size + ' 张已生成');
 console.log('game.js 引用表', [...usedTables].join(', '));
 if (errors.length) {
   console.error('\n✗ 图标层自检未过：');
