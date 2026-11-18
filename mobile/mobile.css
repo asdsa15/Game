@@ -35,10 +35,11 @@ body{
 
   .sysbtn-top{min-height:40px;padding:8px 14px}   /* 36px 仍低于 40px 的下限 */
   .sysbtn-top:hover{background:#fff;border-color:var(--edge);color:var(--ink)}
-}
 
-/* 按钮类元素不参与长按选中，避免误拖出蓝底 */
-.opt,.btn,.chip,.dockbtn,.sysbtn-top{-webkit-user-select:none;user-select:none}
+  /* 按钮类元素不参与长按选中，避免误拖出蓝底。
+     只在触屏生效：桌面玩家要能复制丹药名、价格与错误提示。 */
+  .opt,.btn,.chip,.dockbtn,.sysbtn-top{-webkit-user-select:none;user-select:none}
+}
 
 /* --------------------------------------------------------------------------
    3. 输入框：字号必须 ≥16px，否则 iOS 聚焦时会把整页放大

@@ -40,7 +40,7 @@
   const clampNum = (v, a, b, d) => clamp(numOr(v, d === undefined ? a : d), a, b);
   /* 版本号只在这里定义一次。旧代码把 '6.2' 硬编码在 envelope、checkSaveVersion、
      导出文件名、帮助面板四处——改一处忘三处，就会出现「新档被判成旧版」。 */
-  const VER = '8.0';
+  const VER = '10.2';
 
   const rnd = (n) => Math.floor(rng() * n) + 1;
   const rnd100 = () => rnd(100);
@@ -703,12 +703,32 @@
     });
     if (S.chronicle.length > 4000) S.chronicle.shift();
   }
+  /* toast 队列：1800ms 内的第二条不再顶掉第一条。
+     容器带 aria-live（见 HTML），屏幕阅读器也能收到这条唯一全局反馈。 */
+  const TOAST_Q = [];
+  let toastBusy = false;
   function toast(m) {
     const el = document.getElementById('toast');
     if (!el) return;
-    el.textContent = m; el.classList.add('show');
+    TOAST_Q.push(String(m));
+    if (TOAST_Q.length > 8) TOAST_Q.shift();
+    if (!toastBusy) nextToast();
+  }
+  function nextToast() {
+    const el = document.getElementById('toast');
+    if (!el) { toastBusy = false; return; }
+    const m = TOAST_Q.shift();
+    if (m === undefined) { toastBusy = false; el.classList.remove('show'); return; }
+    toastBusy = true;
+    el.textContent = m;
+    el.classList.add('show');
+    /* 关键数值给得久一点；但最长 4.2s，免得排队拖尾 */
+    const dur = Math.min(4200, Math.max(1800, 1200 + m.length * 60));
     clearTimeout(toast._h);
-    toast._h = setTimeout(() => el.classList.remove('show'), 1800);
+    toast._h = setTimeout(function () {
+      el.classList.remove('show');
+      setTimeout(nextToast, 220);
+    }, dur);
   }
   function die(reason) {
     /* v8.0：临终一择。还有一口气时先给玩家三条路——最后一搏、传功后人、托付道统。
@@ -747,11 +767,41 @@
   }
 
   /* ============ 渲染工具 ============ */
-  function bar(cur, max, color) {
-    const w = 4.5, a = clamp(cur / (max || 1), 0, 1) * w;
-    return `<span class="barwrap"><span class="bar" style="width:${w}em">
-      <i class="fill" style="width:${a}em;background:${color}"></i></span>
-      <span class="barnum">${fmtNum(cur)}/${fmtNum(max)}</span></span>`;
+  /* 数值变化追踪：涨青玉、跌朱砂，600ms 回落。
+     整个 stage 是 innerHTML 整块替换，CSS 拿不到「旧值→新值」，
+     所以上一帧只能记在 JS 里。换存档/新开局时引用变化，自动清空。 */
+  let _lastVals = {}, _lastBars = {}, _lastSRef = null;
+  function syncTrackRef() {
+    if (_lastSRef !== S) { _lastSRef = S; _lastVals = {}; _lastBars = {}; }
+  }
+  function flashCls(key, v) {
+    syncTrackRef();
+    const prev = _lastVals[key];
+    _lastVals[key] = v;
+    if (prev === undefined || !isFinite(prev) || prev === v) return '';
+    return v > prev ? ' numgain' : ' numloss';
+  }
+  function bar(cur, max, color, key, label) {
+    const w = 4.5, frac = clamp(cur / (max || 1), 0, 1), a = frac * w;
+    let cls = '', st = `width:${a}em;background:${color}`;
+    if (key) {
+      syncTrackRef();
+      const prev = _lastBars[key];
+      _lastBars[key] = frac;
+      /* 进度条不能靠 transition：新节点没有旧宽度。
+         把上一帧写进 --from，用 keyframes 从旧宽度长到新宽度。 */
+      if (prev !== undefined && isFinite(prev) && Math.abs(prev - frac) > 0.001) {
+        cls = ' fill--shift';
+        st += `;--from:${(prev * w).toFixed(3)}em`;
+      }
+    }
+    const low = (key === 'hp' || key === 'foe_hp') && frac < 0.33 ? ' low' : '';
+    const aria = 'role="progressbar" aria-valuemin="0" aria-valuemax="' + Math.round(max || 0) +
+      '" aria-valuenow="' + Math.round(cur) + '"' + (label ? ' aria-label="' + esc(label) + '"' : '');
+    const numCls = key ? flashCls(key + ':num', Math.round(cur)) : '';
+    return `<span class="barwrap"><span class="bar${low}" style="width:${w}em" ${aria}>
+      <i class="fill${cls}" style="${st}"></i></span>
+      <span class="barnum${numCls}">${fmtNum(cur)}/${fmtNum(max)}</span></span>`;
   }
   function elemChip(k) {
     const e = D.ELEMENTS[k] || D.MUT_ELEMENTS[k];
@@ -976,17 +1026,19 @@
     if (S.phase === 'create') {
       stage.className = 'stage-create';
       stage.innerHTML = renderSceneArt('create', 'create') + renderCreate();
+      enhanceA11y(stage);
       renderDial(true);
       return;
     }
     stage.className = 'stage';
-    if (S.phase === 'over') { stage.innerHTML = renderOverArt() + renderOver(); renderDial(true); scheduleAutoSave(); return; }
-    if (S.phase === 'dying') { stage.innerHTML = renderSceneArt('dying', 'backdrop') + renderDying(); renderDial(true); scheduleAutoSave(); return; }
+    if (S.phase === 'over') { stage.innerHTML = renderOverArt() + renderOver(); enhanceA11y(stage); renderDial(true); scheduleAutoSave(); return; }
+    if (S.phase === 'dying') { stage.innerHTML = renderSceneArt('dying', 'backdrop') + renderDying(); enhanceA11y(stage); renderDial(true); scheduleAutoSave(); return; }
     if (S.phase === 'combat') {
       if (!S.combat) { S.phase = 'play'; }        // 脏状态直接降级，走下面的正常渲染
       else {
         stage.className = 'stage stage-fight';     // 左右双栏
         stage.innerHTML = renderSceneArt('combat', 'combat') + renderCombat();
+        enhanceA11y(stage);
         scheduleAutoSave();
         return;
       }
@@ -997,6 +1049,7 @@
       '<div class="col">' + renderMainCol() + '</div>' +
       '<div class="col">' + renderStateCol() + '</div>' +
       '<div class="dockrow">' + renderDock() + '</div>';
+    enhanceA11y(stage);
     renderDial(true);
     scheduleAutoSave();
   }
@@ -1030,8 +1083,28 @@
   }
 
   /* ---------- 右栏：状态 + 修为 + 六维 ---------- */
+  /* v10.2：右栏原来 14 项平铺，玩家找不到「现在危不危险」。
+     按 异常→生存→修为→资源→关系 分组，异常永远压在最上面，关系默认收起。 */
+  let SG_OPEN = { warn: true, life: true, cult: true, res: true, rel: false };
+  function sgBox(key, title, body, note, crit) {
+    const on = !!SG_OPEN[key];
+    const head = '<div class="sgt" data-act="do;sg:' + key + '" role="button" tabindex="0" aria-expanded="' + on + '">' +
+      '<span class="sga">' + (on ? '▾' : '▸') + '</span>' + esc(title) +
+      (note ? '<span class="sgn">' + note + '</span>' : '') + '</div>';
+    return '<div class="sgroup' + (crit ? ' crit' : '') + '">' + head +
+      (on ? '<div class="sgb">' + body + '</div>' : '') + '</div>';
+  }
   function renderStateCol() {
     let b = '';
+
+    const ab = [];
+    if (S.hp / S.hpMax < 0.33) ab.push('垂死');
+    else if (S.hp / S.hpMax < 0.66) ab.push('重伤');
+    if (S.suiFlag) ab.push('祟气缠身');
+    if (S.templeBroken) ab.push('庙宇破损');
+    if (S.karma > 50) ab.push('业力缠身');
+    if (ab.length) b += sgBox('warn', '异常', '<div class="small danger">' + ab.join(' · ') + '</div>', ab[0], true);
+
     b += '<div class="sl"><span class="k">道号</span><span class="v">' + esc(S.dao || S.name) + '</span></div>';
     b += '<div class="sl"><span class="k">年岁</span><span class="v">' + S.age + ' 岁</span></div>';
     b += '<div class="sl"><span class="k">境界</span><span class="v">' + esc(realmName()) + '</span></div>';
@@ -1039,79 +1112,54 @@
     b += '<div class="sl"><span class="k">主修</span><span class="v">' +
       esc((D.CULTIVATION.filter(function (c) { return c.id === S.cultivation; })[0] || {}).name || '—') + '</span></div>';
 
+    /* —— 生存：寿元 / 气血 / 灵力 —— */
+    let life = '';
     if (S.lifeMax) {
       const lr = S.age / S.lifeMax;
-      b += '<div class="row" style="margin-top:6px"><span class="lab">寿元</span>' +
-        bar(S.lifeStop ? 0 : Math.max(0, S.lifeMax - S.age), S.lifeMax, lr > 0.75 ? 'var(--cinnabar)' : 'var(--life)') + '</div>';
+      const left = S.lifeStop ? 0 : Math.max(0, S.lifeMax - S.age);
+      life += '<div class="row' + (left <= 10 && !S.lifeStop ? ' critical-life' : '') + '"><span class="lab">寿元</span>' +
+        bar(left, S.lifeMax, lr > 0.75 ? 'var(--cinnabar)' : 'var(--life)', 'life', '寿元') + '</div>';
     } else {
-      b += '<div class="row" style="margin-top:6px"><span class="lab">寿元</span><span class="good small">无上限（靠锚）</span></div>';
+      life += '<div class="row"><span class="lab">寿元</span><span class="good small">无上限（靠锚）</span></div>';
     }
+    life += '<div class="row"><span class="lab">气血</span>' + bar(S.hp, S.hpMax, 'var(--hp)', 'hp', '气血') + '</div>';
+    life += '<div class="row"><span class="lab">灵力</span>' + bar(S.mp, S.mpMax, 'var(--mp)', 'mp', '灵力') + '</div>';
+    b += sgBox('life', '生存', life, Math.round(S.hp / (S.hpMax || 1) * 100) + '% 气血', S.hp / S.hpMax < 0.33);
 
+    /* —— 修为：境界细节、道统、箓印、灵根、六维 —— */
+    let cult = '';
+    if (isXian() || S.cultivation === 'both') {
+      const nr = xrealm().need;
+      cult += '<div class="row"><span class="lab">修为</span>' + bar(S.xiuwei, nr || 1, 'var(--cul)', 'xiuwei', '修为') + '</div>';
+      cult += '<div class="row" style="margin-top:-2px"><span class="lab"></span><span class="muted">月增 ' + (S.lastGain || 0) +
+        '　灵气 ' + esc(D.LINGQI[S.lingqi].name) + '×' + D.LINGQI[S.lingqi].v + '</span></div>';
+    }
     const showDao = (isShen() && S.unlockStage >= 2) || (isXian() && S.unlockStage >= 3);
     if (showDao && S.daotong) {
       // 道统先归入大类（金行/木行/十二炁…），再给具体名目
       const dtClass = daotongClassOf(S.daotong);
-      b += '<div class="sl"><span class="k">道统</span><span class="v">' + esc(S.daotong) +
+      cult += '<div class="sl"><span class="k">道统</span><span class="v">' + esc(S.daotong) +
         (dtClass ? '<span class="small muted">（' + esc(dtClass) + '）</span>' : '') +
         (S.sanxuan ? ' · ' + esc(D.SANXUAN[S.sanxuan].name) : '') + '</span></div>';
       // 该道统下可得的杀伐神通（把 SHENTONG 表也接上，不再只作装饰）
       const pool = D.SHENTONG[S.daotong];
       if (pool && pool.length) {
-        b += '<div class="small muted" style="margin-top:-2px">可求神通：' +
+        cult += '<div class="small muted" style="margin-top:-2px">可求神通：' +
           pool.slice(0, 4).map(esc).join('、') + (pool.length > 4 ? ' 等 ' + pool.length + ' 道' : '') + '</div>';
       }
     }
-    if (S.xianji) b += '<div class="sl"><span class="k">仙基</span><span class="v">' + esc(S.xianji) + '</span></div>';
-    if (S.unlockStage >= 3) b += '<div class="sl"><span class="k">神通</span><span class="v">' + S.shenTong.length + '/' + shenTongLimit() + '</span></div>';
-    if (S.lu) b += '<div class="sl"><span class="k">箓</span><span class="v">' + esc(S.lu.rank) + '箓·' + esc(S.lu.name) + '</span></div>';
+    if (S.xianji) cult += '<div class="sl"><span class="k">仙基</span><span class="v">' + esc(S.xianji) + '</span></div>';
+    if (S.unlockStage >= 3) cult += '<div class="sl"><span class="k">神通</span><span class="v">' + S.shenTong.length + '/' + shenTongLimit() + '</span></div>';
+    if (S.lu) cult += '<div class="sl"><span class="k">箓</span><span class="v">' + esc(S.lu.rank) + '箓·' + esc(S.lu.name) + '</span></div>';
     if (S.daoyin.length || (isXian() && S.xRealm >= 2)) {
-      b += '<div class="sl"><span class="k">道途印</span><span class="v">' +
+      cult += '<div class="sl"><span class="k">道途印</span><span class="v">' +
         S.daoyin.map(function () { return '●'; }).join('') +
         '○'.repeat(Math.max(0, 4 - S.daoyin.length)) + '</span></div>';
     }
-    if (S.guowei) b += '<div class="sl"><span class="k">果位</span><span class="v">' + esc(S.guowei.n) + '（' + esc(S.guowei.rank) + '）</span></div>';
+    if (S.guowei) cult += '<div class="sl"><span class="k">果位</span><span class="v">' + esc(S.guowei.n) + '（' + esc(S.guowei.rank) + '）</span></div>';
 
-    b += divider();
-
-    if (isXian() || S.cultivation === 'both') {
-      const nr = xrealm().need;
-      b += '<div class="row"><span class="lab">修为</span>' + bar(S.xiuwei, nr || 1, 'var(--cul)') + '</div>';
-      b += '<div class="row" style="margin-top:-2px"><span class="lab"></span><span class="muted">月增 ' + (S.lastGain || 0) +
-        '　灵气 ' + esc(D.LINGQI[S.lingqi].name) + '×' + D.LINGQI[S.lingqi].v + '</span></div>';
-      b += '<div class="row"><span class="lab">气血</span>' + bar(S.hp, S.hpMax, 'var(--hp)') + '</div>';
-      b += '<div class="row"><span class="lab">灵力</span>' + bar(S.mp, S.mpMax, 'var(--mp)') + '</div>';
-    }
-    if (isShen() || S.cultivation === 'both') {
-      b += divider();
-      b += '<div class="sl"><span class="k">神庙</span><span class="v">' + esc(S.miaoHao || '野庙') + ' · ' + esc(S.miao) + '</span></div>';
-      b += '<div class="sl"><span class="k">信众</span><span class="v">' + S.followers + '/' + followLimit() + ' · 虔诚 ' + S.piety.toFixed(1) + '</span></div>';
-      b += '<div class="row"><span class="lab">香火</span>' + bar(S.xianghuo, pillar().need, 'var(--cul)') + '</div>';
-      b += '<div class="row" style="margin-top:-2px"><span class="lab"></span><span class="muted">月增 ' +
-        Math.round(monthXianghuo().capped) + '　香火钱 ' + (Math.round(shenStoneIncome() * 10) / 10) +
-        ' 石/月　月兑 ' + xiangOutCap() + ' 石</span></div>';
-    }
-
-    if (needsAnchor()) {
-      b += divider();
-      const str = anchorStrength(), as = anchorStatus();
-      b += '<div class="sl"><span class="k">锚定</span><span class="v ' + (as.name === '稳' ? 'good' : 'danger') + '">' +
-        str.toFixed(1) + '/4.0 · ' + esc(as.name) + '</span></div>';
-      b += '<div class="small muted" style="margin-top:3px">' +
-        D.ANCHOR_TYPES.map(function (a) {
-          const v = S.anchors[a.id];
-          const t = v >= 1 ? '<span class="good">固</span>' : v >= 0.5 ? '<span class="muted">松</span>' : '<span class="danger">断</span>';
-          return esc(a.name.slice(0, 1)) + t;
-        }).join(' ') + '</div>';
-      if (S.collapse > 0) b += '<div class="small danger" style="margin-top:4px">崩解期第 ' + S.collapse + ' 月</div>';
-    }
-
-    const _topA = (typeof topAch === 'function') ? topAch() : null;
-    if (_topA) b += '<div class="sl"><span class="k">称号</span><span class="v" style="color:' +
-      (D.ACH_TIERS.filter(function(t){return t.id===_topA.tier;})[0]||{color:'#8C8578'}).color + '">' +
-      esc(_topA.name) + '</span></div>';
-    b += divider();
     const s = S.stats;
-    b += '<div class="attr-grid">' + Object.keys(D.STATS).map(function (k) {
+    cult += '<div class="attr-grid">' + Object.keys(D.STATS).map(function (k) {
       return '<div class="a"><span class="n">' + esc(D.STATS[k].name) + '</span><span class="v">' + s[k] + '</span></div>';
     }).join('') + '</div>';
 
@@ -1121,10 +1169,10 @@
       const _els = S.rootEls || [];
       const _main = _els.length ? elemChip(_els[0]) : '';
       const _subs = _els.slice(1).map(elemChip).join('');
-      b += '<div class="row" style="margin-top:7px"><span class="lab">灵根</span>' +
+      cult += '<div class="row" style="margin-top:7px"><span class="lab">灵根</span>' +
         _main + (_subs ? '<span class="muted" style="margin:0 3px">副</span>' + _subs : '') + '</div>';
       const _rd = (G.WXCS3_EXT && G.WXCS3_EXT.rootInfo) ? G.WXCS3_EXT.rootInfo() : null;
-      b += '<div class="small muted" style="margin-top:-2px">' + esc(D.ROOTS[S.root].name) +
+      cult += '<div class="small muted" style="margin-top:-2px">' + esc(D.ROOTS[S.root].name) +
         (_rd ? ' · 战力 ×' + _rd.powerMul.toFixed(2) : '') +
         (_els.length > 1 ? ' · 副系按专精度 ' + (_rd ? _rd.concentration.toFixed(2) : '') + ' 折价' : '') +
         (S.body ? ' · ' + esc(D.BODIES.filter(function (x) { return x.id === S.body; })[0].name) : '') + '</div>';
@@ -1135,51 +1183,67 @@
        香火气数（本命/客庙/相冲）也从未可见。 */
     if (G.WXCS3_EXT && G.WXCS3_EXT.stateExtras) {
       const _sx = G.WXCS3_EXT.stateExtras();
-      if (_sx) b += '<div style="margin-top:4px">' + _sx + '</div>';
+      if (_sx) cult += '<div style="margin-top:4px">' + _sx + '</div>';
     }
+    const _topA = (typeof topAch === 'function') ? topAch() : null;
+    if (_topA) cult += '<div class="sl"><span class="k">称号</span><span class="v" style="color:' +
+      (D.ACH_TIERS.filter(function (t) { return t.id === _topA.tier; })[0] || { color: '#6E6759' }).color + '">' +
+      esc(_topA.name) + '</span></div>';
+    b += sgBox('cult', '修为', cult, realmName());
 
-    b += divider();
-    /* v10.1 第三梯队·问题6：盘活 PIETY / QIHE 两张死表与 insightXp。
-       原先只显示「虔诚 1.3」一个数字，四档名（半信半疑/常来上香/日日供奉/生死相托）
-       一次都没出现过；香火气数（本命/客庙/相冲）也从未可见。 */
-    if (G.WXCS3_EXT && G.WXCS3_EXT.stateExtras) {
-      const _sx = G.WXCS3_EXT.stateExtras();
-      if (_sx) b += '<div style="margin-top:4px">' + _sx + '</div>';
-    }
-
-    b += '<div class="small">灵石 <b style="color:var(--stone)">' + S.stones + '</b>　声望 ' + S.fame +
+    /* —— 资源：灵石/声望/功德/业力、香火、锚定、人情 —— */
+    let res = '';
+    /* 裸数字没有量感：拿坊市最常见的一味丹做参照 */
+    const _pillRef = S.stones >= 40 ? '（≈ ' + Math.floor(S.stones / 40) + ' 枚聚气丹）' : '';
+    res += '<div class="small">灵石 <b style="color:var(--stone)">' + S.stones + '</b>' +
+      (_pillRef ? '<span class="muted">' + _pillRef + '</span>' : '') + '　声望 ' + S.fame +
       '　功德 <b style="color:var(--merit)">' + S.merit + '</b>　业力 <b style="color:var(--karma)">' + S.karma + '</b></div>';
-
+    if (isShen() || S.cultivation === 'both') {
+      res += '<div class="sl"><span class="k">神庙</span><span class="v">' + esc(S.miaoHao || '野庙') + ' · ' + esc(S.miao) + '</span></div>';
+      res += '<div class="sl"><span class="k">信众</span><span class="v">' + S.followers + '/' + followLimit() + ' · 虔诚 ' + S.piety.toFixed(1) + '</span></div>';
+      res += '<div class="row"><span class="lab">香火</span>' + bar(S.xianghuo, pillar().need, 'var(--cul)', 'xianghuo', '香火') + '</div>';
+      res += '<div class="row" style="margin-top:-2px"><span class="lab"></span><span class="muted">月增 ' +
+        Math.round(monthXianghuo().capped) + '　香火钱 ' + (Math.round(shenStoneIncome() * 10) / 10) +
+        ' 石/月　月兑 ' + xiangOutCap() + ' 石</span></div>';
+    }
+    if (needsAnchor()) {
+      const str = anchorStrength(), as = anchorStatus();
+      res += '<div class="sl"><span class="k">锚定</span><span class="v ' + (as.name === '稳' ? 'good' : 'danger') + '">' +
+        str.toFixed(1) + '/4.0 · ' + esc(as.name) + '</span></div>';
+      res += '<div class="small muted" style="margin-top:3px">' +
+        D.ANCHOR_TYPES.map(function (a) {
+          const v = S.anchors[a.id];
+          const t = v >= 1 ? '<span class="good">固</span>' : v >= 0.5 ? '<span class="muted">松</span>' : '<span class="danger">断</span>';
+          return esc(a.name.slice(0, 1)) + t;
+        }).join(' ') + '</div>';
+      if (S.collapse > 0) res += '<div class="small danger" style="margin-top:4px">崩解期第 ' + S.collapse + ' 月</div>';
+    }
     // —— 恩义：欠/放的人情，以及只写征兆不写公式的因果 ——
     const _owe = hookUnsettled().length;
     const _given = (S.hooksGiven || []).filter(function (x) { return !x.done; }).length;
     if (_owe || _given) {
-      b += '<div class="small" style="margin-top:4px">人情　欠 <b>' + _owe + '</b> ｜ 人欠 <b>' + _given + '</b></div>';
+      res += '<div class="small" style="margin-top:4px">人情　欠 <b>' + _owe + '</b> ｜ 人欠 <b>' + _given + '</b></div>';
     }
     const _signs = hookSigns();
     if (_signs.length) {
-      b += '<div class="small muted" style="margin-top:2px">' + _signs.join('　') + '</div>';
+      res += '<div class="small muted" style="margin-top:2px">' + _signs.join('　') + '</div>';
     }
+    b += sgBox('res', '资源', res, S.stones + ' 石');
 
-    const ab = [];
-    if (S.hp / S.hpMax < 0.33) ab.push('垂死');
-    else if (S.hp / S.hpMax < 0.66) ab.push('重伤');
-    if (S.suiFlag) ab.push('祟气缠身');
-    if (S.templeBroken) ab.push('庙宇破损');
-    if (S.karma > 50) ab.push('业力缠身');
-    if (ab.length) b += '<div class="small danger" style="margin-top:5px">异常：' + ab.join(' · ') + '</div>';
-
+    /* —— 关系：默认收起，认识人多了也不挤占主线 —— */
     const met = Object.keys(S.npcs).filter(function (id) { return S.npcs[id].met; });
+    let rel = '';
     if (met.length) {
-      b += divider();
-      b += '<div class="small muted" style="margin-bottom:3px">好感</div>';
-      b += met.map(function (id) {
+      rel = met.map(function (id) {
         const n = D.NPC_POOL.filter(function (x) { return x.id === id; })[0];
         const f = S.npcs[id].fav;
         return '<div class="sl"><span class="k">' + esc(n.name) + '</span><span class="v" style="color:var(--peach)">' +
           f + ' · ' + favorTier(f) + '</span></div>';
       }).join('');
+    } else {
+      rel = '<div class="small muted">尚未结识他人。</div>';
     }
+    b += sgBox('rel', '关系', rel, met.length ? met.length + ' 人' : '');
 
     return panel('状态 · 修为', b, { sub: '右' });
   }
@@ -1196,11 +1260,19 @@
     const p = realmProgress();
     const prog = p.max > 0 ? Math.min(1, p.cur / p.max) : 1;
     const cap = isShen() ? null : daogongCapInfo();
+    syncTrackRef();
+    const prevProg = _lastBars.realm;
+    _lastBars.realm = prog;
+    let rcls = '', rst = 'width:' + (prog * 100).toFixed(1) + '%';
+    if (prevProg !== undefined && Math.abs(prevProg - prog) > 0.001) {
+      rcls = ' class="shift"';
+      rst += ';--from:' + (prevProg * 100).toFixed(1) + '%';
+    }
     let b = '<div class="realmbar">';
     b += '<div class="rb-top"><span class="rname">' + esc(p.name) + '</span>';
     b += '<span class="rsub">' + p.label + ' ' + fmtNum(Math.round(p.cur)) +
       (p.max > 0 ? ' / ' + fmtNum(p.max) : '') + '</span></div>';
-    b += '<div class="rbar"><i style="width:' + (prog * 100).toFixed(1) + '%"></i></div>';
+    b += '<div class="rbar"><i' + rcls + ' style="' + rst + '"></i></div>';
     if (cap && cap.blocked) {
       b += '<div class="rnote danger">功法所限 · 修至' + esc(cap.to) +
         ' 即止，需换更高阶道基功法（现为' + esc(cap.tierName) + '）</div>';
@@ -1232,12 +1304,13 @@
   function renderVitals() {
     const lowHp = S.hp / S.hpMax < 0.33;
     const lowLife = S.lifeMax && !S.lifeStop && (S.lifeMax - S.age) <= 20;
+    const hpV = Math.round(S.hp), mpV = Math.round(S.mp);
     let b = '<div class="vitals">';
-    b += '<div class="vt"><span>气血</span><span class="vn' + (lowHp ? ' low' : '') + '">' +
-      Math.round(S.hp) + '<span class="muted">/' + Math.round(S.hpMax) + '</span></span></div>';
-    b += '<div class="vt"><span>灵力</span><span class="vn">' +
-      Math.round(S.mp) + '<span class="muted">/' + Math.round(S.mpMax) + '</span></span></div>';
-    b += '<div class="vt"><span>灵石</span><span class="vn gold">' + fmtNum(S.stones) + '</span></div>';
+    b += '<div class="vt"><span>气血</span><span class="vn' + flashCls('vis:hp', hpV) + (lowHp ? ' low' : '') + '">' +
+      hpV + '<span class="muted">/' + Math.round(S.hpMax) + '</span></span></div>';
+    b += '<div class="vt"><span>灵力</span><span class="vn' + flashCls('vis:mp', mpV) + '">' +
+      mpV + '<span class="muted">/' + Math.round(S.mpMax) + '</span></span></div>';
+    b += '<div class="vt"><span>灵石</span><span class="vn gold' + flashCls('vis:stones', S.stones) + '">' + fmtNum(S.stones) + '</span></div>';
     if (usesShenLine()) {
       b += '<div class="vt"><span>信众</span><span class="vn">' + fmtNum(S.followers) + '</span></div>';
     } else {
@@ -3980,43 +4053,93 @@
   };
 
   /* ---------- 坊市（仙道专用） ---------- */
-  ACT.openShop = (cat) => {
-    // 两套系统各走各的门：神道进的是庙市，仙道才进坊市
-    if (isShen() && !isBoth()) { toast('神道只走庙市'); ACT.openMiaoMarket(); return; }
-    cat = cat || 'pill';
-    if (cat === 'sell') { ACT.openSell(); return; }
-    const tabs = [['pill', '丹药'], ['gongfa', '功法'], ['art', '法器'], ['mat', '材料'], ['sell', '卖出']];
-    let b = '<div class="row"><span class="lab">灵石</span><b style="color:var(--stone)">' + fmtNum(S.stones) + '</b></div>';
-    b += '<div class="shop-tabs">';
-    for (const t of tabs) {
-      b += '<span class="shop-tab ' + (cat === t[0] ? 'on' : '') + '" data-act="do;shopcat:' + t[0] + '">' + t[1] + '</span>';
-    }
-    b += '</div>' + divider();
-    b += '<ul class="opts">';
+  /* v10.2：商品一多，价格排序与按名检索比来回翻列表快 */
+  let _shopSort = 'def', _shopQ = '', _shopLastCat = 'pill';
+  function shopNameHit(name) {
+    const q = (_shopQ || '').trim();
+    return !q || String(name).indexOf(q) >= 0;
+  }
+  function shopListInner(cat) {
+    let b = '';
     if (cat === 'gongfa') {
-      D.SHOP_GONGFA.forEach(function (g) {
+      const list = D.SHOP_GONGFA.filter(function (g) { return shopNameHit(g.name); });
+      list.sort(function (a, b2) {
+        if (_shopSort === 'asc') return a.price - b2.price;
+        if (_shopSort === 'desc') return b2.price - a.price;
+        return 0;
+      });
+      if (!list.length) return '<div class="hint">没有匹配的功法。</div>';
+      list.forEach(function (g) {
         const owned = (S.ownedGongfa || []).includes(g.id);
         b += iconRow('GONGFA_EXT', g.id, '·', g.name + '（' + D.GONGFA_TIERS[g.tier].name + '）',
           { name: D.GONGFA_TIERS[g.tier].name, cls: 'peace' },
           owned ? '已习得' : fmtNum(g.price) + ' 石', owned || S.stones < g.price, 'do;buyg:' + g.id);
       });
     } else {
-      D.SHOP.filter(function (x) { return x.cat === cat; }).forEach(function (it) {
+      const list = D.SHOP.filter(function (x) {
+        if (x.cat !== cat || !shopNameHit(x.name)) return false;
+        if (x.cat === 'pill' && x.type === 'xiang' && !usesShenLine()) return false;
+        return true;
+      });
+      list.sort(function (a, b2) {
+        if (_shopSort === 'asc') return a.price - b2.price;
+        if (_shopSort === 'desc') return b2.price - a.price;
+        return 0;
+      });
+      if (!list.length) return '<div class="hint">没有匹配的物品。</div>';
+      list.forEach(function (it) {
         let note = fmtNum(it.price) + ' 石';
-        if (it.cat === 'pill' && (it.type === 'xiang') && !usesShenLine()) return;
         if (it.tier) note = D.GONGFA_TIERS[it.tier].name + ' · ' + note;
         b += iconRow(shopIconTable(it.cat), it.id, '·', it.name + '　' + (it.desc || it.eff || ''),
           { name: it.cat === 'art' ? '法器' : it.cat === 'mat' ? '材料' : '丹药', cls: 'peace' },
           note, S.stones < it.price, 'do;buy:' + it.id);
       });
     }
-    b += '</ul>';
+    return b;
+  }
+  ACT.openShop = (cat) => {
+    // 两套系统各走各的门：神道进的是庙市，仙道才进坊市
+    if (isShen() && !isBoth()) { toast('神道只走庙市'); ACT.openMiaoMarket(); return; }
+    cat = cat || 'pill';
+    if (cat === 'sell') { ACT.openSell(); return; }
+    _shopLastCat = cat;
+    const tabs = [['pill', '丹药'], ['gongfa', '功法'], ['art', '法器'], ['mat', '材料'], ['sell', '卖出']];
+    let b = '<div class="row"><span class="lab">灵石</span><b style="color:var(--stone)">' + fmtNum(S.stones) + '</b></div>';
+    b += '<div class="shop-tabs">';
+    for (const t of tabs) {
+      b += '<span class="shop-tab ' + (cat === t[0] ? 'on' : '') + '" data-act="do;shopcat:' + t[0] + '">' + t[1] + '</span>';
+    }
+    b += '</div>';
+    b += '<div class="shop-tools"><input id="shop-q" class="shop-q" type="text" placeholder="搜名字…" value="' +
+      esc(_shopQ) + '" aria-label="搜索商品">' +
+      [['def', '默认'], ['asc', '价↑'], ['desc', '价↓']].map(function (s) {
+        return '<span class="shop-chip' + (_shopSort === s[0] ? ' on' : '') +
+          '" data-act="do;shopsort:' + s[0] + '">' + s[1] + '</span>';
+      }).join('') + '</div>';
+    b += '<ul class="opts" id="shop-list">' + shopListInner(cat) + '</ul>';
     b += '<div class="hint">坊市只售黄、玄两阶。地阶以上不上市——那要靠「传法机缘」自己撞。</div>';
     b += '<div class="hint">坊市只认灵石，不认香火。香火是庙里的东西。</div>';
     openModal('坊市 · 灵石 ' + fmtNum(S.stones), b);
+    /* 边输边筛：只换列表，不动整个弹窗，焦点才留得住 */
+    const qi = document.getElementById('shop-q');
+    if (qi && qi.addEventListener) {
+      qi.addEventListener('input', function () {
+        _shopQ = this.value;
+        const ul = document.getElementById('shop-list');
+        if (ul) ul.innerHTML = shopListInner(cat);
+      });
+    }
   };
+  ACT.do_shopsort = (s) => { _shopSort = s || 'def'; ACT.openShop(_shopLastCat || 'pill'); };
 
   ACT.do_shopcat = (c) => { closeModal(); ACT.openShop(c); };
+
+  /* 右栏分组开合：只存在内存里，不写档——读档后回到默认视野 */
+  ACT.do_sg = (k) => {
+    if (!k) return;
+    SG_OPEN[k] = SG_OPEN[k] === undefined ? true : !SG_OPEN[k];
+    render();
+  };
 
   ACT.do_buyg = (id) => {
     const g = D.SHOP_GONGFA.find(function (x) { return x.id === id; });
@@ -5678,8 +5801,19 @@
   }
 
   function downloadJson(filename, obj) {
+    const txt = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+    /* 桌面版走系统「另存为」，玩家知道文件到底落在哪；
+       Web 版仍用 blob 下载。两边的取消/失败都要说清楚，不再一律报「已导出」 */
+    const desk = window.WENDAO_DESKTOP;
+    if (desk && typeof desk.saveFile === 'function') {
+      desk.saveFile(filename, txt).then(function (r) {
+        if (r && r.ok) toast('已导出 ' + r.path);
+        else if (r && r.canceled) toast('已取消导出');
+        else toast('导出失败' + (r && r.error ? '：' + r.error : ''));
+      }).catch(function (e) { toast('导出失败：' + e); });
+      return false;
+    }
     try {
-      const txt = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
       const blob = new Blob([txt], { type: 'application/json;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -5695,6 +5829,15 @@
   }
 
   function chooseFile(cb) {
+    const desk = window.WENDAO_DESKTOP;
+    if (desk && typeof desk.openFile === 'function') {
+      desk.openFile().then(function (r) {
+        if (r && r.ok) cb(String(r.text || ''), r.name || 'save.json');
+        else if (r && r.canceled) { /* 玩家自己取消，不吵 */ }
+        else toast('读取失败' + (r && r.error ? '：' + r.error : ''));
+      }).catch(function (e) { toast('读取失败：' + e); });
+      return;
+    }
     let inp = document.getElementById('file-in');
     if (!inp) {
       inp = document.createElement('input');
@@ -6526,9 +6669,13 @@
      旧表把 c 固定成「外出历练」、d 固定成「参悟功法」，神道按下去是错的。 */
   function mainKeyAction(k) {
     const full = breakReady();
+    /* B 键必须与中栏「此刻真正画出来的那个 B」一致：
+       神道破柱后未受箓时，屏幕上 B 是「受箓」，旧表却固定开破境，
+       键盘与鼠标走成两套意图。 */
+    const noLu = hasShenLine() && !S.lu && S.pillar >= 1;
     const map = {
       a: 'act:cultivate',
-      b: full ? 'act:openBreak' : 'act:openMeditate',
+      b: (full && noLu) ? 'act:openLuPick' : full ? 'act:openBreak' : 'act:openMeditate',
       c: hasShenLine() ? 'act:openXiansheng' : 'act:explore',
       d: hasShenLine() ? 'act:preach' : 'act:openGongfa',
       e: 'act:openRest'
@@ -7963,7 +8110,7 @@
       ? '<span class="muted">（气息不稳，像是刚破境或带伤）</span>' : '';
     fb += '<div class="fsub">' + esc(posText(foeR)) + _weak + '</div>';
     fb += divider();
-    fb += '<div class="frow"><span class="k">气血</span>' + bar(c.foe.hp, c.foe.hpMax, 'var(--cinnabar)') + '</div>';
+    fb += '<div class="frow"><span class="k">气血</span>' + bar(c.foe.hp, c.foe.hpMax, 'var(--cinnabar)', 'foe_hp', '敌方气血') + '</div>';
     fb += '<div class="frow"><span class="k">战力</span><b>' + fmtNum(c.foe.power) + '</b>';
     if (c.foe.el && D.ELEMENTS[c.foe.el]) fb += elemChip(c.foe.el);
     fb += '</div>';
@@ -7994,9 +8141,9 @@
     mb += '<div class="fname">' + esc(S.dao || S.name) + '</div>';
     mb += '<div class="fsub">' + esc(realmName()) + ' · 战力 ' + fmtNum(computePower()) + '</div>';
     mb += divider();
-    mb += '<div class="frow"><span class="k">气血</span>' + bar(S.hp, S.hpMax, 'var(--hp)') + '</div>';
-    mb += '<div class="frow"><span class="k">灵力</span>' + bar(S.mp, S.mpMax, 'var(--mp)') + '</div>';
-    if (isShen()) mb += '<div class="frow"><span class="k">香火</span>' + bar(S.xianghuo, pillar().need, 'var(--cul)') + '</div>';
+    mb += '<div class="frow"><span class="k">气血</span>' + bar(S.hp, S.hpMax, 'var(--hp)', 'hp', '气血') + '</div>';
+    mb += '<div class="frow"><span class="k">灵力</span>' + bar(S.mp, S.mpMax, 'var(--mp)', 'mp', '灵力') + '</div>';
+    if (isShen()) mb += '<div class="frow"><span class="k">香火</span>' + bar(S.xianghuo, pillar().need, 'var(--cul)', 'xianghuo', '香火') + '</div>';
     else {
       const g = getDaogong();
       mb += '<div class="frow"><span class="k">道基</span>' + esc(g.name) +
@@ -8449,7 +8596,9 @@
       S.lastEventAfter = ev.after || '';
       if (rng() < 0.35) {
         // 只偶尔弹窗，不然每回合都打断
-        openModal('事 · ' + ev.name, '<div class="npcmeet"><div class="nm-line">' +
+        openModal('事 · ' + ev.name,
+          iconTagByKey(iconKey('EVENTS', ev.id), 'lg', 'ico--band') +
+          '<div class="npcmeet"><div class="nm-line">' +
           esc(ev.text) + '</div>' + (ev.after ? '<div class="nm-look">' + esc(ev.after) + '</div>' : '') +
           '</div><div style="margin-top:10px"><button class="btn" data-act="modal:close">知道了</button></div>', false);
       }
@@ -8514,16 +8663,47 @@
   }
 
   /* ---------- 弹窗 ---------- */
+  /* 可点元素统一补键盘语义：optRow 有 100+ 调用点，逐个改既漏又吵，
+     渲染后统一扫描 [data-act] 才是稳的。 */
+  function enhanceA11y(root) {
+    if (!root || !root.querySelectorAll) return;
+    const list = root.querySelectorAll('[data-act]');
+    if (!list || !list.length) return;
+    Array.prototype.forEach.call(list, function (el) {
+      if (!el || !el.setAttribute) return;
+      const tag = (el.tagName || '').toUpperCase();
+      if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'SELECT' || tag === 'A') return;
+      if (!el.getAttribute || !el.getAttribute('tabindex')) el.setAttribute('tabindex', '0');
+      el.setAttribute('role', 'button');
+    });
+  }
+  let modalFocusReturn = null;
   function openModal(title, body, noClose) {
+    const active = document.activeElement;
+    if (active && active !== document.body) modalFocusReturn = active;
     document.body.classList.add('modal-open');
-    document.getElementById('modals').innerHTML = `<div class="modal"${noClose ? ' data-noclose="1"' : ''}><div class="box">
+    const box = document.getElementById('modals');
+    box.innerHTML = `<div class="modal"${noClose ? ' data-noclose="1"' : ''}><div class="box">
       <h3>${esc(title)}</h3>${body}
       ${noClose ? '' : '<div style="margin-top:12px"><button class="btn ghost" data-act="modal:close">关闭</button></div>'}
     </div></div>`;
+    enhanceA11y(box);
+    /* 焦点进弹窗：键盘用户打开后立刻能 Tab / Enter，而不是还留在背景输入框 */
+    const first = box.querySelector('.box [data-act], .box h3');
+    if (first && first.focus) {
+      if ((first.tagName || '').toUpperCase() === 'H3' && first.setAttribute) first.setAttribute('tabindex', '-1');
+      first.focus();
+    }
   }
   function closeModal() {
     document.getElementById('modals').innerHTML = '';
     document.body.classList.remove('modal-open');
+    /* 焦点还给触发元素；重绘后元素可能已经不在，需确认仍在文档里 */
+    const back = modalFocusReturn;
+    modalFocusReturn = null;
+    try {
+      if (back && back.focus && (!document.contains || document.contains(back))) back.focus();
+    } catch (e) { }
   }
   function confirmAction(t, m, cb) {
     const box = document.getElementById('modals');
@@ -8900,6 +9080,15 @@
   }
 
   function downloadText(filename, txt) {
+    const desk = window.WENDAO_DESKTOP;
+    if (desk && typeof desk.saveFile === 'function') {
+      desk.saveFile(filename, txt).then(function (r) {
+        if (r && r.ok) toast('已导出 ' + r.path);
+        else if (r && r.canceled) toast('已取消导出');
+        else toast('导出失败' + (r && r.error ? '：' + r.error : ''));
+      }).catch(function (e) { toast('导出失败：' + e); });
+      return;
+    }
     try {
       const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
@@ -8911,26 +9100,36 @@
     } catch (e) { toast('导出失败：' + e.message); }
   }
 
+  /* v10.2：年谱越长弹窗越卡，先给最近 60 条，按需往前翻 */
+  let _chronShown = 60;
   ACT.openChronicle = () => {
     const list = S.chronicle || [];
-    let b = '<div class="small">共 ' + list.length + ' 条纪事。左栏只显示最近 24 条，这里全都在。</div>' + divider();
+    const shown = Math.min(_chronShown, list.length);
+    let b = '<div class="small">共 ' + list.length + ' 条纪事' +
+      (list.length > shown ? '，已显示最近 ' + shown + ' 条' : '') +
+      '。左栏只显示最近 24 条，这里能往前翻。</div>' + divider();
     b += '<div class="chron">';
     if (!list.length) b += '<div class="muted">尚无纪事。</div>';
     else {
-      // 倒序展示，最多给 120 条，免得弹窗太大
-      list.slice(-120).reverse().forEach(function (e) {
+      // 倒序展示，先给 60 条，避免一开就渲染几百个节点
+      list.slice(-shown).reverse().forEach(function (e) {
         b += '<div class="cev ' + (e.cls || '') + '"><span class="ct">' + e.year + '·' +
           ((e.month < 10 ? '0' : '') + e.month) + '　' + (e.age || 0) + '岁</span>' +
           '<span class="cx">' + esc(e.txt) + '</span></div>';
       });
     }
     b += '</div>';
+    if (list.length > shown) {
+      b += '<div style="margin-top:10px"><button class="btn ghost" data-act="do;chronmore">载入更早的 ' +
+        Math.min(60, list.length - shown) + ' 条</button></div>';
+    }
     b += '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">' +
       '<button class="btn" data-act="do;chron">导出年谱 (.txt)</button>' +
       '<button class="btn ghost" data-act="do;expall">导出存档</button></div>';
     b += '<div class="hint">年谱是本作唯一不会丢的东西——存档会坏，年谱写过的就写过了。</div>';
     openModal('年谱 · 纪事', b);
   };
+  ACT.do_chronmore = () => { _chronShown += 60; ACT.openChronicle(); };
 
   ACT.do_chron = () => {
     downloadText('问道长生_年谱_' + (S.dao || S.name || '无名') + '_' + stampName() + '.txt', chronicleText());
@@ -10146,8 +10345,31 @@
 
   document.addEventListener('keydown', (e) => {
     if (!S) return;
+    /* ESC 必须在「有弹窗就 return」之前处理：
+       旧版把 closeModal 写在守卫之后，弹窗一开就永远走不到，
+       玩家只能点遮罩或滚到底找关闭。 */
+    if (e.key === 'Escape') {
+      const m = document.getElementById('modals');
+      if (m && m.innerHTML) {
+        const modal = m.querySelector('.modal');
+        if (!(modal && modal.getAttribute('data-noclose'))) closeModal();
+        e.preventDefault();
+      }
+      return;
+    }
     const f0 = document.getElementById('in-free');
     const typing = f0 && document.activeElement === f0;
+    /* 键盘可达性：Tab 聚焦到 [data-act] 后，Enter/空格等同点击 */
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+      const ae = document.activeElement;
+      const aTag = ae && ae.tagName ? ae.tagName.toUpperCase() : '';
+      if (ae && ae.getAttribute && ae.getAttribute('data-act') &&
+          aTag !== 'INPUT' && aTag !== 'TEXTAREA' && aTag !== 'SELECT') {
+        e.preventDefault();
+        dispatch(ae.getAttribute('data-act'));
+        return;
+      }
+    }
     if (e.key === 'Enter') {
       if (S.phase === 'create' && S.createStep === 0) { syncInputs(); render(); return; }
       if (typing) dispatch('do;free');
@@ -10158,7 +10380,6 @@
     const k = e.key.toLowerCase();
     const act = mainKeyAction(k);
     if (act) { e.preventDefault(); dispatch(act); }
-    if (k === 'escape') closeModal();
   });
 
   function boot() {
@@ -10599,7 +10820,20 @@
         (a.poem ? '<div class="apoem">' + esc(a.poem) + '</div>' : '') +
         '<div class="ad">入道' + Math.floor((S.turn || 0) / 12) + ' 年 · ' + (S.age || 0) + ' 岁</div>';
       box.appendChild(el);
-      setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 3400);
+      /* 最多留 3 条：旧版一局连打能叠满右屏，把主线遮住 */
+      if (box.children && box.removeChild) {
+        let guard = 0;
+        while (box.children.length > 3 && guard++ < 50) {
+          const old = box.children[0];
+          if (!old) break;
+          box.removeChild(old);
+        }
+      }
+      const kill = function () { if (el.parentNode) el.parentNode.removeChild(el); };
+      el._h = setTimeout(kill, 3400);
+      /* 悬停暂停：玩家想读诗时别让它自己消失 */
+      el.onmouseenter = function () { clearTimeout(el._h); };
+      el.onmouseleave = function () { el._h = setTimeout(kill, 1800); };
     } catch (e) { }
   }
 

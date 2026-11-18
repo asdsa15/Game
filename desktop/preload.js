@@ -1,9 +1,11 @@
-// 预加载：只暴露「这是个桌面版」这一条信息给页面，别的一概不给。
-// 页面本身是单文件游戏，不依赖 Node 能力；壳也不替它做任何 IO。
-const { contextBridge } = require('electron');
+// 预加载：只暴露「这是个桌面版」与两件必要的 IO —— 存/读文件走系统对话框。
+// 路径由主进程选，页面拿不到任意文件系统能力。
+const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('WENDAO_DESKTOP', {
   shell: 'electron',
   version: process.versions.electron,
-  platform: process.platform
+  platform: process.platform,
+  saveFile: (name, text) => ipcRenderer.invoke('wendao:save', { name: name, text: text }),
+  openFile: () => ipcRenderer.invoke('wendao:open')
 });
