@@ -1,0 +1,144 @@
+# 目录结构（2026-11-18 整理 · 源码分层后更新）
+
+一句话：**根目录只留入口、运行源码与总入口文档；素材、文档、工具、构建壳、归档各有各的家。**
+
+```
+03_v6.2_仙道为主/
+├─ 问道长生v6.html          入口页（只含 CSS 与骨架，脚本外链）
+│
+├─ ── 运行源码（加载顺序即下方顺序）──
+├─ wxcs3-data.js            数据层：全部表 107 张（境界/功法/事件/NPC/插画键…）
+├─ wxcs3-art.js             插画层：ART_DATA 优先，缺图回落 art/scenes/*.jpg
+├─ wxcs3-rules.js           纯规则层：33 个不碰 DOM、不写 S 的函数（v9.0 第2步新增）
+├─ wxcs3-game.js            规则与 UI：372 函数 / 169 个 ACT 入口
+├─ wxcs3-ext-demo.js        扩展模板：新玩法照抄改名（v9.0 第1步新增）
+│
+├─ README.md                项目总说明（玩法、版本、构建）
+├─ STRUCTURE.md             本文件
+│
+├─ art/                     插画素材与管线（原始大图不入库）
+│  ├─ scenes/               交付用 JPEG 33 张 5.6MB（构建时转 base64 内嵌 dist）
+│  ├─ generated/            生成原图 36 张（含样张与 art/ 子目录）
+│  ├─ vibe/                 风格探索图
+│  └─ pipeline/             art_batch1~4.json、compress_art.py
+│
+├─ docs/                    文档，按主题分号
+│  ├─ 00_项目地图.md         文件体量与函数定位（改代码前先读）
+│  ├─ 01_审查与诊断/         评审、诊断、落地记录、变更记录
+│  ├─ 02_平台部署/           APK / Electron / 部署依赖
+│  ├─ 03_玩法设计/           玩法方案、行动预算分档表
+│  ├─ 04_叙事与文本/         文本素材与文风规矩
+│  ├─ 05_架构方案/           后端化、架构评审、源码拆分
+│  ├─ 06_界面视觉/           插画规格、方案、生成进度
+│  └─ 99_归档/               过期文档
+│
+├─ tools/                   测试与检查
+│  ├─ test_*.js             断言：v80 / play / econ / hooks / loops / text / beast_disciple
+│  ├─ smoke_econ.js         DOM 桩真跑运行时（经济面）
+│  ├─ check_ach.js         成就可达性
+│  ├─ check_actions.py     动作分发覆盖
+│  ├─ check_time.py        行动预算口径（读 docs/03 分档表）
+│  └─ sim_*.js             模拟：战斗 / 信众 / 天劫
+│
+├─ mobile/                  移动端
+│  ├─ build.py              HTML+四个 JS → 单文件（含插画 base64 注入、自动收 ext）
+│  ├─ sync_apk.py           同步到 D:\wendao-apk（HBuilderX 工程）
+│  ├─ apk/wendao/           随仓库走的 HBuilderX 模板
+│  ├─ mobile.css / icons / splash.png
+│  └─ dist/                 构建产物（gitignore）
+│
+├─ desktop/                 Electron 桌面版
+│  ├─ main.js / preload.js  主进程与预加载
+│  ├─ scripts/sync-app.js   把 dist 页面搬进 app/ 并补 CSP
+│  ├─ assets/icon.ico       程序图标
+│  ├─ release_clean/       当前打包产物（gitignore，约 277 MB + 115 MB 压缩包）
+│  └─ release*/            历史中间包（gitignore；含体积异常与占用锁的旧目录，可自行清理）
+│
+├─ _archive/                归档：只增不删
+│  ├─ shots/                历史截图
+│  ├─ tmp/                  临时产物
+│  ├─ loomy-attachments/    会话附件
+│  ├─ docs-duplicates/      与 docs 重复的副本
+│  └─ 小说参考/              165MB 参考文本（不入库）
+│
+└─ _backup/                 每次开工前的手工快照（不入库）
+```
+
+## 源码分层约定（v9.0 第1、2 步）
+
+三层职责固定，加新东西时对号入座：
+
+| 层 | 文件 | 放什么 | 判据 |
+|---|---|---|---|
+| 数据 | `wxcs3-data.js` | 纯表：数值、文案、词库 | 被引用而从不主动调函数 |
+| 规则 | `wxcs3-rules.js` | 纯计算与查表 | **不碰 DOM、不写 `S`、不产 HTML** |
+| 表现 | `wxcs3-game.js` | 状态、渲染、ACT | 其余全部 |
+
+**新玩法一律写 `wxcs3-ext-<名字>.js`，不要再往 `game.js` 里堆。**
+`build.py` 自动扫描该模式并按文件名排序内联，HTML 不需要加 `<script>` 标签。
+
+扩展骨架的四条约定（详见 `wxcs3-ext-demo.js` 文件头）：
+
+1. **不要缓存 `S`**。`G.WXCS3.S` 是 getter，读档时内部会换成新对象；缓存后在函数外持有旧引用，写操作会静默写到废对象上，且不报错。
+2. 动作注册到 `G.WXCS3_EXT_ACT`，沿用 `data-act="do;名字:参数"` 写法，`dispatch` 会自动转发。
+3. 占不占旬自己负责，并在 `docs/03_玩法设计/行动预算_分档表.md` 登记，否则 `check_time.py` 会报未分类。
+4. 只做加法。要改老玩法，回 `game.js` 改，不在扩展里打猴补丁。
+
+### 判断一个函数能否搬进 `rules.js`
+
+不看它自己写了什么，**看它调用链上还有谁在读 `S`**。实测例子：
+
+| 函数 | 看起来 | 实际 | 结论 |
+|---|---|---|---|
+| `currentGoal` | 只调 `goalsForLine` | `goalDone` 读 `S.goals` | 留 game |
+| `dArtUpkeep` | 只是求和 | `dArtRaw` 读 `S.dArt` | 留 game |
+| `fmtNum` | 格式化 | 只依赖参数 | ✅ 可搬 |
+
+## 常用命令
+
+```bash
+# 断言与检查（全绿 = 430 条断言 + 三项检查）
+node tools/test_v80.js && node tools/test_play.js && node tools/test_loops.js
+node tools/test_hooks.js && node tools/test_econ.js && node tools/test_text.js
+node tools/test_beast_disciple.js && node tools/smoke_econ.js
+python tools/check_actions.py && python tools/check_time.py && node tools/check_ach.js
+
+# 网页单文件
+python mobile/build.py            # → mobile/dist/index.html（插画已 base64 内嵌）
+
+# APK 工程
+python mobile/sync_apk.py         # → D:\wendao-apk，HBuilderX 里云打包
+
+# 桌面版
+cd desktop && npm run pack        # → desktop/release_clean/问道长生-win32-x64/
+
+# 插画压缩（原图 → 交付图）
+python art/pipeline/compress_art.py
+```
+
+## 放置约定
+
+- **新插画原图** → `art/generated/art/<键名>.png`，压缩后进 `art/scenes/<键名>.jpg`；键名与 `wxcs3-art.js` 的 `KEYS`、`compress_art.py` 的 `KEYS` 三处必须一致。
+- **新文档** → `docs/` 下对应主题号，不在根目录新增散文档。
+- **过期/重复文档** → `_archive/docs-duplicates/`，不直接删。
+- **临时文件** → `_archive/tmp/` 或系统临时目录，不在根目录建 `.tmp`。
+- **构建产物**（dist / release_clean / app）→ 各自目录内，已 gitignore。
+- **打包忽略规则**：`package.json` 的 `pack` 里有一串 `--ignore`，必须挡住 `art/`、`_archive/`、`_backup/`、`docs/`、`mobile/`、`tools/` 等。漏了会把 1.5 GB 素材塞进 `app.asar`（本轮踩过）。
+
+## 本轮搬迁对照（只移动，未删除任何文件）
+
+| 原位置 | 新位置 |
+|---|---|
+| `assets/scenes/` | `art/scenes/` |
+| `generated-images/` | `art/generated/` |
+| `vibe_images/` | `art/vibe/` |
+| `tools/art_batch*.json`、`tools/compress_art.py` | `art/pipeline/` |
+| `_shots/` | `_archive/shots/` |
+| `.tmp/` | `_archive/tmp/` |
+| `.loomy-attachments/` | `_archive/loomy-attachments/` |
+| `小说参考/` | `_archive/小说参考/` |
+| `项目地图.md` | `docs/00_项目地图.md` |
+| 根目录重复的 `项目进度与优化方向_20261118.md` | `_archive/docs-duplicates/` |
+| 根目录重复的 `v9.0_下一版方案_道承百世_20261118.md` | `_archive/docs-duplicates/`（与 `docs/03` 内容 MD5 一致） |
+
+搬迁后素材零丢失：69 个图片文件的 MD5 在移动前后逐一比对，全部一致。
