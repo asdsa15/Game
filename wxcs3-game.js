@@ -281,7 +281,12 @@
     const f = S.followers / 4;
     const miaoC = D.MIAO_COEFF[S.miao] || 1;
     const qi = D.LINGQI[S.lingqi].v;
-    const qiheC = isShen() ? 1.2 : 0.8;
+    /* v10.1 第三梯队·问题6：原为魔法数 isShen()?1.2:0.8，
+       与 D.QIHE 表数值完全相同却从不读表，clash:0.6 从未被用过。
+       现改由扩展按「本命/客庙/相冲」三态取系数。
+       typeof 保护：test_econ 会把本函数单独抽出来跑，那里没有外层 G。 */
+    const _Q = (typeof G !== 'undefined') ? G.WXCS3_EXT : null;
+    const qiheC = (_Q && _Q.xianghuoQiheMul) ? _Q.xianghuoQiheMul() : (isShen() ? 1.2 : 0.8);
     let zt = 1.0;
     if (S.hp / S.hpMax < 0.33) zt = 0.4;
     else if (S.hp / S.hpMax < 0.66) zt = 0.7;
@@ -1117,7 +1122,23 @@
         (S.body ? ' · ' + esc(D.BODIES.filter(function (x) { return x.id === S.body; })[0].name) : '') + '</div>';
     }
 
+    /* v10.1 第三梯队·问题6：盘活 PIETY / QIHE 两张死表与 insightXp。
+       原先只有「虔诚 1.3」一个数字，四档名一次都没显示过；
+       香火气数（本命/客庙/相冲）也从未可见。 */
+    if (G.WXCS3_EXT && G.WXCS3_EXT.stateExtras) {
+      const _sx = G.WXCS3_EXT.stateExtras();
+      if (_sx) b += '<div style="margin-top:4px">' + _sx + '</div>';
+    }
+
     b += divider();
+    /* v10.1 第三梯队·问题6：盘活 PIETY / QIHE 两张死表与 insightXp。
+       原先只显示「虔诚 1.3」一个数字，四档名（半信半疑/常来上香/日日供奉/生死相托）
+       一次都没出现过；香火气数（本命/客庙/相冲）也从未可见。 */
+    if (G.WXCS3_EXT && G.WXCS3_EXT.stateExtras) {
+      const _sx = G.WXCS3_EXT.stateExtras();
+      if (_sx) b += '<div style="margin-top:4px">' + _sx + '</div>';
+    }
+
     b += '<div class="small">灵石 <b style="color:var(--stone)">' + S.stones + '</b>　声望 ' + S.fame +
       '　功德 <b style="color:var(--merit)">' + S.merit + '</b>　业力 <b style="color:var(--karma)">' + S.karma + '</b></div>';
 
@@ -2514,11 +2535,38 @@
       const need = xrealm().need;
       if (!need) { openJindan(); return; }
       if (S.xiuwei < need) { toast('修为未满'); return; }
+      /* v10.1 第三梯队·问题7：修为满不再是唯一钥匙。
+         跨大境界前先过「条件型门槛」（灵根与功法相合/道书/悟性），
+         不满足则给出面板说清差在哪、怎么补——不是卡死，是要求。 */
+      if (G.WXCS3_EXT && G.WXCS3_EXT.breakGate) {
+        const _bg = G.WXCS3_EXT.breakGate({ onlyBlocked: true });
+        if (!_bg.ok) { openBreakGateBlocked(_bg); return; }
+      }
       // P2-15：紫府三关走独立判定
       if (S.xRealm === 3 && S.xStage >= 2) { openZifuGate(); return; }
       openXianBreak();
     }
   };
+
+  /* v10.1 第三梯队·问题7：门槛未满足时的说明面板。
+     三件事必须齐：差什么（逐条）、差多少（当前值/要求）、怎么补（解法）。
+     缺任何一项，玩家就只会觉得「被卡住」，那和死档没有区别。 */
+  function openBreakGateBlocked(bg) {
+    const rows = bg.blocked || [];
+    let b = '<div class="small">修为已满，但还不够。<b>破境不是许愿，是过关。</b></div>';
+    b += divider();
+    b += '<ul class="opts" style="list-style:none;padding:0">';
+    for (const r of rows) {
+      b += '<li style="margin:6px 0">' +
+        '<div class="small danger"><b>' + esc(r.label) + '</b>　' + esc(r.text) + '</div>' +
+        '<div class="muted small" style="margin-left:1em">解法：' + esc(r.hint) + '</div></li>';
+    }
+    b += '</ul>';
+    b += divider();
+    b += '<div class="hint">这些条件都在你手上能凑齐的范围内——不是运气，是准备。</div>';
+    b += '<div style="margin-top:10px"><button class="btn ghost" data-act="modal:close">回去准备</button></div>';
+    openModal('破境 · 条件未足', b, true);
+  }
 
   /* 双修：本次破境走仙道还是神道 */
   function openBothBreakPick() {
@@ -2605,12 +2653,21 @@
     }).slice(0, 4);
   }
 
+  /* v10.1 第三梯队·问题6：insightXp（阅历/悟道点）原本 6 处产出、零消费。
+     现在按 20 点折 1 点悟性，直接进破境率——阅历终于名副其实。 */
+  function insightWithXp() {
+    const base = st('insight');
+    if (!(G.WXCS3_EXT && G.WXCS3_EXT.insightBonus)) return base;
+    return base + G.WXCS3_EXT.insightBonus();
+  }
+
   function xianBreakRate() {
     // 文档：胎息/练气门槛低，越往上越渺茫
     const baseByRealm = [0.72, 0.62, 0.50, 0.36, 0.22];
     let r = baseByRealm[clamp(S.xRealm, 0, 4)];
     r += st('heart') * 0.012;
-    r += st('insight') * 0.006;
+    /* 悟道点折算进悟性：读书攒下的阅历在破境这一刻兑现 */
+    r += insightWithXp() * 0.006;
     r -= S.xStage * 0.03;
     if (S.karma > 30) r -= 0.06;
     if (S.merit > 20) r += 0.04;
@@ -2639,6 +2696,8 @@
     const pct = function (v) { return (v > 0 ? '+' : '') + Math.round(v * 100) + '%'; };
     let b = `<div class="small">${esc(realmName())} → ${esc(next)}</div>`;
     b += `<div class="row"><span class="lab">合计成功率</span><b style="color:${r > .6 ? 'var(--merit)' : 'var(--cinnabar)'}">${Math.round(r * 100)}%</b><span class="muted small">道心 ${st('heart')} · 悟性 ${st('insight')}</span></div>`;
+    /* v10.1 第三梯队·问题7：把门槛摊开给玩家看——已满足的打勾，未满足的写解法。 */
+    if (G.WXCS3_EXT && G.WXCS3_EXT.breakGateHtml) b += G.WXCS3_EXT.breakGateHtml();
     b += divider();
 
     /* 择地 */
@@ -3130,6 +3189,12 @@
   ACT.do_pilbreak = (mode) => {
     closeModal();
     if (S.pillar >= D.PILLARS.length - 1) { openZhenjunEnd(); return; }
+    /* v10.1 第三梯队·问题7：神道破柱同样要过条件门槛（虔诚分档，读 PIETY 表）。
+       原状：只要香火满就能试，虔诚只是公式里一个乘数。 */
+    if (G.WXCS3_EXT && G.WXCS3_EXT.breakGate) {
+      const _bg = G.WXCS3_EXT.breakGate({ onlyBlocked: true });
+      if (!_bg.ok) { openBreakGateBlocked(_bg); return; }
+    }
     if (S.tribLock > 0) { toast('天劫余威未散，还需 ' + S.tribLock + ' 旬'); return; }
     /* 神道破柱同样是跨大境：天劫在柱前落，克法按神道那一列读 */
     const tb = rollTribulation(), tc = tribCounter(tb.id);
@@ -3139,6 +3204,9 @@
     logLine('破柱当日天劫至：' + tb.name + '（' + tc.text + '）。', '');
     if (rnd100() <= rate) {
       S.pillar++; S.pos = 0; S.xianghuo = 0;
+      /* v10.1 第三梯队·问题6：记录破柱所用之法，供 QIHE 三态判定（ext-90 读取）。
+         自建=本命线 / 借祀=客庙 / 夺祀=相冲，三态各有真实出处。 */
+      S.lastBreakMode = mode;
       S.miao = D.PILLARS[S.pillar].miao;
       S.lifeMax = D.PILLARS[S.pillar].life || 0;
       if (!S.miaoHao) S.miaoHao = pick(['清微', '玄裳', '沧溟', '白岩']) + pick(['显应侯', '灵应公', '土地正神', '真君']);
@@ -3220,6 +3288,12 @@
     b += `<div class="small" style="margin:4px 0">${esc(qb.scope)}</div>`;
     b += divider();
     b += `<ul class="opts">`;
+    /* v10.1 第三梯队·问题6：法相生肖的五行与主修五行相性，接进显圣强度。
+       原先 FAXIANG.zodiac 只在创角界面显示一个生肖字，不参与任何结算。 */
+    const _fxm = (G.WXCS3_EXT && G.WXCS3_EXT.faxiangXianshengMul) ? G.WXCS3_EXT.faxiangXianshengMul() : 1;
+    b += '<div class="small muted" style="margin:4px 0">' +
+      (G.WXCS3_EXT && G.WXCS3_EXT.faxiangLine ? esc(G.WXCS3_EXT.faxiangLine()) : '') +
+      (_fxm !== 1 ? ' · 显圣 ×' + _fxm.toFixed(2) : '') + '</div>';
     b += optRow('A', `小显圣（一村·${xsCost('small')} 香火）`, { name: '平和', cls: 'peace' }, '权柄内必成', S.xianghuo < xsCost('small'), 'do;xs:small');
     b += optRow('B', `中显圣（一镇·${xsCost('mid')} 香火）`, { name: '机缘', cls: 'chance' }, '信众大涨', S.xianghuo < xsCost('mid'), 'do;xs:mid');
     b += optRow('C', `大显圣（一城·${xsCost('big')} 香火）`, { name: '风险', cls: 'risk' }, '灵验或反噬', S.xianghuo < xsCost('big'), 'do;xs:big');
