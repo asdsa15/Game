@@ -176,7 +176,7 @@ M3 的四个玩法（师徒/道统/时限/属性）都只往既有面板与结�
 ## 常用命令
 
 ```bash
-# 断言与检查（全绿 = 842 条断言 + 三项检查）
+# 断言与检查（全绿 = 841 条断言 + 三项检查）
 node tools/test_v80.js && node tools/test_play.js && node tools/test_loops.js
 node tools/test_hooks.js && node tools/test_econ.js && node tools/test_text.js
 node tools/test_beast_disciple.js && node tools/smoke_econ.js
