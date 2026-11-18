@@ -1,0 +1,349 @@
+{
+  "_note": "图标主体描述。由人工撰写，供 build_icon_batches.js 生成 prompt。",
+  "subjects": {
+    "el_metal": {
+      "group": "元素",
+      "subject": "一柄横向平放的古剑，剑身泛冷光，剑格为云纹，无人持握"
+    },
+    "el_wood": {
+      "group": "元素",
+      "subject": "一段盘曲的老藤，藤上生出三片叶，根部带土"
+    },
+    "el_water": {
+      "group": "元素",
+      "subject": "一道回旋的水纹，卷成漩涡形"
+    },
+    "el_fire": {
+      "group": "元素",
+      "subject": "一簇向上蹿的火苗，火心泛白"
+    },
+    "el_earth": {
+      "group": "元素",
+      "subject": "一块带裂痕的山岩，岩缝中生出细草"
+    },
+    "el_ice": {
+      "group": "元素",
+      "subject": "一片六棱冰晶，晶面反光"
+    },
+    "el_thunder": {
+      "group": "元素",
+      "subject": "一道分叉的闪电，自上而下"
+    },
+    "el_wind": {
+      "group": "元素",
+      "subject": "三道卷曲的旋风流线"
+    },
+
+    "fn_atk": {
+      "group": "功能",
+      "subject": "一支燃着赤焰的箭矢，斜向下"
+    },
+    "fn_def": {
+      "group": "功能",
+      "subject": "一面龟甲状的小盾，表面有裂纹"
+    },
+    "fn_escape": {
+      "group": "功能",
+      "subject": "一缕旋转上升的青烟，尾端散开"
+    },
+    "fn_buff": {
+      "group": "功能",
+      "subject": "一只冒着柔和金光的丹炉小鼎"
+    },
+    "fn_poison": {
+      "group": "功能",
+      "subject": "一条青黑色的细蛇盘绕在一枚白骨钉上"
+    },
+    "fn_control": {
+      "group": "功能",
+      "subject": "一圈套在石柱上的金索枷锁"
+    },
+    "fn_blood": {
+      "group": "功能",
+      "subject": "一滴悬于刀锋的暗红血珠"
+    },
+    "fn_talisman": {
+      "group": "功能",
+      "subject": "一张朱砂符纸，折成三角"
+    },
+
+    "pill_hp": {
+      "group": "丹药",
+      "subject": "一只白瓷小瓶，瓶口系红绳"
+    },
+    "pill_hp_big": {
+      "group": "丹药",
+      "subject": "一只裂了缝的青釉罐，罐缝里透出微光"
+    },
+    "pill_cure": {
+      "group": "丹药",
+      "subject": "一卷包着草药的布卷"
+    },
+    "pill_life": {
+      "group": "丹药",
+      "subject": "一株开着白花的灵草，根须微垂"
+    },
+    "pill_mp": {
+      "group": "丹药",
+      "subject": "一只水晶小瓶，瓶内液体泛蓝"
+    },
+    "pill_heart": {
+      "group": "丹药",
+      "subject": "一枚青铜小铃，铃身有细纹"
+    },
+    "pill_break": {
+      "group": "丹药",
+      "subject": "一颗裂开一半的石卵，内里透出金光"
+    },
+    "pill_cult": {
+      "group": "丹药",
+      "subject": "一炷立着的线香，顶部一缕青烟"
+    },
+
+    "mat_alchemy": {
+      "group": "材料",
+      "subject": "一株开着紫花的灵草，根部带泥土"
+    },
+    "mat_herb": {
+      "group": "材料",
+      "subject": "一把晒干的草药束，用麻绳扎着"
+    },
+    "mat_artifact": {
+      "group": "材料",
+      "subject": "一块未经打磨的金属坯，表面有锤痕"
+    },
+    "mat_talisman": {
+      "group": "材料",
+      "subject": "一叠裁好的空白符纸，边缘齐整"
+    },
+    "mat_array": {
+      "group": "材料",
+      "subject": "一枚刻着符线的铜盘，平放"
+    },
+    "mat_beast": {
+      "group": "材料",
+      "subject": "一颗暗红色圆珠，内里有游动光点"
+    },
+    "mat_spirit": {
+      "group": "材料",
+      "subject": "一枚温润的多色灵石"
+    },
+
+    "craft_dan": {
+      "group": "技艺",
+      "subject": "一只三足带盖的青铜丹炉"
+    },
+    "craft_qi": {
+      "group": "技艺",
+      "subject": "一柄铁匠锤与一块烧红的铁坯"
+    },
+    "craft_fu": {
+      "group": "技艺",
+      "subject": "一支斜握的狼毫笔悬在朱砂碟上"
+    },
+    "craft_zhen": {
+      "group": "技艺",
+      "subject": "一叠按方位排开的石子与小旗"
+    },
+
+    "array_zhenJuLing": {
+      "group": "阵法",
+      "subject": "一只中央嵌着灵石的青铜聚灵盘"
+    },
+    "array_zhenMiZong": {
+      "group": "阵法",
+      "subject": "一只盘面刻满回纹的青铜迷踪盘"
+    },
+    "array_zhenSuoLing": {
+      "group": "阵法",
+      "subject": "一只四边封死的青铜锁灵盘"
+    },
+    "array_zhenWuXing": {
+      "group": "阵法",
+      "subject": "一只盘面分作五格的青铜五行盘"
+    },
+
+    "icon_scroll": {
+      "group": "通用",
+      "subject": "一卷半展的竹简，末端微微卷起"
+    },
+    "amb_enc_common": {
+      "group": "氛围",
+      "subject": "岔路口的一块旧路碑，苔痕斑驳"
+    },
+    "amb_enc_xian": {
+      "group": "氛围",
+      "subject": "云中浮起的一道石阶，阶上无人"
+    },
+    "amb_enc_shen": {
+      "group": "氛围",
+      "subject": "一座半隐在雾中的小庙轮廓"
+    },
+    "amb_ev_risk": {
+      "group": "氛围",
+      "subject": "崖边张开的裂隙"
+    },
+    "amb_ev_good": {
+      "group": "氛围",
+      "subject": "院中开的一株老梅"
+    },
+
+    "fx_g1": {
+      "group": "法相",
+      "subject": "一条盘成环形的苍龙石雕，龙首昂起"
+    },
+    "fx_g2": {
+      "group": "法相",
+      "subject": "一面挑在长木杆头的白布招幌，幡角垂落"
+    },
+    "fx_g3": {
+      "group": "法相",
+      "subject": "一只昂首竖尾的锦鸡，羽毛根根炸起"
+    },
+    "fx_g4": {
+      "group": "法相",
+      "subject": "一柄环首马刀横架在石上，刀鞘乌黑"
+    },
+    "fx_g5": {
+      "group": "法相",
+      "subject": "一副竹制接骨夹板，两片用麻绳缠缚"
+    },
+    "fx_g6": {
+      "group": "法相",
+      "subject": "一只封口的黑陶蛊盅，罐口缠着红布条"
+    },
+    "fx_g7": {
+      "group": "法相",
+      "subject": "一串盘成圆环的深色佛珠，珠面温润"
+    },
+    "fx_g8": {
+      "group": "法相",
+      "subject": "一柄竖立的桃木天师剑，剑柄垂着红绦"
+    },
+    "fx_g9": {
+      "group": "法相",
+      "subject": "一组咬合的青铜齿轮，齿牙根根分明"
+    },
+    "fx_g10": {
+      "group": "法相",
+      "subject": "一口朱漆描金的木棺，棺盖半开，钉着铜钉"
+    },
+    "fx_g11": {
+      "group": "法相",
+      "subject": "一枚方孔古铜钱，钱背铸着一只鼠形"
+    },
+    "fx_g12": {
+      "group": "法相",
+      "subject": "一只铜制浑天仪，三道环轨交叠绕球"
+    },
+
+    "body_dao": {
+      "group": "体质",
+      "subject": "一枚乳白色的圆玉，中心透出一点青光"
+    },
+    "body_sword": {
+      "group": "体质",
+      "subject": "一柄竖立凝形的淡青剑影，刃口锋锐"
+    },
+    "body_nine": {
+      "group": "体质",
+      "subject": "九枚赤金小日轮排成一弧，焰尾相接"
+    },
+    "body_ice": {
+      "group": "体质",
+      "subject": "三根并垂的冰凌，尖端各凝着一滴水珠"
+    },
+    "body_xuan": {
+      "group": "体质",
+      "subject": "一弯墨色新月，边缘泛着幽幽冷光"
+    },
+    "body_chun": {
+      "group": "体质",
+      "subject": "一轮金色日轮悬空，四周光芒四射"
+    },
+    "body_chaos": {
+      "group": "体质",
+      "subject": "五枚各色卵石散乱地挤作一处，毫无章法"
+    },
+    "body_plain": {
+      "group": "体质",
+      "subject": "一块未经淬炼的灰白石胎，表面粗粝"
+    },
+
+    "path_ascend": {
+      "group": "道途",
+      "subject": "一架笔直插入云端的青铜梯，梯档森然"
+    },
+    "path_long": {
+      "group": "道途",
+      "subject": "一只单足立石的白鹤，长颈微垂，羽翼半收"
+    },
+    "path_revenge": {
+      "group": "道途",
+      "subject": "一柄反插在枯木上的锈铁短匕，刃口有缺"
+    },
+    "path_guard": {
+      "group": "道途",
+      "subject": "一把撑开的油纸伞，伞骨根根分明"
+    },
+    "path_rule": {
+      "group": "道途",
+      "subject": "一座山门石牌坊，三门并列，高耸入云"
+    },
+    "path_free": {
+      "group": "道途",
+      "subject": "一只系着长带的纸鸢，歪斜着欲飞"
+    },
+
+    "org_farm": {
+      "group": "出身",
+      "subject": "一顶破旧的竹编斗笠，笠沿已经开裂"
+    },
+    "org_hunt": {
+      "group": "出身",
+      "subject": "一支三股铁猎叉，斜靠在石上，叉尖森然"
+    },
+    "org_merch": {
+      "group": "出身",
+      "subject": "一只描金漆的木算盘，珠子排列整齐"
+    },
+    "org_office": {
+      "group": "出身",
+      "subject": "一顶乌纱官帽，两侧帽翅平直展开"
+    },
+    "org_army": {
+      "group": "出身",
+      "subject": "一件铁甲胸铠，鳞片层叠，棱角分明"
+    },
+    "org_fallen": {
+      "group": "出身",
+      "subject": "一枚缺角的白玉佩，系着一段旧绦"
+    },
+    "org_orphan": {
+      "group": "出身",
+      "subject": "一双磨穿了底的旧草鞋，鞋帮歪斜"
+    },
+    "org_scholar": {
+      "group": "出身",
+      "subject": "一叠线装书册，书页泛黄，边缘微卷"
+    },
+    "org_monk": {
+      "group": "出身",
+      "subject": "一只枣红木鱼，侧面凿着一道凹槽"
+    },
+    "org_demon": {
+      "group": "出身",
+      "subject": "一支弯曲的黑玉兽角，角上螺纹深陷"
+    },
+
+    "item_votive": {
+      "group": "愿物",
+      "subject": "一只粗陶小碟，碟中盛着澄清的淡金符水，水面浮着一撮筛过的冷灰"
+    },
+
+    "item_divine": {
+      "group": "神器",
+      "subject": "一柄锡制法杖，杖头悬一枚旧铃，杖身中段嵌着一面小圆镜"
+    }
+  }
+}

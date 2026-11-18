@@ -21,6 +21,7 @@ import sys
 import hashlib
 import base64
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -33,6 +34,7 @@ RULES_SRC = SRC / 'wxcs3-rules.js'
 GAME_SRC = SRC / 'wxcs3-game.js'
 CSS_SRC = ROOT / 'mobile.css'
 ART_TAG = '<script src="wxcs3-art.js"></script>'
+ICONS_TAG = '<script src="wxcs3-icons.js"></script>'
 
 # 扩展文件命名约定：wxcs3-ext-*.js
 # 注入顺序＝文件名排序，所以需要「先加载」的用 10-、20- 前缀，
@@ -48,15 +50,21 @@ def read(p: Path) -> str:
 
 def art_data_script() -> str:
     """art/scenes/*.jpg → base64 → window.ART_DATA（dist 单文件用）。
+    art/icons/*.jpg  → base64 → window.ART_ICONS（图标层，独立通道）。
     目录为空或缺图不报错：wxcs3-art.js 兜底独立文件路径，渲染层再兜底纯文字。"""
-    art_dir = SRC / 'art' / 'scenes'
     data = {}
-    if art_dir.is_dir():
-        for jpg in sorted(art_dir.glob('*.jpg')):
-            b64 = base64.b64encode(jpg.read_bytes()).decode('ascii')
-            data[jpg.stem] = 'data:image/jpeg;base64,' + b64
+    for sub, var in (('scenes', 'ART_DATA'), ('icons', 'ART_ICONS')):
+        art_dir = SRC / 'art' / sub
+        part = {}
+        if art_dir.is_dir():
+            for jpg in sorted(art_dir.glob('*.jpg')):
+                b64 = base64.b64encode(jpg.read_bytes()).decode('ascii')
+                part[jpg.stem] = 'data:image/jpeg;base64,' + b64
+        data[var] = part
     return ('<script>window.ART_DATA=' +
-            json.dumps(data, separators=(',', ':'), ensure_ascii=False) +
+            json.dumps(data['ART_DATA'], separators=(',', ':'), ensure_ascii=False) +
+            ';window.ART_ICONS=' +
+            json.dumps(data['ART_ICONS'], separators=(',', ':'), ensure_ascii=False) +
             '</script>\n' + ART_TAG)
 
 
@@ -76,16 +84,28 @@ def main() -> None:
     html = html.replace(ART_TAG, art_data_script(), 1)
     scripts.insert(1, ('wxcs3-art.js', art_inline))
 
+    # ---- 0.2 图标映射表：条目 → 图标键 → 图源 ----
+    # wxcs3-icons.js 由 art/pipeline/build_icon_map.js 生成（勿手改）。
+    # 缺文件不阻断构建：图标层退化为「无图标」，界面仍可正常跑。
+    icons_inline = ''
+    icons_path = SRC / 'wxcs3-icons.js'
+    if icons_path.exists():
+        icons_inline = icons_path.read_text(encoding='utf-8')
+        if ICONS_TAG not in html:
+            sys.exit(f'找不到脚本标签：{ICONS_TAG}（HTML 结构变了？）')
+    scripts.insert(2, ('wxcs3-icons.js', icons_inline))
+
     # ---- 0.5 扩展文件：wxcs3-ext-*.js 自动收集 ----
     # 目的：新玩法一律写在独立文件里，不再往 10k 行的 game.js 里堆。
-    # 约定：文件名排序即加载顺序；HTML 不需要出现这些 <script> 标签。
-    # 注入点放在 game.js 之后——扩展要读 window.WXCS3 / WXCS3_DATA，
-    # 必须在它们已经建立之后再执行。
+    # 约定：文件名排序即加载顺序（build→fate→trib：fate 提供效果注册表，
+    # trib 依赖它）；HTML 里的同名 <script src> 标签只在开发态用，
+    # 构建时剥掉，统一由下面的注入点内联一份，避免双份执行。
     ext_files = sorted(SRC.glob(EXT_GLOB))
     ext_scripts = [(p.name, p.read_text(encoding='utf-8')) for p in ext_files]
     for name, code in ext_scripts:
         if '</script' in code.lower():
             sys.exit(f'{name} 里含 </script 字样，无法安全内联')
+    html = re.sub(r'<script src="wxcs3-ext-[^"]+\.js"></script>\s*', '', html)
 
     # ---- 1. 内联脚本 ----
     for name, code in scripts:

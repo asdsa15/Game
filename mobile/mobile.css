@@ -173,6 +173,8 @@ body{
   .scene{font-size:15.5px;line-height:1.85}
   .small,.muted{font-size:13px}
   .opt .note{font-size:12px}
+  /* 长备注（如命格收益/代价说明）在窄屏允许收缩换行，否则整行撑破弹窗 */
+  .opt .note{flex:0 1 auto;min-width:0;overflow-wrap:anywhere}
   .hint{font-size:12.5px}
 }
 

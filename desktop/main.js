@@ -100,6 +100,8 @@ function createWindow() {
               phase: G ? G.S.phase : null,
               dockGroups: document.querySelectorAll('.dockgrp').length,
               hasDesktopBridge: !!window.WENDAO_DESKTOP,
+              artKeys: (window.ART_DATA ? Object.keys(window.ART_DATA).length : 0),
+              artApi: !!window.WXCS3_ART,
               /* 存档探针：第一次读为空并写入，第二次读应当拿到上一轮的标记。
                  这是「关掉再开，进度还在」的最小证据。 */
               lsProbe: (() => {

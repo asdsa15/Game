@@ -10,7 +10,12 @@
 ├─ wxcs3-data.js            数据层：全部表 107 张（境界/功法/事件/NPC/插画键…）
 ├─ wxcs3-art.js             插画层：ART_DATA 优先，缺图回落 art/scenes/*.jpg
 ├─ wxcs3-rules.js           纯规则层：33 个不碰 DOM、不写 S 的函数（v9.0 第2步新增）
-├─ wxcs3-game.js            规则与 UI：372 函数 / 169 个 ACT 入口
+├─ wxcs3-game.js            规则与 UI：372 函数 / 169 个 ACT 入口（M1 后只留薄缝）
+├─ wxcs3-ext-10-fate.js        扩展：道痕命格（v9.0 M1）——六系命格、进阶、重悟
+├─ wxcs3-ext-20-trib.js        扩展：五类天劫增强（v9.0 M1）——行为权重、劫类失败余波、破境预览
+├─ wxcs3-ext-30-build.js       扩展：构筑面板（v9.0 M1）——命格/天劫/功法/开销一页汇总
+├─ wxcs3-ext-40-benming.js     扩展：本命法器四阶（v9.0 M2）——认主/通灵/共命/合道、法技、器损反噬
+├─ wxcs3-ext-50-beast.js       扩展：灵兽第四位（v9.0 M2）——亲密/妖力两轴、听令/护主/叛逃、封兽官
 ├─ wxcs3-ext-demo.js        扩展模板：新玩法照抄改名（v9.0 第1步新增）
 │
 ├─ README.md                项目总说明（玩法、版本、构建）
@@ -33,7 +38,7 @@
 │  └─ 99_归档/               过期文档
 │
 ├─ tools/                   测试与检查
-│  ├─ test_*.js             断言：v80 / play / econ / hooks / loops / text / beast_disciple
+│  ├─ test_*.js             断言：v80 / play / econ / hooks / loops / text / m1 / m2 / beast_disciple / rank
 │  ├─ smoke_econ.js         DOM 桩真跑运行时（经济面）
 │  ├─ check_ach.js         成就可达性
 │  ├─ check_actions.py     动作分发覆盖
@@ -84,6 +89,32 @@
 3. 占不占旬自己负责，并在 `docs/03_玩法设计/行动预算_分档表.md` 登记，否则 `check_time.py` 会报未分类。
 4. 只做加法。要改老玩法，回 `game.js` 改，不在扩展里打猴补丁。
 
+### M1 扩展协作模式一：乘区注册表
+
+多个扩展要改同一处数值时，用 `EXT.registerMul(kind, fn)` / `EXT.registerAdd(kind, fn)` 注册，
+`game.js` 里只留一行薄缝 `fateMul(kind)` / `fateAdd(kind)`（wxcs3-game.js 导出块）逐个询问注册者并连乘/累加。
+目前 kind：`pill / cult / sword / tal / xs / dmg / loot / venv / book / flee / defl`。
+谁注册了什么见 `wxcs3-ext-10-fate.js`（命格效果）与 `wxcs3-ext-20-trib.js`（风劫淬体削伤）。
+
+### M2 扩展协作模式二：钩子注册数组
+
+M2 发现：单个函数槽位（`EXT.fightRows = ...`）会被后加载的扩展覆盖——多个扩展同时挂战斗 UI 就得排队。
+所以 M2 起凡是「多方都要发言」的位置一律用注册数组，`game.js` 薄缝只负责遍历：
+
+| 数组 | 语义 | 返回 |
+|---|---|---|
+| `EXT.preFightRowsHooks` | 战前准备页追加选项 | HTML 串 |
+| `EXT.fightInfoHooks` | 战斗我方面板追加状态行 | HTML 串 |
+| `EXT.fightRowsHooks` | 战斗回合按钮追加 | optRow HTML 串数组 |
+| `EXT.combatActHooks` | `do;cbt:ext:*` 动作认领 | `{dmg,note}` / `'stop'` / null |
+| `EXT.foeHooks` | 敌方回合拦截（在扣玩家血**之前**） | true＝已结算 |
+| `EXT.onMonthHooks` | 月结追加（扩展内部自保 `phase !== 'play'`） | — |
+
+注册者：40-benming（本命出鞘/血条/法技/挡击/反噬）与 50-beast（兽血条/兽令/护主反噬/叛逃）。
+顺序即加载序（文件名前缀），数组下标可测：foeHooks[0]=本命、[1]=灵兽。
+另有两个单件口不属于数组：`EXT.fixedCosts2()`（月账第二条缝，benming 温养 + beast 兽官俸禄）与
+`EXT.benmingArtBonus(kind)`（认主加持翻倍，game.js `artBonus` 里加回一遍）。
+
 ### 判断一个函数能否搬进 `rules.js`
 
 不看它自己写了什么，**看它调用链上还有谁在读 `S`**。实测例子：
@@ -97,10 +128,11 @@
 ## 常用命令
 
 ```bash
-# 断言与检查（全绿 = 430 条断言 + 三项检查）
+# 断言与检查（全绿 = 531 条断言 + 三项检查）
 node tools/test_v80.js && node tools/test_play.js && node tools/test_loops.js
 node tools/test_hooks.js && node tools/test_econ.js && node tools/test_text.js
 node tools/test_beast_disciple.js && node tools/smoke_econ.js
+node tools/test_m1.js && node tools/test_m2.js
 python tools/check_actions.py && python tools/check_time.py && node tools/check_ach.js
 
 # 网页单文件

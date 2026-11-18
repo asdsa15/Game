@@ -398,6 +398,64 @@
 
   .scene{font-size:14px;color:#5C5548;line-height:1.75;margin-bottom:2px}
 
+  /* ============ 水墨插画层 ============
+     纯渲染增强：缺图由 img onerror 静默隐藏整层，界面回退纯文字。
+     挂点四：play 横幅 / combat 通栏 / create 顶部 / dying-over 衬底；另有舆图弹窗。 */
+  .sceneart{position:relative;overflow:hidden;border-radius:8px;margin-bottom:10px;
+    background:var(--paper2,#EFE8D8);animation:sceneart-in .3s ease}
+  @keyframes sceneart-in{from{opacity:0}to{opacity:1}}
+  .sceneart img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 42%}
+  .sceneart::after{content:'';position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(to bottom,transparent 55%,rgba(239,232,216,.9) 100%)}
+  /* 季节色调叠加：春青 / 夏翠 / 秋赭 / 冬白，一图撑四季 */
+  .sceneart--spring::after{background:linear-gradient(to bottom,rgba(110,150,105,.14),rgba(110,150,105,.05) 60%,rgba(239,232,216,.9) 100%)}
+  .sceneart--summer::after{background:linear-gradient(to bottom,rgba(70,130,95,.16),rgba(70,130,95,.06) 60%,rgba(239,232,216,.9) 100%)}
+  .sceneart--autumn::after{background:linear-gradient(to bottom,rgba(160,115,70,.14),rgba(160,115,70,.05) 60%,rgba(239,232,216,.9) 100%)}
+  .sceneart--winter::after{background:linear-gradient(to bottom,rgba(200,205,210,.18),rgba(200,205,210,.08) 60%,rgba(239,232,216,.9) 100%)}
+  .sceneart--banner{height:190px}
+  .sceneart--combat{height:120px;margin-bottom:0;grid-column:1/-1;border-radius:8px 8px 0 0}
+  .sceneart--combat::after{background:linear-gradient(to bottom,transparent 50%,rgba(31,27,22,.28) 100%)}
+  .sceneart--create{height:220px}
+  /* 临终 / 结局整页衬底：0.25 不透明 + 去饱和，不抢文字 */
+  .sceneart--backdrop{position:absolute;inset:0;margin:0;border-radius:0;height:auto;opacity:.25;
+    filter:saturate(.45);animation:none;z-index:0}
+  .sceneart--backdrop::after{background:none}
+  .stage,.stage-create{position:relative}
+  .stage>*:not(.sceneart--backdrop){position:relative;z-index:1}
+  /* 舆图弹窗：州名叠在四个空白圆点与中心上 */
+  .mapart{position:relative;border-radius:8px;overflow:hidden;border:1px solid rgba(50,100,92,.25)}
+  .mapart img{display:block;width:100%}
+  .mapart-name{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;
+    font-size:12px;letter-spacing:1px;color:#3A342B;background:rgba(239,232,216,.82);
+    padding:1px 7px;border-radius:10px;border:1px solid rgba(50,100,92,.3)}
+  .mapart-name.here{color:#FAF6EE;background:rgba(94,150,137,.92);border-color:rgba(94,150,137,.9)}
+  @media (max-width:760px){
+    .sceneart--banner{height:140px}
+    .sceneart--create{height:160px}
+    .mapart-name{font-size:10.5px}
+  }
+
+  /* ============ 条目图标层 ============
+     图标不抠图：底色就是宣纸米白，与面板底（--panel:#FFFEFB）接近，
+     靠 mix-blend-mode:multiply 融进去 —— 像贴在纸上，而不是浮在纸上。
+     缺图时 img 的 onerror 会把自己 remove()，界面回退纯文字，不留破图位。
+     图标只答「这是哪一类」，等级与数值仍由色板 chip 承载。 */
+  .ico{display:inline-block;vertical-align:middle;flex:none;
+    mix-blend-mode:multiply;border-radius:3px;background:transparent}
+  /* 四档尺寸：列表行 16 / 列表行大 24 / 创角卡 32 / 弹窗 48 */
+  .ico--xs{width:16px;height:16px}
+  .ico--sm{width:24px;height:24px}
+  .ico--md{width:32px;height:32px}
+  .ico--lg{width:48px;height:48px}
+  /* 列表行：图标在最左，key 圆点右移一点，图文对齐 */
+  .opts li.opt--ico{align-items:center;padding-left:8px}
+  .opts li.opt--ico .ico{margin-right:7px}
+  .opts li.opt--ico .key{margin-left:0}
+  /* 创角选择卡：图标在文字左侧，卡片本身已用 flex 排布 */
+  .selgrid .chip .ico{margin-right:7px;align-self:center}
+  /* 弹窗顶部的氛围图：整块居中，作为「这一路机缘」的示意 */
+  .ico--band{display:block;margin:2px auto 10px;opacity:.92}
+
   /* ============ 行动预算：本月旬数 ============
      一月三旬，每旬一次行动。这条带子让「还剩几次」一直看得见——
      看不见预算的预算，等于没有预算。 */
@@ -643,7 +701,15 @@
 <div id="modals"></div>
 
 <script src="wxcs3-data.js"></script>
+<script src="wxcs3-art.js"></script>
+<script src="wxcs3-icons.js"></script>
 <script src="wxcs3-rules.js"></script>
 <script src="wxcs3-game.js"></script>
+<!-- v9.0 扩展：加载顺序即依赖顺序（前缀＝build.py 注入顺序：10 fate 注册表 → 20 trib → 30 build → 40 benming → 50 beast） -->
+<script src="wxcs3-ext-10-fate.js"></script>
+<script src="wxcs3-ext-20-trib.js"></script>
+<script src="wxcs3-ext-30-build.js"></script>
+<script src="wxcs3-ext-40-benming.js"></script>
+<script src="wxcs3-ext-50-beast.js"></script>
 </body>
 </html>

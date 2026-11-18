@@ -1,0 +1,60 @@
+{
+  "requests": [
+    {
+      "prompt": "以图1为风格基准：只沿用图1的水墨淡彩笔触与整体调性（墨线为骨、青金淡彩晕染、米白宣纸底色、柔和光影氛围），不沿用图1的具体画面内容与人物形象。\n画面主体：自山门石阶尽头回望，暮色四合，天边残留一抹昏黄余晖，远山层层沉入紫青薄雾之中，古松枝影横斜，气氛苍茫而有余韵。\n中国水墨淡彩游戏概念插画，墨线为骨，青金淡彩晕染，米白宣纸底色，柔和光影氛围感，横构图 16:9，画面干净，无文字、无印章、无 UI 元素、无边框。",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F7e53b4d9-0940-4d87-89db-3d7633e6db79.png?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T021906Z&x-oss-expires=3600&x-oss-signature=bcea1d6221bf1ddfd90246905082c0745adb1a90e15bad12b40373587c1f36c1&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/png"
+        }
+      ],
+      "aspect_ratio": "16:9",
+      "area": "2K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "over"
+    },
+    {
+      "prompt": "以图1为风格基准：只沿用图1的水墨淡彩笔触与整体调性（墨线为骨、青金淡彩晕染、米白宣纸底色、柔和光影氛围），不沿用图1的具体画面内容与人物形象。\n画面主体：低垂帐幔的静室之中，卧榻上一人静卧养伤，身旁药炉青烟袅袅升起，晨光自窗棂斜入照见空气中浮动的微尘，安静而略带哀伤。\n中国水墨淡彩游戏概念插画，墨线为骨，青金淡彩晕染，米白宣纸底色，柔和光影氛围感，横构图 16:9，画面干净，无文字、无印章、无 UI 元素、无边框。",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F7e53b4d9-0940-4d87-89db-3d7633e6db79.png?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T021906Z&x-oss-expires=3600&x-oss-signature=bcea1d6221bf1ddfd90246905082c0745adb1a90e15bad12b40373587c1f36c1&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/png"
+        }
+      ],
+      "aspect_ratio": "16:9",
+      "area": "2K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "hurt"
+    },
+    {
+      "prompt": "以图1为风格基准：只沿用图1的水墨淡彩笔触与整体调性（墨线为骨、青金淡彩晕染、米白宣纸底色、柔和光影氛围），不沿用图1的具体画面内容与人物形象。\n画面主体：洞府门外的石阶之下，一位青衣访客静立抬首，洞门半掩，门内幽暗深不可测，阶前苔痕斑驳，门外竹影斜筛。\n中国水墨淡彩游戏概念插画，墨线为骨，青金淡彩晕染，米白宣纸底色，柔和光影氛围感，横构图 16:9，画面干净，无文字、无印章、无 UI 元素、无边框。",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F7e53b4d9-0940-4d87-89db-3d7633e6db79.png?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T021906Z&x-oss-expires=3600&x-oss-signature=bcea1d6221bf1ddfd90246905082c0745adb1a90e15bad12b40373587c1f36c1&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/png"
+        }
+      ],
+      "aspect_ratio": "16:9",
+      "area": "2K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "visitor"
+    },
+    {
+      "prompt": "以图1为风格基准：只沿用图1的水墨淡彩笔触与整体调性（墨线为骨、青金淡彩晕染、米白宣纸底色、柔和光影氛围），不沿用图1的具体画面内容与人物形象。\n画面主体：一扇厚重石门自内向外缓缓推开，晨光自门外涌入洞内形成明亮光束，光束中尘埃浮动，门外青山新绿云气初散豁然开朗。\n中国水墨淡彩游戏概念插画，墨线为骨，青金淡彩晕染，米白宣纸底色，柔和光影氛围感，横构图 16:9，画面干净，无文字、无印章、无 UI 元素、无边框。",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F7e53b4d9-0940-4d87-89db-3d7633e6db79.png?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T021906Z&x-oss-expires=3600&x-oss-signature=bcea1d6221bf1ddfd90246905082c0745adb1a90e15bad12b40373587c1f36c1&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/png"
+        }
+      ],
+      "aspect_ratio": "16:9",
+      "area": "2K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "closed"
+    }
+  ]
+}

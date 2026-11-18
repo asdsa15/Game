@@ -1,0 +1,144 @@
+{
+  "requests": [
+    {
+      "prompt": "以图1为器物画法基准、以图2为山水笔墨基准：只沿用两图的墨线笔法、矿物设色与宣纸底调，不沿用两图的具体画面内容、构图与人物形象。\n主体：三根并垂的冰凌，尖端各凝着一滴水珠。\n中国水墨淡彩器物图标，青绿山水设色风格：厚重墨线勾勒轮廓（线条略细于山水画，提按不明显），石青石绿为主调、赭石点染、墨色压边，设色面积不超过画面一半，米白宣纸底色，主体居中占画面约四分之三，正方形构图，无人物面部，无文字、无印章、无水印、无背景场景、无投影、无 UI 元素。",
+      "aspect_ratio": "1:1",
+      "area": "1K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "body_ice",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F92baf258-7c81-4ee8-9556-a22eab11a1f5.jpg?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T110807Z&x-oss-expires=3600&x-oss-signature=e9976b552f137295afec383ecc2e76d7ac377f502890234a9c92ff719cdd0e81&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "prompt": "以图1为器物画法基准、以图2为山水笔墨基准：只沿用两图的墨线笔法、矿物设色与宣纸底调，不沿用两图的具体画面内容、构图与人物形象。\n主体：一弯墨色新月，边缘泛着幽幽冷光。\n中国水墨淡彩器物图标，青绿山水设色风格：厚重墨线勾勒轮廓（线条略细于山水画，提按不明显），石青石绿为主调、赭石点染、墨色压边，设色面积不超过画面一半，米白宣纸底色，主体居中占画面约四分之三，正方形构图，无人物面部，无文字、无印章、无水印、无背景场景、无投影、无 UI 元素。",
+      "aspect_ratio": "1:1",
+      "area": "1K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "body_xuan",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F92baf258-7c81-4ee8-9556-a22eab11a1f5.jpg?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T110807Z&x-oss-expires=3600&x-oss-signature=e9976b552f137295afec383ecc2e76d7ac377f502890234a9c92ff719cdd0e81&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "prompt": "以图1为器物画法基准、以图2为山水笔墨基准：只沿用两图的墨线笔法、矿物设色与宣纸底调，不沿用两图的具体画面内容、构图与人物形象。\n主体：一轮金色日轮悬空，四周光芒四射。\n中国水墨淡彩器物图标，青绿山水设色风格：厚重墨线勾勒轮廓（线条略细于山水画，提按不明显），石青石绿为主调、赭石点染、墨色压边，设色面积不超过画面一半，米白宣纸底色，主体居中占画面约四分之三，正方形构图，无人物面部，无文字、无印章、无水印、无背景场景、无投影、无 UI 元素。",
+      "aspect_ratio": "1:1",
+      "area": "1K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "body_chun",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F92baf258-7c81-4ee8-9556-a22eab11a1f5.jpg?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T110807Z&x-oss-expires=3600&x-oss-signature=e9976b552f137295afec383ecc2e76d7ac377f502890234a9c92ff719cdd0e81&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "prompt": "以图1为器物画法基准、以图2为山水笔墨基准：只沿用两图的墨线笔法、矿物设色与宣纸底调，不沿用两图的具体画面内容、构图与人物形象。\n主体：五枚各色卵石散乱地挤作一处，毫无章法。\n中国水墨淡彩器物图标，青绿山水设色风格：厚重墨线勾勒轮廓（线条略细于山水画，提按不明显），石青石绿为主调、赭石点染、墨色压边，设色面积不超过画面一半，米白宣纸底色，主体居中占画面约四分之三，正方形构图，无人物面部，无文字、无印章、无水印、无背景场景、无投影、无 UI 元素。",
+      "aspect_ratio": "1:1",
+      "area": "1K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "body_chaos",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F92baf258-7c81-4ee8-9556-a22eab11a1f5.jpg?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T110807Z&x-oss-expires=3600&x-oss-signature=e9976b552f137295afec383ecc2e76d7ac377f502890234a9c92ff719cdd0e81&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "prompt": "以图1为器物画法基准、以图2为山水笔墨基准：只沿用两图的墨线笔法、矿物设色与宣纸底调，不沿用两图的具体画面内容、构图与人物形象。\n主体：一块未经淬炼的灰白石胎，表面粗粝。\n中国水墨淡彩器物图标，青绿山水设色风格：厚重墨线勾勒轮廓（线条略细于山水画，提按不明显），石青石绿为主调、赭石点染、墨色压边，设色面积不超过画面一半，米白宣纸底色，主体居中占画面约四分之三，正方形构图，无人物面部，无文字、无印章、无水印、无背景场景、无投影、无 UI 元素。",
+      "aspect_ratio": "1:1",
+      "area": "1K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "body_plain",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F92baf258-7c81-4ee8-9556-a22eab11a1f5.jpg?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T110807Z&x-oss-expires=3600&x-oss-signature=e9976b552f137295afec383ecc2e76d7ac377f502890234a9c92ff719cdd0e81&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "prompt": "以图1为器物画法基准、以图2为山水笔墨基准：只沿用两图的墨线笔法、矿物设色与宣纸底调，不沿用两图的具体画面内容、构图与人物形象。\n主体：一架笔直插入云端的青铜梯，梯档森然。\n中国水墨淡彩器物图标，青绿山水设色风格：厚重墨线勾勒轮廓（线条略细于山水画，提按不明显），石青石绿为主调、赭石点染、墨色压边，设色面积不超过画面一半，米白宣纸底色，主体居中占画面约四分之三，正方形构图，无人物面部，无文字、无印章、无水印、无背景场景、无投影、无 UI 元素。",
+      "aspect_ratio": "1:1",
+      "area": "1K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "path_ascend",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F92baf258-7c81-4ee8-9556-a22eab11a1f5.jpg?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T110807Z&x-oss-expires=3600&x-oss-signature=e9976b552f137295afec383ecc2e76d7ac377f502890234a9c92ff719cdd0e81&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "prompt": "以图1为器物画法基准、以图2为山水笔墨基准：只沿用两图的墨线笔法、矿物设色与宣纸底调，不沿用两图的具体画面内容、构图与人物形象。\n主体：一只单足立石的白鹤，长颈微垂，羽翼半收。\n中国水墨淡彩器物图标，青绿山水设色风格：厚重墨线勾勒轮廓（线条略细于山水画，提按不明显），石青石绿为主调、赭石点染、墨色压边，设色面积不超过画面一半，米白宣纸底色，主体居中占画面约四分之三，正方形构图，无人物面部，无文字、无印章、无水印、无背景场景、无投影、无 UI 元素。",
+      "aspect_ratio": "1:1",
+      "area": "1K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "path_long",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F92baf258-7c81-4ee8-9556-a22eab11a1f5.jpg?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T110807Z&x-oss-expires=3600&x-oss-signature=e9976b552f137295afec383ecc2e76d7ac377f502890234a9c92ff719cdd0e81&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "prompt": "以图1为器物画法基准、以图2为山水笔墨基准：只沿用两图的墨线笔法、矿物设色与宣纸底调，不沿用两图的具体画面内容、构图与人物形象。\n主体：一柄反插在枯木上的锈铁短匕，刃口有缺。\n中国水墨淡彩器物图标，青绿山水设色风格：厚重墨线勾勒轮廓（线条略细于山水画，提按不明显），石青石绿为主调、赭石点染、墨色压边，设色面积不超过画面一半，米白宣纸底色，主体居中占画面约四分之三，正方形构图，无人物面部，无文字、无印章、无水印、无背景场景、无投影、无 UI 元素。",
+      "aspect_ratio": "1:1",
+      "area": "1K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "path_revenge",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F92baf258-7c81-4ee8-9556-a22eab11a1f5.jpg?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T110807Z&x-oss-expires=3600&x-oss-signature=e9976b552f137295afec383ecc2e76d7ac377f502890234a9c92ff719cdd0e81&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "prompt": "以图1为器物画法基准、以图2为山水笔墨基准：只沿用两图的墨线笔法、矿物设色与宣纸底调，不沿用两图的具体画面内容、构图与人物形象。\n主体：一把撑开的油纸伞，伞骨根根分明。\n中国水墨淡彩器物图标，青绿山水设色风格：厚重墨线勾勒轮廓（线条略细于山水画，提按不明显），石青石绿为主调、赭石点染、墨色压边，设色面积不超过画面一半，米白宣纸底色，主体居中占画面约四分之三，正方形构图，无人物面部，无文字、无印章、无水印、无背景场景、无投影、无 UI 元素。",
+      "aspect_ratio": "1:1",
+      "area": "1K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "path_guard",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F92baf258-7c81-4ee8-9556-a22eab11a1f5.jpg?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T110807Z&x-oss-expires=3600&x-oss-signature=e9976b552f137295afec383ecc2e76d7ac377f502890234a9c92ff719cdd0e81&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "prompt": "以图1为器物画法基准、以图2为山水笔墨基准：只沿用两图的墨线笔法、矿物设色与宣纸底调，不沿用两图的具体画面内容、构图与人物形象。\n主体：一座山门石牌坊，三门并列，高耸入云。\n中国水墨淡彩器物图标，青绿山水设色风格：厚重墨线勾勒轮廓（线条略细于山水画，提按不明显），石青石绿为主调、赭石点染、墨色压边，设色面积不超过画面一半，米白宣纸底色，主体居中占画面约四分之三，正方形构图，无人物面部，无文字、无印章、无水印、无背景场景、无投影、无 UI 元素。",
+      "aspect_ratio": "1:1",
+      "area": "1K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "path_rule",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F92baf258-7c81-4ee8-9556-a22eab11a1f5.jpg?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T110807Z&x-oss-expires=3600&x-oss-signature=e9976b552f137295afec383ecc2e76d7ac377f502890234a9c92ff719cdd0e81&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/jpeg"
+        }
+      ]
+    }
+  ]
+}

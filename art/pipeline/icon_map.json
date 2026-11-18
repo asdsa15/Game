@@ -1,0 +1,3471 @@
+{
+ "_note": "条目 → 图标键映射。由 art/pipeline/build_icon_map.js 生成，勿手改。",
+ "_stats": {
+  "totalEntries": 268,
+  "usedIcons": 83,
+  "byTable": [
+   {
+    "table": "GONGFA_EXT",
+    "count": 45
+   },
+   {
+    "table": "EVENTS",
+    "count": 38
+   },
+   {
+    "table": "ENCOUNTERS",
+    "count": 25
+   },
+   {
+    "table": "PILL_EXT",
+    "count": 19
+   },
+   {
+    "table": "MATERIAL_EXT",
+    "count": 19
+   },
+   {
+    "table": "RECIPES",
+    "count": 17
+   },
+   {
+    "table": "SKILLS",
+    "count": 14
+   },
+   {
+    "table": "ARTIFACT_EXT",
+    "count": 12
+   },
+   {
+    "table": "CRAFT_BOOKS",
+    "count": 12
+   },
+   {
+    "table": "FAXIANG",
+    "count": 12
+   },
+   {
+    "table": "ZHENJUN",
+    "count": 12
+   },
+   {
+    "table": "ORIGINS",
+    "count": 10
+   },
+   {
+    "table": "BODIES",
+    "count": 8
+   },
+   {
+    "table": "PATHS",
+    "count": 6
+   },
+   {
+    "table": "TALISMANS",
+    "count": 5
+   },
+   {
+    "table": "CRAFT_ARTS",
+    "count": 4
+   },
+   {
+    "table": "ARRAY_DISKS",
+    "count": 4
+   },
+   {
+    "table": "VOTIVE_ITEMS",
+    "count": 3
+   },
+   {
+    "table": "DIVINE_ARTIFACTS",
+    "count": 3
+   }
+  ]
+ },
+ "icons": {
+  "amb_enc_common": [
+   {
+    "table": "ENCOUNTERS",
+    "id": "oldman",
+    "name": "崖边老者"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "cave",
+    "name": "无名古洞"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "market",
+    "name": "坊市拍卖"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "jade",
+    "name": "溪底玉匣"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "debtor",
+    "name": "叩门的旧识"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "stoneGate",
+    "name": "残符石门"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "brokenSword",
+    "name": "断剑"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "nightTeach",
+    "name": "夜半授业"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "corpseHall",
+    "name": "义庄老尸"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "fallenFairy",
+    "name": "落难仙子"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "wellMoon",
+    "name": "井中月"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "bookSeller",
+    "name": "贩书人"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "oldDebt",
+    "name": "故人之账"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "foxCub",
+    "name": "妖物认亲"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "oldCave",
+    "name": "前人洞府"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "snowLodge",
+    "name": "雪夜借宿"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "noNameStele",
+    "name": "断香的名号"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "riverBride",
+    "name": "河伯娶亲"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "escortRaid",
+    "name": "官道截杀"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "mirrorLake",
+    "name": "镜湖照影"
+   }
+  ],
+  "amb_enc_shen": [
+   {
+    "table": "ENCOUNTERS",
+    "id": "ruined",
+    "name": "野庙荒祠"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "storm",
+    "name": "荒村大旱"
+   }
+  ],
+  "amb_enc_xian": [
+   {
+    "table": "ENCOUNTERS",
+    "id": "dying",
+    "name": "濒死的修士"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "beast",
+    "name": "负伤的妖物"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "scripture",
+    "name": "残页天书"
+   }
+  ],
+  "amb_ev_good": [
+   {
+    "table": "EVENTS",
+    "id": "pilgrim",
+    "name": "有人来上香"
+   },
+   {
+    "table": "EVENTS",
+    "id": "donor",
+    "name": "富户捐灵石"
+   },
+   {
+    "table": "EVENTS",
+    "id": "wander",
+    "name": "游方道士"
+   },
+   {
+    "table": "EVENTS",
+    "id": "draft",
+    "name": "朝廷册封"
+   },
+   {
+    "table": "EVENTS",
+    "id": "spirit",
+    "name": "灵脉异动"
+   },
+   {
+    "table": "EVENTS",
+    "id": "rivalVisit",
+    "name": "同门来访"
+   },
+   {
+    "table": "EVENTS",
+    "id": "strayPurse",
+    "name": "路边拾遗"
+   },
+   {
+    "table": "EVENTS",
+    "id": "oldStele",
+    "name": "古碑残字"
+   },
+   {
+    "table": "EVENTS",
+    "id": "giftSword",
+    "name": "有人赠剑"
+   },
+   {
+    "table": "EVENTS",
+    "id": "quietMonth",
+    "name": "无事之月"
+   },
+   {
+    "table": "EVENTS",
+    "id": "brotherLeaves",
+    "name": "师兄下山"
+   },
+   {
+    "table": "EVENTS",
+    "id": "looseCultivators",
+    "name": "散修结庐"
+   },
+   {
+    "table": "EVENTS",
+    "id": "sectTourney",
+    "name": "宗门大比"
+   },
+   {
+    "table": "EVENTS",
+    "id": "oldMonkDies",
+    "name": "老修士坐化"
+   },
+   {
+    "table": "EVENTS",
+    "id": "secretRealm",
+    "name": "秘境开禁"
+   },
+   {
+    "table": "EVENTS",
+    "id": "spiritBloom",
+    "name": "灵植开花"
+   },
+   {
+    "table": "EVENTS",
+    "id": "oldGrudge",
+    "name": "旧怨上门"
+   },
+   {
+    "table": "EVENTS",
+    "id": "templeFair",
+    "name": "庙会开锣"
+   },
+   {
+    "table": "EVENTS",
+    "id": "childVow",
+    "name": "童子还愿"
+   },
+   {
+    "table": "EVENTS",
+    "id": "neighborGod",
+    "name": "邻神托梦"
+   }
+  ],
+  "amb_ev_risk": [
+   {
+    "table": "EVENTS",
+    "id": "drought",
+    "name": "大旱"
+   },
+   {
+    "table": "EVENTS",
+    "id": "plague",
+    "name": "瘟疫"
+   },
+   {
+    "table": "EVENTS",
+    "id": "neighbor",
+    "name": "邻庙更灵"
+   },
+   {
+    "table": "EVENTS",
+    "id": "prefect",
+    "name": "官府征调"
+   },
+   {
+    "table": "EVENTS",
+    "id": "demon",
+    "name": "邪祟作乱"
+   },
+   {
+    "table": "EVENTS",
+    "id": "theft",
+    "name": "庙产被盗"
+   },
+   {
+    "table": "EVENTS",
+    "id": "storm",
+    "name": "暴雨毁庙"
+   },
+   {
+    "table": "EVENTS",
+    "id": "beastDown",
+    "name": "妖兽下山"
+   },
+   {
+    "table": "EVENTS",
+    "id": "sickNeighbor",
+    "name": "邻人病重"
+   },
+   {
+    "table": "EVENTS",
+    "id": "rainOnRoad",
+    "name": "山道遇雨"
+   },
+   {
+    "table": "EVENTS",
+    "id": "beggarChild",
+    "name": "乞儿叩门"
+   },
+   {
+    "table": "EVENTS",
+    "id": "taxSeason",
+    "name": "税吏上门"
+   },
+   {
+    "table": "EVENTS",
+    "id": "taxInspect",
+    "name": "坊市查税"
+   },
+   {
+    "table": "EVENTS",
+    "id": "fieldBugs",
+    "name": "灵田虫害"
+   },
+   {
+    "table": "EVENTS",
+    "id": "danFire",
+    "name": "丹房走水"
+   },
+   {
+    "table": "EVENTS",
+    "id": "lostPermit",
+    "name": "路引丢了"
+   },
+   {
+    "table": "EVENTS",
+    "id": "boarRaid",
+    "name": "妖兽下山"
+   },
+   {
+    "table": "EVENTS",
+    "id": "incenseGuild",
+    "name": "香头行会"
+   }
+  ],
+  "array_zhenJuLing": [
+   {
+    "table": "ARRAY_DISKS",
+    "id": "zhenJuLing",
+    "name": "聚灵阵"
+   },
+   {
+    "table": "RECIPES",
+    "id": "zhen_juling",
+    "name": "聚灵阵"
+   }
+  ],
+  "array_zhenMiZong": [
+   {
+    "table": "ARRAY_DISKS",
+    "id": "zhenMiZong",
+    "name": "迷踪阵"
+   },
+   {
+    "table": "RECIPES",
+    "id": "zhen_mizong",
+    "name": "迷踪阵"
+   }
+  ],
+  "array_zhenSuoLing": [
+   {
+    "table": "ARRAY_DISKS",
+    "id": "zhenSuoLing",
+    "name": "锁灵阵"
+   },
+   {
+    "table": "RECIPES",
+    "id": "zhen_suoling",
+    "name": "锁灵阵"
+   }
+  ],
+  "array_zhenWuXing": [
+   {
+    "table": "ARRAY_DISKS",
+    "id": "zhenWuXing",
+    "name": "五行轮杀阵"
+   },
+   {
+    "table": "RECIPES",
+    "id": "zhen_wuxing",
+    "name": "五行轮杀阵"
+   }
+  ],
+  "body_chaos": [
+   {
+    "table": "BODIES",
+    "id": "chaos",
+    "name": "混沌体"
+   }
+  ],
+  "body_chun": [
+   {
+    "table": "BODIES",
+    "id": "chun",
+    "name": "纯阳体"
+   }
+  ],
+  "body_dao": [
+   {
+    "table": "BODIES",
+    "id": "dao",
+    "name": "先天道体"
+   }
+  ],
+  "body_ice": [
+   {
+    "table": "BODIES",
+    "id": "ice",
+    "name": "冰魄灵体"
+   }
+  ],
+  "body_nine": [
+   {
+    "table": "BODIES",
+    "id": "nine",
+    "name": "九阳圣体"
+   }
+  ],
+  "body_plain": [
+   {
+    "table": "BODIES",
+    "id": "plain",
+    "name": "凡体"
+   }
+  ],
+  "body_sword": [
+   {
+    "table": "BODIES",
+    "id": "sword",
+    "name": "剑灵体"
+   }
+  ],
+  "body_xuan": [
+   {
+    "table": "BODIES",
+    "id": "xuan",
+    "name": "玄阴体"
+   }
+  ],
+  "craft_dan": [
+   {
+    "table": "CRAFT_ARTS",
+    "id": "dan",
+    "name": "炼丹"
+   },
+   {
+    "table": "CRAFT_BOOKS",
+    "id": "bk_dan_huang",
+    "name": "青囊丹经"
+   },
+   {
+    "table": "CRAFT_BOOKS",
+    "id": "bk_dan_xuan",
+    "name": "九转还丹法"
+   },
+   {
+    "table": "CRAFT_BOOKS",
+    "id": "bk_dan_di",
+    "name": "造化丹经残卷"
+   }
+  ],
+  "craft_fu": [
+   {
+    "table": "CRAFT_ARTS",
+    "id": "fu",
+    "name": "制符"
+   },
+   {
+    "table": "CRAFT_BOOKS",
+    "id": "bk_fu_huang",
+    "name": "灵符辑要"
+   },
+   {
+    "table": "CRAFT_BOOKS",
+    "id": "bk_fu_xuan",
+    "name": "朱文玉章"
+   },
+   {
+    "table": "CRAFT_BOOKS",
+    "id": "bk_fu_di",
+    "name": "五雷符法"
+   }
+  ],
+  "craft_qi": [
+   {
+    "table": "CRAFT_ARTS",
+    "id": "qi",
+    "name": "炼器"
+   },
+   {
+    "table": "CRAFT_BOOKS",
+    "id": "bk_qi_huang",
+    "name": "器道入门"
+   },
+   {
+    "table": "CRAFT_BOOKS",
+    "id": "bk_qi_xuan",
+    "name": "百炼匠录"
+   },
+   {
+    "table": "CRAFT_BOOKS",
+    "id": "bk_qi_di",
+    "name": "铸山手记"
+   }
+  ],
+  "craft_zhen": [
+   {
+    "table": "CRAFT_ARTS",
+    "id": "zhen",
+    "name": "阵法"
+   },
+   {
+    "table": "CRAFT_BOOKS",
+    "id": "bk_zhen_huang",
+    "name": "阵法初解"
+   },
+   {
+    "table": "CRAFT_BOOKS",
+    "id": "bk_zhen_xuan",
+    "name": "奇门三才图"
+   },
+   {
+    "table": "CRAFT_BOOKS",
+    "id": "bk_zhen_di",
+    "name": "五行轮杀阵图"
+   }
+  ],
+  "el_earth": [
+   {
+    "table": "GONGFA_EXT",
+    "id": "guixi",
+    "name": "龟息延年诀"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "xuanguang",
+    "name": "玄光赶山经"
+   },
+   {
+    "table": "SKILLS",
+    "id": "luoshi",
+    "name": "落石诀"
+   }
+  ],
+  "el_fire": [
+   {
+    "table": "GONGFA_EXT",
+    "id": "liehuo",
+    "name": "烈火掌"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "liuhuo",
+    "name": "流火剑诀"
+   },
+   {
+    "table": "SKILLS",
+    "id": "liehuo",
+    "name": "焚山掌"
+   }
+  ],
+  "el_ice": [
+   {
+    "table": "GONGFA_EXT",
+    "id": "bingpo",
+    "name": "冰魄诀"
+   }
+  ],
+  "el_metal": [
+   {
+    "table": "GONGFA_EXT",
+    "id": "jinguang",
+    "name": "金光咒"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "xuanyuan",
+    "name": "玄元剑经"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "tianhe",
+    "name": "天河剑诀"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "tianli",
+    "name": "天遁剑诀"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "jixing",
+    "name": "剑君谈玄执金秘章"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "taixu",
+    "name": "太虚剑典"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "jindian",
+    "name": "金殿煌元诀"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "yingyue",
+    "name": "月阙剑典"
+   },
+   {
+    "table": "SKILLS",
+    "id": "jianqi",
+    "name": "剑气纵横"
+   },
+   {
+    "table": "SKILLS",
+    "id": "liuJian",
+    "name": "流转剑罡"
+   },
+   {
+    "table": "SKILLS",
+    "id": "baigu",
+    "name": "白骨飞剑"
+   }
+  ],
+  "el_thunder": [
+   {
+    "table": "GONGFA_EXT",
+    "id": "zhenlei",
+    "name": "震雷诀"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "zixiao",
+    "name": "紫霄雷法"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "zilei",
+    "name": "紫雷秘元功"
+   },
+   {
+    "table": "SKILLS",
+    "id": "leiming",
+    "name": "惊雷引"
+   },
+   {
+    "table": "SKILLS",
+    "id": "shenying",
+    "name": "神霄御剑"
+   }
+  ],
+  "el_water": [
+   {
+    "table": "GONGFA_EXT",
+    "id": "daoahai",
+    "name": "蹈海诀"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "tunhai",
+    "name": "吞海功"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "bihai",
+    "name": "碧海功"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "lingbo",
+    "name": "凌波仙经"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "jianghe",
+    "name": "江河一气诀"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "xuanShui",
+    "name": "玄水剑诀"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "yueHu",
+    "name": "月湖映秋诀"
+   },
+   {
+    "table": "SKILLS",
+    "id": "hanshui",
+    "name": "寒水箭"
+   },
+   {
+    "table": "SKILLS",
+    "id": "xuanZhu",
+    "name": "玄珠坠月"
+   }
+  ],
+  "el_wind": [
+   {
+    "table": "GONGFA_EXT",
+    "id": "yufeng",
+    "name": "御风术"
+   }
+  ],
+  "el_wood": [
+   {
+    "table": "GONGFA_EXT",
+    "id": "changchun",
+    "name": "长春功"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "xumai",
+    "name": "续脉决"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "chaoXia",
+    "name": "朝霞采露诀"
+   },
+   {
+    "table": "SKILLS",
+    "id": "mumin",
+    "name": "缠木根"
+   }
+  ],
+  "fn_atk": [
+   {
+    "table": "TALISMANS",
+    "id": "fuHuo",
+    "name": "火符"
+   },
+   {
+    "table": "TALISMANS",
+    "id": "fuLei",
+    "name": "雷符"
+   },
+   {
+    "table": "ARTIFACT_EXT",
+    "id": "wanyePiu",
+    "name": "百魂幡"
+   },
+   {
+    "table": "ARTIFACT_EXT",
+    "id": "jiuzhuan",
+    "name": "九转飞剑"
+   },
+   {
+    "table": "ARTIFACT_EXT",
+    "id": "wanlingfan",
+    "name": "万灵幡"
+   },
+   {
+    "table": "SKILLS",
+    "id": "zhiquan",
+    "name": "直取"
+   },
+   {
+    "table": "RECIPES",
+    "id": "fu_huo",
+    "name": "火符"
+   },
+   {
+    "table": "RECIPES",
+    "id": "fu_lei",
+    "name": "雷符"
+   },
+   {
+    "table": "RECIPES",
+    "id": "qi_jiuzhuan",
+    "name": "九转飞剑"
+   }
+  ],
+  "fn_blood": [
+   {
+    "table": "SKILLS",
+    "id": "xueLian",
+    "name": "血炼神光"
+   }
+  ],
+  "fn_buff": [
+   {
+    "table": "TALISMANS",
+    "id": "fuZeng",
+    "name": "增益符"
+   },
+   {
+    "table": "RECIPES",
+    "id": "fu_zeng",
+    "name": "增益符"
+   }
+  ],
+  "fn_control": [
+   {
+    "table": "SKILLS",
+    "id": "zhentian",
+    "name": "镇压八方"
+   }
+  ],
+  "fn_def": [
+   {
+    "table": "TALISMANS",
+    "id": "fuJin",
+    "name": "金刚符"
+   },
+   {
+    "table": "ARTIFACT_EXT",
+    "id": "guixibao",
+    "name": "护身玉符"
+   },
+   {
+    "table": "ARTIFACT_EXT",
+    "id": "taiyinBao",
+    "name": "太阴宝鉴"
+   },
+   {
+    "table": "RECIPES",
+    "id": "fu_jin",
+    "name": "金刚符"
+   },
+   {
+    "table": "RECIPES",
+    "id": "qi_hushen",
+    "name": "护身玉符"
+   }
+  ],
+  "fn_escape": [
+   {
+    "table": "TALISMANS",
+    "id": "fuDun",
+    "name": "遁符"
+   },
+   {
+    "table": "ARTIFACT_EXT",
+    "id": "qingyezhou",
+    "name": "青叶舟"
+   },
+   {
+    "table": "RECIPES",
+    "id": "fu_dun",
+    "name": "遁符"
+   },
+   {
+    "table": "RECIPES",
+    "id": "qi_qingye",
+    "name": "青叶舟"
+   }
+  ],
+  "fn_poison": [
+   {
+    "table": "SKILLS",
+    "id": "dugu",
+    "name": "毒火丝"
+   }
+  ],
+  "fn_talisman": [
+   {
+    "table": "ARTIFACT_EXT",
+    "id": "duzuo",
+    "name": "破宝锥"
+   },
+   {
+    "table": "ARTIFACT_EXT",
+    "id": "huoyuyuan",
+    "name": "火云符"
+   },
+   {
+    "table": "ARTIFACT_EXT",
+    "id": "jinchuan",
+    "name": "传音符"
+   },
+   {
+    "table": "ARTIFACT_EXT",
+    "id": "wuyun",
+    "name": "五雷符"
+   },
+   {
+    "table": "ARTIFACT_EXT",
+    "id": "hanhuo",
+    "name": "祈雨符箓"
+   },
+   {
+    "table": "ARTIFACT_EXT",
+    "id": "juxian",
+    "name": "拘仙敕神符"
+   }
+  ],
+  "fx_g1": [
+   {
+    "table": "FAXIANG",
+    "id": "g1",
+    "name": "山河障市真君"
+   },
+   {
+    "table": "ZHENJUN",
+    "id": "g1",
+    "name": "山河障市真君"
+   }
+  ],
+  "fx_g10": [
+   {
+    "table": "FAXIANG",
+    "id": "g10",
+    "name": "百无禁忌真君"
+   },
+   {
+    "table": "ZHENJUN",
+    "id": "g10",
+    "name": "百无禁忌真君"
+   }
+  ],
+  "fx_g11": [
+   {
+    "table": "FAXIANG",
+    "id": "g11",
+    "name": "福宝衰运真君"
+   },
+   {
+    "table": "ZHENJUN",
+    "id": "g11",
+    "name": "福宝衰运真君"
+   }
+  ],
+  "fx_g12": [
+   {
+    "table": "FAXIANG",
+    "id": "g12",
+    "name": "天外逐岁真君"
+   },
+   {
+    "table": "ZHENJUN",
+    "id": "g12",
+    "name": "天外逐岁真君"
+   }
+  ],
+  "fx_g2": [
+   {
+    "table": "FAXIANG",
+    "id": "g2",
+    "name": "市井江湖真君"
+   },
+   {
+    "table": "ZHENJUN",
+    "id": "g2",
+    "name": "市井江湖真君"
+   }
+  ],
+  "fx_g3": [
+   {
+    "table": "FAXIANG",
+    "id": "g3",
+    "name": "关外北马真君"
+   },
+   {
+    "table": "ZHENJUN",
+    "id": "g3",
+    "name": "关外北马真君"
+   }
+  ],
+  "fx_g4": [
+   {
+    "table": "FAXIANG",
+    "id": "g4",
+    "name": "侠武乱禁真君"
+   },
+   {
+    "table": "ZHENJUN",
+    "id": "g4",
+    "name": "侠武乱禁真君"
+   }
+  ],
+  "fx_g5": [
+   {
+    "table": "FAXIANG",
+    "id": "g5",
+    "name": "生死岐黄真君"
+   },
+   {
+    "table": "ZHENJUN",
+    "id": "g5",
+    "name": "生死岐黄真君"
+   }
+  ],
+  "fx_g6": [
+   {
+    "table": "FAXIANG",
+    "id": "g6",
+    "name": "南洋邪灵真君"
+   },
+   {
+    "table": "ZHENJUN",
+    "id": "g6",
+    "name": "南洋邪灵真君"
+   }
+  ],
+  "fx_g7": [
+   {
+    "table": "FAXIANG",
+    "id": "g7",
+    "name": "西传密藏真君"
+   },
+   {
+    "table": "ZHENJUN",
+    "id": "g7",
+    "name": "西传密藏真君"
+   }
+  ],
+  "fx_g8": [
+   {
+    "table": "FAXIANG",
+    "id": "g8",
+    "name": "天师法道真君"
+   },
+   {
+    "table": "ZHENJUN",
+    "id": "g8",
+    "name": "天师法道真君"
+   }
+  ],
+  "fx_g9": [
+   {
+    "table": "FAXIANG",
+    "id": "g9",
+    "name": "神工百匠真君"
+   },
+   {
+    "table": "ZHENJUN",
+    "id": "g9",
+    "name": "神工百匠真君"
+   }
+  ],
+  "icon_scroll": [
+   {
+    "table": "GONGFA_EXT",
+    "id": "juqi",
+    "name": "聚气诀"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "lianqi",
+    "name": "敛气诀"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "meihua",
+    "name": "梅花易"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "jiuhuan",
+    "name": "九寰天书"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "jujing",
+    "name": "九变化龙诀"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "wuling",
+    "name": "万灵归墟道经"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "zaohua",
+    "name": "造化丹经"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "butian",
+    "name": "补天真经"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "xuanrong",
+    "name": "乾天一元统摄诸天神法"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "xianghuo",
+    "name": "香火成神法"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "datie",
+    "name": "天语焜烨龙章"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "minghua",
+    "name": "明华煌元经"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "taixuDou",
+    "name": "太虚斗转诀"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "taiyinTuna",
+    "name": "太阴吐纳养轮经"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "baishou",
+    "name": "白首叩庭经"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "hongmeng",
+    "name": "鸿蒙紫气诀"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "taiyin",
+    "name": "太阴蜕形尸解真法"
+   },
+   {
+    "table": "GONGFA_EXT",
+    "id": "bailian",
+    "name": "百炼成仙道法"
+   }
+  ],
+  "item_divine": [
+   {
+    "table": "DIVINE_ARTIFACTS",
+    "id": "staff",
+    "name": "摄心神杖"
+   },
+   {
+    "table": "DIVINE_ARTIFACTS",
+    "id": "mirror",
+    "name": "照愿法镜"
+   },
+   {
+    "table": "DIVINE_ARTIFACTS",
+    "id": "seal",
+    "name": "牧土神印"
+   }
+  ],
+  "item_votive": [
+   {
+    "table": "VOTIVE_ITEMS",
+    "id": "xiangHui",
+    "name": "净香灰"
+   },
+   {
+    "table": "VOTIVE_ITEMS",
+    "id": "fuShui",
+    "name": "清净符水"
+   },
+   {
+    "table": "VOTIVE_ITEMS",
+    "id": "pingAn",
+    "name": "平安符"
+   }
+  ],
+  "mat_alchemy": [
+   {
+    "table": "MATERIAL_EXT",
+    "id": "buqiCao",
+    "name": "补气草"
+   },
+   {
+    "table": "MATERIAL_EXT",
+    "id": "heshenHua",
+    "name": "合神花"
+   },
+   {
+    "table": "MATERIAL_EXT",
+    "id": "yuhuaYu",
+    "name": "玉华宝鱼汁"
+   },
+   {
+    "table": "MATERIAL_EXT",
+    "id": "tianying",
+    "name": "天婴果"
+   }
+  ],
+  "mat_array": [
+   {
+    "table": "MATERIAL_EXT",
+    "id": "zhenQi",
+    "name": "阵旗"
+   },
+   {
+    "table": "MATERIAL_EXT",
+    "id": "huanShi",
+    "name": "幻属石"
+   }
+  ],
+  "mat_artifact": [
+   {
+    "table": "MATERIAL_EXT",
+    "id": "starSand",
+    "name": "天璇星砂"
+   },
+   {
+    "table": "MATERIAL_EXT",
+    "id": "jinLing",
+    "name": "金灵砂"
+   },
+   {
+    "table": "MATERIAL_EXT",
+    "id": "tieMu",
+    "name": "铁木心"
+   },
+   {
+    "table": "MATERIAL_EXT",
+    "id": "longYan",
+    "name": "龙岩铁"
+   }
+  ],
+  "mat_beast": [
+   {
+    "table": "MATERIAL_EXT",
+    "id": "mudanYao",
+    "name": "妖丹"
+   }
+  ],
+  "mat_herb": [
+   {
+    "table": "MATERIAL_EXT",
+    "id": "gulingHua",
+    "name": "骨灵花"
+   },
+   {
+    "table": "MATERIAL_EXT",
+    "id": "lanyouCao",
+    "name": "蓝幽草"
+   }
+  ],
+  "mat_spirit": [
+   {
+    "table": "MATERIAL_EXT",
+    "id": "jidaoGuo",
+    "name": "剑道果"
+   },
+   {
+    "table": "MATERIAL_EXT",
+    "id": "wuxingling",
+    "name": "五行灵果"
+   },
+   {
+    "table": "MATERIAL_EXT",
+    "id": "qunfangSui",
+    "name": "群芳髓"
+   },
+   {
+    "table": "MATERIAL_EXT",
+    "id": "wulianXue",
+    "name": "万炼血"
+   }
+  ],
+  "mat_talisman": [
+   {
+    "table": "MATERIAL_EXT",
+    "id": "fuZhi",
+    "name": "符纸"
+   },
+   {
+    "table": "MATERIAL_EXT",
+    "id": "zhuSha",
+    "name": "朱砂"
+   }
+  ],
+  "org_army": [
+   {
+    "table": "ORIGINS",
+    "id": "army",
+    "name": "将门之后"
+   }
+  ],
+  "org_demon": [
+   {
+    "table": "ORIGINS",
+    "id": "demon",
+    "name": "妖族后裔"
+   }
+  ],
+  "org_fallen": [
+   {
+    "table": "ORIGINS",
+    "id": "fallen",
+    "name": "没落世家"
+   }
+  ],
+  "org_farm": [
+   {
+    "table": "ORIGINS",
+    "id": "farm",
+    "name": "农家子"
+   }
+  ],
+  "org_hunt": [
+   {
+    "table": "ORIGINS",
+    "id": "hunt",
+    "name": "猎户之后"
+   }
+  ],
+  "org_merch": [
+   {
+    "table": "ORIGINS",
+    "id": "merch",
+    "name": "商贾之家"
+   }
+  ],
+  "org_monk": [
+   {
+    "table": "ORIGINS",
+    "id": "monk",
+    "name": "方外遗孤"
+   }
+  ],
+  "org_office": [
+   {
+    "table": "ORIGINS",
+    "id": "office",
+    "name": "官宦子弟"
+   }
+  ],
+  "org_orphan": [
+   {
+    "table": "ORIGINS",
+    "id": "orphan",
+    "name": "市井孤儿"
+   }
+  ],
+  "org_scholar": [
+   {
+    "table": "ORIGINS",
+    "id": "scholar",
+    "name": "书香门第"
+   }
+  ],
+  "path_ascend": [
+   {
+    "table": "PATHS",
+    "id": "ascend",
+    "name": "问道飞升"
+   }
+  ],
+  "path_free": [
+   {
+    "table": "PATHS",
+    "id": "free",
+    "name": "随心所欲"
+   }
+  ],
+  "path_guard": [
+   {
+    "table": "PATHS",
+    "id": "guard",
+    "name": "守护所爱"
+   }
+  ],
+  "path_long": [
+   {
+    "table": "PATHS",
+    "id": "long",
+    "name": "逍遥长生"
+   }
+  ],
+  "path_revenge": [
+   {
+    "table": "PATHS",
+    "id": "revenge",
+    "name": "快意恩仇"
+   }
+  ],
+  "path_rule": [
+   {
+    "table": "PATHS",
+    "id": "rule",
+    "name": "问鼎天下"
+   }
+  ],
+  "pill_break": [
+   {
+    "table": "PILL_EXT",
+    "id": "xiaoPo",
+    "name": "小破障丹"
+   },
+   {
+    "table": "PILL_EXT",
+    "id": "zhuji",
+    "name": "筑基丹"
+   },
+   {
+    "table": "PILL_EXT",
+    "id": "daPo",
+    "name": "大破障丹"
+   },
+   {
+    "table": "PILL_EXT",
+    "id": "ningYing",
+    "name": "凝婴丹"
+   }
+  ],
+  "pill_cult": [
+   {
+    "table": "PILL_EXT",
+    "id": "xiaoXuan",
+    "name": "日月玄浆"
+   },
+   {
+    "table": "PILL_EXT",
+    "id": "xiang",
+    "name": "信香"
+   }
+  ],
+  "pill_cure": [
+   {
+    "table": "PILL_EXT",
+    "id": "heal",
+    "name": "疗伤药"
+   },
+   {
+    "table": "PILL_EXT",
+    "id": "jiebang",
+    "name": "接骨膏"
+   }
+  ],
+  "pill_heart": [
+   {
+    "table": "PILL_EXT",
+    "id": "clear",
+    "name": "清心丹"
+   },
+   {
+    "table": "PILL_EXT",
+    "id": "ningShen",
+    "name": "凝神散"
+   },
+   {
+    "table": "RECIPES",
+    "id": "dan_qingxin",
+    "name": "清心丹"
+   }
+  ],
+  "pill_hp": [
+   {
+    "table": "PILL_EXT",
+    "id": "pillHp",
+    "name": "回春丹"
+   },
+   {
+    "table": "PILL_EXT",
+    "id": "xiaoSheng",
+    "name": "生肌续骨丹"
+   },
+   {
+    "table": "RECIPES",
+    "id": "dan_huichun",
+    "name": "回春丹"
+   },
+   {
+    "table": "RECIPES",
+    "id": "dan_shengji",
+    "name": "生肌续骨丹"
+   }
+  ],
+  "pill_hp_big": [
+   {
+    "table": "PILL_EXT",
+    "id": "shengji",
+    "name": "复原丹"
+   },
+   {
+    "table": "PILL_EXT",
+    "id": "fuYuan",
+    "name": "大还丹"
+   },
+   {
+    "table": "PILL_EXT",
+    "id": "huichun",
+    "name": "九转回春散"
+   }
+  ],
+  "pill_life": [
+   {
+    "table": "PILL_EXT",
+    "id": "xuming",
+    "name": "续命丹"
+   }
+  ],
+  "pill_mp": [
+   {
+    "table": "PILL_EXT",
+    "id": "pillMp",
+    "name": "聚气丹"
+   },
+   {
+    "table": "PILL_EXT",
+    "id": "huiLing",
+    "name": "回灵散"
+   },
+   {
+    "table": "PILL_EXT",
+    "id": "yuhuaShui",
+    "name": "玉华灵水"
+   },
+   {
+    "table": "RECIPES",
+    "id": "dan_juhui",
+    "name": "聚气丹"
+   },
+   {
+    "table": "RECIPES",
+    "id": "dan_yuhua",
+    "name": "玉华灵水"
+   }
+  ]
+ },
+ "entries": [
+  {
+   "table": "ARRAY_DISKS",
+   "id": "zhenJuLing",
+   "name": "聚灵阵",
+   "icon": "array_zhenJuLing",
+   "reason": "阵盘一件一图"
+  },
+  {
+   "table": "ARRAY_DISKS",
+   "id": "zhenMiZong",
+   "name": "迷踪阵",
+   "icon": "array_zhenMiZong",
+   "reason": "阵盘一件一图"
+  },
+  {
+   "table": "ARRAY_DISKS",
+   "id": "zhenSuoLing",
+   "name": "锁灵阵",
+   "icon": "array_zhenSuoLing",
+   "reason": "阵盘一件一图"
+  },
+  {
+   "table": "ARRAY_DISKS",
+   "id": "zhenWuXing",
+   "name": "五行轮杀阵",
+   "icon": "array_zhenWuXing",
+   "reason": "阵盘一件一图"
+  },
+  {
+   "table": "ARTIFACT_EXT",
+   "id": "duzuo",
+   "name": "破宝锥",
+   "icon": "fn_talisman",
+   "reason": "法宝部位 slot=once"
+  },
+  {
+   "table": "ARTIFACT_EXT",
+   "id": "guixibao",
+   "name": "护身玉符",
+   "icon": "fn_def",
+   "reason": "法宝部位 slot=body"
+  },
+  {
+   "table": "ARTIFACT_EXT",
+   "id": "hanhuo",
+   "name": "祈雨符箓",
+   "icon": "fn_talisman",
+   "reason": "法宝部位 slot=once"
+  },
+  {
+   "table": "ARTIFACT_EXT",
+   "id": "huoyuyuan",
+   "name": "火云符",
+   "icon": "fn_talisman",
+   "reason": "法宝部位 slot=once"
+  },
+  {
+   "table": "ARTIFACT_EXT",
+   "id": "jinchuan",
+   "name": "传音符",
+   "icon": "fn_talisman",
+   "reason": "法宝部位 slot=once"
+  },
+  {
+   "table": "ARTIFACT_EXT",
+   "id": "jiuzhuan",
+   "name": "九转飞剑",
+   "icon": "fn_atk",
+   "reason": "法宝部位 slot=atk"
+  },
+  {
+   "table": "ARTIFACT_EXT",
+   "id": "juxian",
+   "name": "拘仙敕神符",
+   "icon": "fn_talisman",
+   "reason": "法宝部位 slot=once"
+  },
+  {
+   "table": "ARTIFACT_EXT",
+   "id": "qingyezhou",
+   "name": "青叶舟",
+   "icon": "fn_escape",
+   "reason": "法宝部位 slot=move"
+  },
+  {
+   "table": "ARTIFACT_EXT",
+   "id": "taiyinBao",
+   "name": "太阴宝鉴",
+   "icon": "fn_def",
+   "reason": "法宝部位 slot=body"
+  },
+  {
+   "table": "ARTIFACT_EXT",
+   "id": "wanlingfan",
+   "name": "万灵幡",
+   "icon": "fn_atk",
+   "reason": "法宝部位 slot=atk"
+  },
+  {
+   "table": "ARTIFACT_EXT",
+   "id": "wanyePiu",
+   "name": "百魂幡",
+   "icon": "fn_atk",
+   "reason": "法宝部位 slot=atk"
+  },
+  {
+   "table": "ARTIFACT_EXT",
+   "id": "wuyun",
+   "name": "五雷符",
+   "icon": "fn_talisman",
+   "reason": "法宝部位 slot=once"
+  },
+  {
+   "table": "BODIES",
+   "id": "chaos",
+   "name": "混沌体",
+   "icon": "body_chaos",
+   "reason": "体质一体一图"
+  },
+  {
+   "table": "BODIES",
+   "id": "chun",
+   "name": "纯阳体",
+   "icon": "body_chun",
+   "reason": "体质一体一图"
+  },
+  {
+   "table": "BODIES",
+   "id": "dao",
+   "name": "先天道体",
+   "icon": "body_dao",
+   "reason": "体质一体一图"
+  },
+  {
+   "table": "BODIES",
+   "id": "ice",
+   "name": "冰魄灵体",
+   "icon": "body_ice",
+   "reason": "体质一体一图"
+  },
+  {
+   "table": "BODIES",
+   "id": "nine",
+   "name": "九阳圣体",
+   "icon": "body_nine",
+   "reason": "体质一体一图"
+  },
+  {
+   "table": "BODIES",
+   "id": "plain",
+   "name": "凡体",
+   "icon": "body_plain",
+   "reason": "体质一体一图"
+  },
+  {
+   "table": "BODIES",
+   "id": "sword",
+   "name": "剑灵体",
+   "icon": "body_sword",
+   "reason": "体质一体一图"
+  },
+  {
+   "table": "BODIES",
+   "id": "xuan",
+   "name": "玄阴体",
+   "icon": "body_xuan",
+   "reason": "体质一体一图"
+  },
+  {
+   "table": "CRAFT_ARTS",
+   "id": "dan",
+   "name": "炼丹",
+   "icon": "craft_dan",
+   "reason": "技艺一门一图"
+  },
+  {
+   "table": "CRAFT_ARTS",
+   "id": "fu",
+   "name": "制符",
+   "icon": "craft_fu",
+   "reason": "技艺一门一图"
+  },
+  {
+   "table": "CRAFT_ARTS",
+   "id": "qi",
+   "name": "炼器",
+   "icon": "craft_qi",
+   "reason": "技艺一门一图"
+  },
+  {
+   "table": "CRAFT_ARTS",
+   "id": "zhen",
+   "name": "阵法",
+   "icon": "craft_zhen",
+   "reason": "技艺一门一图"
+  },
+  {
+   "table": "CRAFT_BOOKS",
+   "id": "bk_dan_di",
+   "name": "造化丹经残卷",
+   "icon": "craft_dan",
+   "reason": "工艺书按技艺归并 art=dan"
+  },
+  {
+   "table": "CRAFT_BOOKS",
+   "id": "bk_dan_huang",
+   "name": "青囊丹经",
+   "icon": "craft_dan",
+   "reason": "工艺书按技艺归并 art=dan"
+  },
+  {
+   "table": "CRAFT_BOOKS",
+   "id": "bk_dan_xuan",
+   "name": "九转还丹法",
+   "icon": "craft_dan",
+   "reason": "工艺书按技艺归并 art=dan"
+  },
+  {
+   "table": "CRAFT_BOOKS",
+   "id": "bk_fu_di",
+   "name": "五雷符法",
+   "icon": "craft_fu",
+   "reason": "工艺书按技艺归并 art=fu"
+  },
+  {
+   "table": "CRAFT_BOOKS",
+   "id": "bk_fu_huang",
+   "name": "灵符辑要",
+   "icon": "craft_fu",
+   "reason": "工艺书按技艺归并 art=fu"
+  },
+  {
+   "table": "CRAFT_BOOKS",
+   "id": "bk_fu_xuan",
+   "name": "朱文玉章",
+   "icon": "craft_fu",
+   "reason": "工艺书按技艺归并 art=fu"
+  },
+  {
+   "table": "CRAFT_BOOKS",
+   "id": "bk_qi_di",
+   "name": "铸山手记",
+   "icon": "craft_qi",
+   "reason": "工艺书按技艺归并 art=qi"
+  },
+  {
+   "table": "CRAFT_BOOKS",
+   "id": "bk_qi_huang",
+   "name": "器道入门",
+   "icon": "craft_qi",
+   "reason": "工艺书按技艺归并 art=qi"
+  },
+  {
+   "table": "CRAFT_BOOKS",
+   "id": "bk_qi_xuan",
+   "name": "百炼匠录",
+   "icon": "craft_qi",
+   "reason": "工艺书按技艺归并 art=qi"
+  },
+  {
+   "table": "CRAFT_BOOKS",
+   "id": "bk_zhen_di",
+   "name": "五行轮杀阵图",
+   "icon": "craft_zhen",
+   "reason": "工艺书按技艺归并 art=zhen"
+  },
+  {
+   "table": "CRAFT_BOOKS",
+   "id": "bk_zhen_huang",
+   "name": "阵法初解",
+   "icon": "craft_zhen",
+   "reason": "工艺书按技艺归并 art=zhen"
+  },
+  {
+   "table": "CRAFT_BOOKS",
+   "id": "bk_zhen_xuan",
+   "name": "奇门三才图",
+   "icon": "craft_zhen",
+   "reason": "工艺书按技艺归并 art=zhen"
+  },
+  {
+   "table": "DIVINE_ARTIFACTS",
+   "id": "mirror",
+   "name": "照愿法镜",
+   "icon": "item_divine",
+   "reason": "显圣神器一类一图"
+  },
+  {
+   "table": "DIVINE_ARTIFACTS",
+   "id": "seal",
+   "name": "牧土神印",
+   "icon": "item_divine",
+   "reason": "显圣神器一类一图"
+  },
+  {
+   "table": "DIVINE_ARTIFACTS",
+   "id": "staff",
+   "name": "摄心神杖",
+   "icon": "item_divine",
+   "reason": "显圣神器一类一图"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "beast",
+   "name": "负伤的妖物",
+   "icon": "amb_enc_xian",
+   "reason": "机缘类别 kind=xian"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "bookSeller",
+   "name": "贩书人",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "brokenSword",
+   "name": "断剑",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "cave",
+   "name": "无名古洞",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "corpseHall",
+   "name": "义庄老尸",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "debtor",
+   "name": "叩门的旧识",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "dying",
+   "name": "濒死的修士",
+   "icon": "amb_enc_xian",
+   "reason": "机缘类别 kind=xian"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "escortRaid",
+   "name": "官道截杀",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "fallenFairy",
+   "name": "落难仙子",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "foxCub",
+   "name": "妖物认亲",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "jade",
+   "name": "溪底玉匣",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "market",
+   "name": "坊市拍卖",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "mirrorLake",
+   "name": "镜湖照影",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "nightTeach",
+   "name": "夜半授业",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "noNameStele",
+   "name": "断香的名号",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "oldCave",
+   "name": "前人洞府",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "oldDebt",
+   "name": "故人之账",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "oldman",
+   "name": "崖边老者",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "riverBride",
+   "name": "河伯娶亲",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "ruined",
+   "name": "野庙荒祠",
+   "icon": "amb_enc_shen",
+   "reason": "机缘类别 kind=shen"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "scripture",
+   "name": "残页天书",
+   "icon": "amb_enc_xian",
+   "reason": "机缘类别 kind=xian"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "snowLodge",
+   "name": "雪夜借宿",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "stoneGate",
+   "name": "残符石门",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "storm",
+   "name": "荒村大旱",
+   "icon": "amb_enc_shen",
+   "reason": "机缘类别 kind=shen"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "wellMoon",
+   "name": "井中月",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
+  },
+  {
+   "table": "EVENTS",
+   "id": "beastDown",
+   "name": "妖兽下山",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "beggarChild",
+   "name": "乞儿叩门",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "boarRaid",
+   "name": "妖兽下山",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "brotherLeaves",
+   "name": "师兄下山",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "childVow",
+   "name": "童子还愿",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "danFire",
+   "name": "丹房走水",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "demon",
+   "name": "邪祟作乱",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "donor",
+   "name": "富户捐灵石",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "draft",
+   "name": "朝廷册封",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "drought",
+   "name": "大旱",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "fieldBugs",
+   "name": "灵田虫害",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "giftSword",
+   "name": "有人赠剑",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "incenseGuild",
+   "name": "香头行会",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "looseCultivators",
+   "name": "散修结庐",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "lostPermit",
+   "name": "路引丢了",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "neighbor",
+   "name": "邻庙更灵",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "neighborGod",
+   "name": "邻神托梦",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "oldGrudge",
+   "name": "旧怨上门",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "oldMonkDies",
+   "name": "老修士坐化",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "oldStele",
+   "name": "古碑残字",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "pilgrim",
+   "name": "有人来上香",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "plague",
+   "name": "瘟疫",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "prefect",
+   "name": "官府征调",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "quietMonth",
+   "name": "无事之月",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "rainOnRoad",
+   "name": "山道遇雨",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "rivalVisit",
+   "name": "同门来访",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "secretRealm",
+   "name": "秘境开禁",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "sectTourney",
+   "name": "宗门大比",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "sickNeighbor",
+   "name": "邻人病重",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "spirit",
+   "name": "灵脉异动",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "spiritBloom",
+   "name": "灵植开花",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "storm",
+   "name": "暴雨毁庙",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "strayPurse",
+   "name": "路边拾遗",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "taxInspect",
+   "name": "坊市查税",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "taxSeason",
+   "name": "税吏上门",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "templeFair",
+   "name": "庙会开锣",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "theft",
+   "name": "庙产被盗",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "wander",
+   "name": "游方道士",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "FAXIANG",
+   "id": "g1",
+   "name": "山河障市真君",
+   "icon": "fx_g1",
+   "reason": "法相一相一图"
+  },
+  {
+   "table": "FAXIANG",
+   "id": "g10",
+   "name": "百无禁忌真君",
+   "icon": "fx_g10",
+   "reason": "法相一相一图"
+  },
+  {
+   "table": "FAXIANG",
+   "id": "g11",
+   "name": "福宝衰运真君",
+   "icon": "fx_g11",
+   "reason": "法相一相一图"
+  },
+  {
+   "table": "FAXIANG",
+   "id": "g12",
+   "name": "天外逐岁真君",
+   "icon": "fx_g12",
+   "reason": "法相一相一图"
+  },
+  {
+   "table": "FAXIANG",
+   "id": "g2",
+   "name": "市井江湖真君",
+   "icon": "fx_g2",
+   "reason": "法相一相一图"
+  },
+  {
+   "table": "FAXIANG",
+   "id": "g3",
+   "name": "关外北马真君",
+   "icon": "fx_g3",
+   "reason": "法相一相一图"
+  },
+  {
+   "table": "FAXIANG",
+   "id": "g4",
+   "name": "侠武乱禁真君",
+   "icon": "fx_g4",
+   "reason": "法相一相一图"
+  },
+  {
+   "table": "FAXIANG",
+   "id": "g5",
+   "name": "生死岐黄真君",
+   "icon": "fx_g5",
+   "reason": "法相一相一图"
+  },
+  {
+   "table": "FAXIANG",
+   "id": "g6",
+   "name": "南洋邪灵真君",
+   "icon": "fx_g6",
+   "reason": "法相一相一图"
+  },
+  {
+   "table": "FAXIANG",
+   "id": "g7",
+   "name": "西传密藏真君",
+   "icon": "fx_g7",
+   "reason": "法相一相一图"
+  },
+  {
+   "table": "FAXIANG",
+   "id": "g8",
+   "name": "天师法道真君",
+   "icon": "fx_g8",
+   "reason": "法相一相一图"
+  },
+  {
+   "table": "FAXIANG",
+   "id": "g9",
+   "name": "神工百匠真君",
+   "icon": "fx_g9",
+   "reason": "法相一相一图"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "bailian",
+   "name": "百炼成仙道法",
+   "icon": "icon_scroll",
+   "reason": "无属性功法"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "baishou",
+   "name": "白首叩庭经",
+   "icon": "icon_scroll",
+   "reason": "无属性功法"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "bihai",
+   "name": "碧海功",
+   "icon": "el_water",
+   "reason": "元素属性 el=water"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "bingpo",
+   "name": "冰魄诀",
+   "icon": "el_ice",
+   "reason": "元素属性 el=ice"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "butian",
+   "name": "补天真经",
+   "icon": "icon_scroll",
+   "reason": "无属性功法"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "changchun",
+   "name": "长春功",
+   "icon": "el_wood",
+   "reason": "元素属性 el=wood"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "chaoXia",
+   "name": "朝霞采露诀",
+   "icon": "el_wood",
+   "reason": "元素属性 el=wood"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "daoahai",
+   "name": "蹈海诀",
+   "icon": "el_water",
+   "reason": "元素属性 el=water"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "datie",
+   "name": "天语焜烨龙章",
+   "icon": "icon_scroll",
+   "reason": "无属性功法"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "guixi",
+   "name": "龟息延年诀",
+   "icon": "el_earth",
+   "reason": "元素属性 el=earth"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "hongmeng",
+   "name": "鸿蒙紫气诀",
+   "icon": "icon_scroll",
+   "reason": "无属性功法"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "jianghe",
+   "name": "江河一气诀",
+   "icon": "el_water",
+   "reason": "元素属性 el=water"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "jindian",
+   "name": "金殿煌元诀",
+   "icon": "el_metal",
+   "reason": "元素属性 el=metal"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "jinguang",
+   "name": "金光咒",
+   "icon": "el_metal",
+   "reason": "元素属性 el=metal"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "jiuhuan",
+   "name": "九寰天书",
+   "icon": "icon_scroll",
+   "reason": "无属性功法"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "jixing",
+   "name": "剑君谈玄执金秘章",
+   "icon": "el_metal",
+   "reason": "元素属性 el=metal"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "jujing",
+   "name": "九变化龙诀",
+   "icon": "icon_scroll",
+   "reason": "无属性功法"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "juqi",
+   "name": "聚气诀",
+   "icon": "icon_scroll",
+   "reason": "无属性功法"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "lianqi",
+   "name": "敛气诀",
+   "icon": "icon_scroll",
+   "reason": "无属性功法"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "liehuo",
+   "name": "烈火掌",
+   "icon": "el_fire",
+   "reason": "元素属性 el=fire"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "lingbo",
+   "name": "凌波仙经",
+   "icon": "el_water",
+   "reason": "元素属性 el=water"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "liuhuo",
+   "name": "流火剑诀",
+   "icon": "el_fire",
+   "reason": "元素属性 el=fire"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "meihua",
+   "name": "梅花易",
+   "icon": "icon_scroll",
+   "reason": "无属性功法"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "minghua",
+   "name": "明华煌元经",
+   "icon": "icon_scroll",
+   "reason": "无属性功法"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "taixu",
+   "name": "太虚剑典",
+   "icon": "el_metal",
+   "reason": "元素属性 el=metal"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "taixuDou",
+   "name": "太虚斗转诀",
+   "icon": "icon_scroll",
+   "reason": "无属性功法"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "taiyin",
+   "name": "太阴蜕形尸解真法",
+   "icon": "icon_scroll",
+   "reason": "无属性功法"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "taiyinTuna",
+   "name": "太阴吐纳养轮经",
+   "icon": "icon_scroll",
+   "reason": "无属性功法"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "tianhe",
+   "name": "天河剑诀",
+   "icon": "el_metal",
+   "reason": "元素属性 el=metal"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "tianli",
+   "name": "天遁剑诀",
+   "icon": "el_metal",
+   "reason": "元素属性 el=metal"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "tunhai",
+   "name": "吞海功",
+   "icon": "el_water",
+   "reason": "元素属性 el=water"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "wuling",
+   "name": "万灵归墟道经",
+   "icon": "icon_scroll",
+   "reason": "无属性功法"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "xianghuo",
+   "name": "香火成神法",
+   "icon": "icon_scroll",
+   "reason": "无属性功法"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "xuanguang",
+   "name": "玄光赶山经",
+   "icon": "el_earth",
+   "reason": "元素属性 el=earth"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "xuanrong",
+   "name": "乾天一元统摄诸天神法",
+   "icon": "icon_scroll",
+   "reason": "无属性功法"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "xuanShui",
+   "name": "玄水剑诀",
+   "icon": "el_water",
+   "reason": "元素属性 el=water"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "xuanyuan",
+   "name": "玄元剑经",
+   "icon": "el_metal",
+   "reason": "元素属性 el=metal"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "xumai",
+   "name": "续脉决",
+   "icon": "el_wood",
+   "reason": "元素属性 el=wood"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "yingyue",
+   "name": "月阙剑典",
+   "icon": "el_metal",
+   "reason": "元素属性 el=metal"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "yueHu",
+   "name": "月湖映秋诀",
+   "icon": "el_water",
+   "reason": "元素属性 el=water"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "yufeng",
+   "name": "御风术",
+   "icon": "el_wind",
+   "reason": "元素属性 el=wind"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "zaohua",
+   "name": "造化丹经",
+   "icon": "icon_scroll",
+   "reason": "无属性功法"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "zhenlei",
+   "name": "震雷诀",
+   "icon": "el_thunder",
+   "reason": "元素属性 el=thunder"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "zilei",
+   "name": "紫雷秘元功",
+   "icon": "el_thunder",
+   "reason": "元素属性 el=thunder"
+  },
+  {
+   "table": "GONGFA_EXT",
+   "id": "zixiao",
+   "name": "紫霄雷法",
+   "icon": "el_thunder",
+   "reason": "元素属性 el=thunder"
+  },
+  {
+   "table": "MATERIAL_EXT",
+   "id": "buqiCao",
+   "name": "补气草",
+   "icon": "mat_alchemy",
+   "reason": "材料用途 eff=炼丹主材：回灵类丹药"
+  },
+  {
+   "table": "MATERIAL_EXT",
+   "id": "fuZhi",
+   "name": "符纸",
+   "icon": "mat_talisman",
+   "reason": "材料用途 eff=制符承载之物，一张一符"
+  },
+  {
+   "table": "MATERIAL_EXT",
+   "id": "gulingHua",
+   "name": "骨灵花",
+   "icon": "mat_herb",
+   "reason": "材料用途 eff=疗伤类丹药引子"
+  },
+  {
+   "table": "MATERIAL_EXT",
+   "id": "heshenHua",
+   "name": "合神花",
+   "icon": "mat_alchemy",
+   "reason": "材料用途 eff=炼丹主材：宁神类丹药"
+  },
+  {
+   "table": "MATERIAL_EXT",
+   "id": "huanShi",
+   "name": "幻属石",
+   "icon": "mat_array",
+   "reason": "材料用途 eff=迷踪阵主材"
+  },
+  {
+   "table": "MATERIAL_EXT",
+   "id": "jidaoGuo",
+   "name": "剑道果",
+   "icon": "mat_spirit",
+   "reason": "材料用途 eff=剑修大成之果，剑系功法效率 +20%"
+  },
+  {
+   "table": "MATERIAL_EXT",
+   "id": "jinLing",
+   "name": "金灵砂",
+   "icon": "mat_artifact",
+   "reason": "材料用途 eff=炼器刻阵用，导灵"
+  },
+  {
+   "table": "MATERIAL_EXT",
+   "id": "lanyouCao",
+   "name": "蓝幽草",
+   "icon": "mat_herb",
+   "reason": "材料用途 eff=最常见的疗伤草药"
+  },
+  {
+   "table": "MATERIAL_EXT",
+   "id": "longYan",
+   "name": "龙岩铁",
+   "icon": "mat_artifact",
+   "reason": "材料用途 eff=地阶器胚主材"
+  },
+  {
+   "table": "MATERIAL_EXT",
+   "id": "mudanYao",
+   "name": "妖丹",
+   "icon": "mat_beast",
+   "reason": "材料用途 eff=妖兽内丹，炼器炼丹通用"
+  },
+  {
+   "table": "MATERIAL_EXT",
+   "id": "qunfangSui",
+   "name": "群芳髓",
+   "icon": "mat_spirit",
+   "reason": "材料用途 eff=双修与容颜之物"
+  },
+  {
+   "table": "MATERIAL_EXT",
+   "id": "starSand",
+   "name": "天璇星砂",
+   "icon": "mat_artifact",
+   "reason": "材料用途 eff=炼器主材：法器品阶 +1"
+  },
+  {
+   "table": "MATERIAL_EXT",
+   "id": "tianying",
+   "name": "天婴果",
+   "icon": "mat_alchemy",
+   "reason": "材料用途 eff=凝婴丹主材"
+  },
+  {
+   "table": "MATERIAL_EXT",
+   "id": "tieMu",
+   "name": "铁木心",
+   "icon": "mat_artifact",
+   "reason": "材料用途 eff=器胚主材，坚韧"
+  },
+  {
+   "table": "MATERIAL_EXT",
+   "id": "wulianXue",
+   "name": "万炼血",
+   "icon": "mat_spirit",
+   "reason": "材料用途 eff=魔门血炼主材，业力 +5 但威力可观"
+  },
+  {
+   "table": "MATERIAL_EXT",
+   "id": "wuxingling",
+   "name": "五行灵果",
+   "icon": "mat_spirit",
+   "reason": "材料用途 eff=五行俱全，补灵根偏废"
+  },
+  {
+   "table": "MATERIAL_EXT",
+   "id": "yuhuaYu",
+   "name": "玉华宝鱼汁",
+   "icon": "mat_alchemy",
+   "reason": "材料用途 eff=炼丹主材：玉华灵水"
+  },
+  {
+   "table": "MATERIAL_EXT",
+   "id": "zhenQi",
+   "name": "阵旗",
+   "icon": "mat_array",
+   "reason": "材料用途 eff=布阵必须，可重复使用"
+  },
+  {
+   "table": "MATERIAL_EXT",
+   "id": "zhuSha",
+   "name": "朱砂",
+   "icon": "mat_talisman",
+   "reason": "材料用途 eff=制符定属性，赤色最灵"
+  },
+  {
+   "table": "ORIGINS",
+   "id": "army",
+   "name": "将门之后",
+   "icon": "org_army",
+   "reason": "出身一出一图"
+  },
+  {
+   "table": "ORIGINS",
+   "id": "demon",
+   "name": "妖族后裔",
+   "icon": "org_demon",
+   "reason": "出身一出一图"
+  },
+  {
+   "table": "ORIGINS",
+   "id": "fallen",
+   "name": "没落世家",
+   "icon": "org_fallen",
+   "reason": "出身一出一图"
+  },
+  {
+   "table": "ORIGINS",
+   "id": "farm",
+   "name": "农家子",
+   "icon": "org_farm",
+   "reason": "出身一出一图"
+  },
+  {
+   "table": "ORIGINS",
+   "id": "hunt",
+   "name": "猎户之后",
+   "icon": "org_hunt",
+   "reason": "出身一出一图"
+  },
+  {
+   "table": "ORIGINS",
+   "id": "merch",
+   "name": "商贾之家",
+   "icon": "org_merch",
+   "reason": "出身一出一图"
+  },
+  {
+   "table": "ORIGINS",
+   "id": "monk",
+   "name": "方外遗孤",
+   "icon": "org_monk",
+   "reason": "出身一出一图"
+  },
+  {
+   "table": "ORIGINS",
+   "id": "office",
+   "name": "官宦子弟",
+   "icon": "org_office",
+   "reason": "出身一出一图"
+  },
+  {
+   "table": "ORIGINS",
+   "id": "orphan",
+   "name": "市井孤儿",
+   "icon": "org_orphan",
+   "reason": "出身一出一图"
+  },
+  {
+   "table": "ORIGINS",
+   "id": "scholar",
+   "name": "书香门第",
+   "icon": "org_scholar",
+   "reason": "出身一出一图"
+  },
+  {
+   "table": "PATHS",
+   "id": "ascend",
+   "name": "问道飞升",
+   "icon": "path_ascend",
+   "reason": "道途一途一图"
+  },
+  {
+   "table": "PATHS",
+   "id": "free",
+   "name": "随心所欲",
+   "icon": "path_free",
+   "reason": "道途一途一图"
+  },
+  {
+   "table": "PATHS",
+   "id": "guard",
+   "name": "守护所爱",
+   "icon": "path_guard",
+   "reason": "道途一途一图"
+  },
+  {
+   "table": "PATHS",
+   "id": "long",
+   "name": "逍遥长生",
+   "icon": "path_long",
+   "reason": "道途一途一图"
+  },
+  {
+   "table": "PATHS",
+   "id": "revenge",
+   "name": "快意恩仇",
+   "icon": "path_revenge",
+   "reason": "道途一途一图"
+  },
+  {
+   "table": "PATHS",
+   "id": "rule",
+   "name": "问鼎天下",
+   "icon": "path_rule",
+   "reason": "道途一途一图"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "clear",
+   "name": "清心丹",
+   "icon": "pill_heart",
+   "reason": "丹药类型 type=heart"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "daPo",
+   "name": "大破障丹",
+   "icon": "pill_break",
+   "reason": "丹药类型 type=break"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "fuYuan",
+   "name": "大还丹",
+   "icon": "pill_hp_big",
+   "reason": "丹药类型 type=hpFull"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "heal",
+   "name": "疗伤药",
+   "icon": "pill_cure",
+   "reason": "丹药类型 type=cure"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "huichun",
+   "name": "九转回春散",
+   "icon": "pill_hp_big",
+   "reason": "丹药类型 type=hpFull"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "huiLing",
+   "name": "回灵散",
+   "icon": "pill_mp",
+   "reason": "丹药类型 type=mpPct"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "jiebang",
+   "name": "接骨膏",
+   "icon": "pill_cure",
+   "reason": "丹药类型 type=cure"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "ningShen",
+   "name": "凝神散",
+   "icon": "pill_heart",
+   "reason": "丹药类型 type=heart"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "ningYing",
+   "name": "凝婴丹",
+   "icon": "pill_break",
+   "reason": "丹药类型 type=break"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "pillHp",
+   "name": "回春丹",
+   "icon": "pill_hp",
+   "reason": "丹药类型 type=hp"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "pillMp",
+   "name": "聚气丹",
+   "icon": "pill_mp",
+   "reason": "丹药类型 type=mp"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "shengji",
+   "name": "复原丹",
+   "icon": "pill_hp_big",
+   "reason": "丹药类型 type=hpPct"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "xiang",
+   "name": "信香",
+   "icon": "pill_cult",
+   "reason": "丹药类型 type=xiang"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "xiaoPo",
+   "name": "小破障丹",
+   "icon": "pill_break",
+   "reason": "丹药类型 type=break"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "xiaoSheng",
+   "name": "生肌续骨丹",
+   "icon": "pill_hp",
+   "reason": "丹药类型 type=hp"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "xiaoXuan",
+   "name": "日月玄浆",
+   "icon": "pill_cult",
+   "reason": "丹药类型 type=cult"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "xuming",
+   "name": "续命丹",
+   "icon": "pill_life",
+   "reason": "丹药类型 type=life"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "yuhuaShui",
+   "name": "玉华灵水",
+   "icon": "pill_mp",
+   "reason": "丹药类型 type=mpFull"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "zhuji",
+   "name": "筑基丹",
+   "icon": "pill_break",
+   "reason": "丹药类型 type=break"
+  },
+  {
+   "table": "RECIPES",
+   "id": "dan_huichun",
+   "name": "回春丹",
+   "icon": "pill_hp",
+   "reason": "按产出物 pillHp 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "dan_juhui",
+   "name": "聚气丹",
+   "icon": "pill_mp",
+   "reason": "按产出物 pillMp 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "dan_qingxin",
+   "name": "清心丹",
+   "icon": "pill_heart",
+   "reason": "按产出物 clear 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "dan_shengji",
+   "name": "生肌续骨丹",
+   "icon": "pill_hp",
+   "reason": "按产出物 xiaoSheng 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "dan_yuhua",
+   "name": "玉华灵水",
+   "icon": "pill_mp",
+   "reason": "按产出物 yuhuaShui 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "fu_dun",
+   "name": "遁符",
+   "icon": "fn_escape",
+   "reason": "按产出物 fuDun 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "fu_huo",
+   "name": "火符",
+   "icon": "fn_atk",
+   "reason": "按产出物 fuHuo 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "fu_jin",
+   "name": "金刚符",
+   "icon": "fn_def",
+   "reason": "按产出物 fuJin 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "fu_lei",
+   "name": "雷符",
+   "icon": "fn_atk",
+   "reason": "按产出物 fuLei 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "fu_zeng",
+   "name": "增益符",
+   "icon": "fn_buff",
+   "reason": "按产出物 fuZeng 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "qi_hushen",
+   "name": "护身玉符",
+   "icon": "fn_def",
+   "reason": "按产出物 guixibao 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "qi_jiuzhuan",
+   "name": "九转飞剑",
+   "icon": "fn_atk",
+   "reason": "按产出物 jiuzhuan 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "qi_qingye",
+   "name": "青叶舟",
+   "icon": "fn_escape",
+   "reason": "按产出物 qingyezhou 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "zhen_juling",
+   "name": "聚灵阵",
+   "icon": "array_zhenJuLing",
+   "reason": "按产出物 zhenJuLing 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "zhen_mizong",
+   "name": "迷踪阵",
+   "icon": "array_zhenMiZong",
+   "reason": "按产出物 zhenMiZong 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "zhen_suoling",
+   "name": "锁灵阵",
+   "icon": "array_zhenSuoLing",
+   "reason": "按产出物 zhenSuoLing 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "zhen_wuxing",
+   "name": "五行轮杀阵",
+   "icon": "array_zhenWuXing",
+   "reason": "按产出物 zhenWuXing 归并"
+  },
+  {
+   "table": "SKILLS",
+   "id": "baigu",
+   "name": "白骨飞剑",
+   "icon": "el_metal",
+   "reason": "技能类型 kind=sword"
+  },
+  {
+   "table": "SKILLS",
+   "id": "dugu",
+   "name": "毒火丝",
+   "icon": "fn_poison",
+   "reason": "技能类型 kind=poison"
+  },
+  {
+   "table": "SKILLS",
+   "id": "hanshui",
+   "name": "寒水箭",
+   "icon": "el_water",
+   "reason": "技能类型 kind=water"
+  },
+  {
+   "table": "SKILLS",
+   "id": "jianqi",
+   "name": "剑气纵横",
+   "icon": "el_metal",
+   "reason": "技能类型 kind=sword"
+  },
+  {
+   "table": "SKILLS",
+   "id": "leiming",
+   "name": "惊雷引",
+   "icon": "el_thunder",
+   "reason": "技能类型 kind=thunder"
+  },
+  {
+   "table": "SKILLS",
+   "id": "liehuo",
+   "name": "焚山掌",
+   "icon": "el_fire",
+   "reason": "技能类型 kind=fire"
+  },
+  {
+   "table": "SKILLS",
+   "id": "liuJian",
+   "name": "流转剑罡",
+   "icon": "el_metal",
+   "reason": "技能类型 kind=sword"
+  },
+  {
+   "table": "SKILLS",
+   "id": "luoshi",
+   "name": "落石诀",
+   "icon": "el_earth",
+   "reason": "技能类型 kind=earth"
+  },
+  {
+   "table": "SKILLS",
+   "id": "mumin",
+   "name": "缠木根",
+   "icon": "el_wood",
+   "reason": "技能类型 kind=wood"
+  },
+  {
+   "table": "SKILLS",
+   "id": "shenying",
+   "name": "神霄御剑",
+   "icon": "el_thunder",
+   "reason": "技能类型 kind=thunder"
+  },
+  {
+   "table": "SKILLS",
+   "id": "xuanZhu",
+   "name": "玄珠坠月",
+   "icon": "el_water",
+   "reason": "技能类型 kind=water"
+  },
+  {
+   "table": "SKILLS",
+   "id": "xueLian",
+   "name": "血炼神光",
+   "icon": "fn_blood",
+   "reason": "技能类型 kind=blood"
+  },
+  {
+   "table": "SKILLS",
+   "id": "zhentian",
+   "name": "镇压八方",
+   "icon": "fn_control",
+   "reason": "技能类型 kind=control"
+  },
+  {
+   "table": "SKILLS",
+   "id": "zhiquan",
+   "name": "直取",
+   "icon": "fn_atk",
+   "reason": "技能类型 kind=normal"
+  },
+  {
+   "table": "TALISMANS",
+   "id": "fuDun",
+   "name": "遁符",
+   "icon": "fn_escape",
+   "reason": "符箓类型 kind=escape"
+  },
+  {
+   "table": "TALISMANS",
+   "id": "fuHuo",
+   "name": "火符",
+   "icon": "fn_atk",
+   "reason": "符箓类型 kind=atk"
+  },
+  {
+   "table": "TALISMANS",
+   "id": "fuJin",
+   "name": "金刚符",
+   "icon": "fn_def",
+   "reason": "符箓类型 kind=def"
+  },
+  {
+   "table": "TALISMANS",
+   "id": "fuLei",
+   "name": "雷符",
+   "icon": "fn_atk",
+   "reason": "符箓类型 kind=atk"
+  },
+  {
+   "table": "TALISMANS",
+   "id": "fuZeng",
+   "name": "增益符",
+   "icon": "fn_buff",
+   "reason": "符箓类型 kind=buff"
+  },
+  {
+   "table": "VOTIVE_ITEMS",
+   "id": "fuShui",
+   "name": "清净符水",
+   "icon": "item_votive",
+   "reason": "愿物一类一图"
+  },
+  {
+   "table": "VOTIVE_ITEMS",
+   "id": "pingAn",
+   "name": "平安符",
+   "icon": "item_votive",
+   "reason": "愿物一类一图"
+  },
+  {
+   "table": "VOTIVE_ITEMS",
+   "id": "xiangHui",
+   "name": "净香灰",
+   "icon": "item_votive",
+   "reason": "愿物一类一图"
+  },
+  {
+   "table": "ZHENJUN",
+   "id": "g1",
+   "name": "山河障市真君",
+   "icon": "fx_g1",
+   "reason": "真君与法相同一实体，共用 fx_* 图"
+  },
+  {
+   "table": "ZHENJUN",
+   "id": "g10",
+   "name": "百无禁忌真君",
+   "icon": "fx_g10",
+   "reason": "真君与法相同一实体，共用 fx_* 图"
+  },
+  {
+   "table": "ZHENJUN",
+   "id": "g11",
+   "name": "福宝衰运真君",
+   "icon": "fx_g11",
+   "reason": "真君与法相同一实体，共用 fx_* 图"
+  },
+  {
+   "table": "ZHENJUN",
+   "id": "g12",
+   "name": "天外逐岁真君",
+   "icon": "fx_g12",
+   "reason": "真君与法相同一实体，共用 fx_* 图"
+  },
+  {
+   "table": "ZHENJUN",
+   "id": "g2",
+   "name": "市井江湖真君",
+   "icon": "fx_g2",
+   "reason": "真君与法相同一实体，共用 fx_* 图"
+  },
+  {
+   "table": "ZHENJUN",
+   "id": "g3",
+   "name": "关外北马真君",
+   "icon": "fx_g3",
+   "reason": "真君与法相同一实体，共用 fx_* 图"
+  },
+  {
+   "table": "ZHENJUN",
+   "id": "g4",
+   "name": "侠武乱禁真君",
+   "icon": "fx_g4",
+   "reason": "真君与法相同一实体，共用 fx_* 图"
+  },
+  {
+   "table": "ZHENJUN",
+   "id": "g5",
+   "name": "生死岐黄真君",
+   "icon": "fx_g5",
+   "reason": "真君与法相同一实体，共用 fx_* 图"
+  },
+  {
+   "table": "ZHENJUN",
+   "id": "g6",
+   "name": "南洋邪灵真君",
+   "icon": "fx_g6",
+   "reason": "真君与法相同一实体，共用 fx_* 图"
+  },
+  {
+   "table": "ZHENJUN",
+   "id": "g7",
+   "name": "西传密藏真君",
+   "icon": "fx_g7",
+   "reason": "真君与法相同一实体，共用 fx_* 图"
+  },
+  {
+   "table": "ZHENJUN",
+   "id": "g8",
+   "name": "天师法道真君",
+   "icon": "fx_g8",
+   "reason": "真君与法相同一实体，共用 fx_* 图"
+  },
+  {
+   "table": "ZHENJUN",
+   "id": "g9",
+   "name": "神工百匠真君",
+   "icon": "fx_g9",
+   "reason": "真君与法相同一实体，共用 fx_* 图"
+  }
+ ]
+}

@@ -1,21 +1,30 @@
-# 大型参考素材，不属于运行源码
-小说参考/
+# ===== 大型素材（不入库）=====
+_archive/
+art/generated/
+art/vibe/
 
-# 临时素材与手工备份
+# ===== 归档与手工备份 =====
 _backup/
-_shots/
 
-# 可由构建脚本重新生成
+# ===== 可重建产物 =====
 mobile/dist/
+desktop/app/
+desktop/release/
+desktop/release_clean/
+desktop/node_modules/
+node_modules/
 
-# Python 缓存
+# ===== 会话临时文件 =====
+.tmp/
+.dumate/
+box-agent*
+
+# ===== Python / 系统 =====
 __pycache__/
 *.pyc
-
-# 历史误操作副本与备份
-xcs3-*
-*.bak*
-
-# 系统文件
 .DS_Store
 Thumbs.db
+
+# ===== 历史误操作副本 =====
+xcs3-*
+*.bak*

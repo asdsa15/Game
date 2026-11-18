@@ -1,0 +1,130 @@
+{
+  "requests": [
+    {
+      "prompt": "以图1为风格基准：只沿用图1的水墨淡彩笔触与整体调性（墨线为骨、青金淡彩晕染、米白宣纸底色、柔和光影氛围），不沿用图1的具体画面内容与人物形象。\n画面主体：一册摊开的书页正在火中卷曲焦黑，纸页飞散如蝶，落进一炉炭火，炉旁散着几片未燃尽的残页。\n中国水墨淡彩游戏概念插画，墨线为骨，青金淡彩晕染，米白宣纸底色，柔和光影氛围感，横构图 16:9，画面干净，无文字、无印章、无 UI 元素、无边框。",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F7e53b4d9-0940-4d87-89db-3d7633e6db79.png?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T021906Z&x-oss-expires=3600&x-oss-signature=bcea1d6221bf1ddfd90246905082c0745adb1a90e15bad12b40373587c1f36c1&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/png"
+        }
+      ],
+      "aspect_ratio": "16:9",
+      "area": "2K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "end_reinc"
+    },
+    {
+      "prompt": "以图1为风格基准：只沿用图1的水墨淡彩笔触与整体调性（墨线为骨、青金淡彩晕染、米白宣纸底色、柔和光影氛围），不沿用图1的具体画面内容与人物形象。\n画面主体：三十座石台沿山脊一字排开，其中一座蒲团尚有余温、微微发亮，石阶两侧立着低首的模糊背影。\n中国水墨淡彩游戏概念插画，墨线为骨，青金淡彩晕染，米白宣纸底色，柔和光影氛围感，横构图 16:9，画面干净，无文字、无印章、无 UI 元素、无边框。",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F7e53b4d9-0940-4d87-89db-3d7633e6db79.png?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T021906Z&x-oss-expires=3600&x-oss-signature=bcea1d6221bf1ddfd90246905082c0745adb1a90e15bad12b40373587c1f36c1&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/png"
+        }
+      ],
+      "aspect_ratio": "16:9",
+      "area": "2K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "end_guowei"
+    },
+    {
+      "prompt": "以图1为风格基准：只沿用图1的水墨淡彩笔触与整体调性（墨线为骨、青金淡彩晕染、米白宣纸底色、柔和光影氛围），不沿用图1的具体画面内容与人物形象。\n画面主体：万千庙宇的金身在袅袅香烟中重叠成一片，塑像面目模糊不清，唯有一尊神像的轮廓清晰完整，正对香烟来处。\n中国水墨淡彩游戏概念插画，墨线为骨，青金淡彩晕染，米白宣纸底色，柔和光影氛围感，横构图 16:9，画面干净，无文字、无印章、无 UI 元素、无边框。",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F7e53b4d9-0940-4d87-89db-3d7633e6db79.png?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T021906Z&x-oss-expires=3600&x-oss-signature=bcea1d6221bf1ddfd90246905082c0745adb1a90e15bad12b40373587c1f36c1&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/png"
+        }
+      ],
+      "aspect_ratio": "16:9",
+      "area": "2K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "end_zhenjun"
+    },
+    {
+      "prompt": "以图1为风格基准：只沿用图1的水墨淡彩笔触与整体调性（墨线为骨、青金淡彩晕染、米白宣纸底色、柔和光影氛围），不沿用图1的具体画面内容与人物形象。\n画面主体：一泓清水与一片深不可测的夜空遥遥相对，中间悬着一颗将落未落的光点，水面倒映着星光。\n中国水墨淡彩游戏概念插画，墨线为骨，青金淡彩晕染，米白宣纸底色，柔和光影氛围感，横构图 16:9，画面干净，无文字、无印章、无 UI 元素、无边框。",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F7e53b4d9-0940-4d87-89db-3d7633e6db79.png?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T021906Z&x-oss-expires=3600&x-oss-signature=bcea1d6221bf1ddfd90246905082c0745adb1a90e15bad12b40373587c1f36c1&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/png"
+        }
+      ],
+      "aspect_ratio": "16:9",
+      "area": "2K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "end_daotai"
+    },
+    {
+      "prompt": "以图1为风格基准：只沿用图1的水墨淡彩笔触与整体调性（墨线为骨、青金淡彩晕染、米白宣纸底色、柔和光影氛围），不沿用图1的具体画面内容与人物形象。\n画面主体：一位背影踏着云路上行，身下山川与灯火越来越小，天路尽头隐没在一片白光里。\n中国水墨淡彩游戏概念插画，墨线为骨，青金淡彩晕染，米白宣纸底色，柔和光影氛围感，横构图 16:9，画面干净，无文字、无印章、无 UI 元素、无边框。",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F7e53b4d9-0940-4d87-89db-3d7633e6db79.png?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T021906Z&x-oss-expires=3600&x-oss-signature=bcea1d6221bf1ddfd90246905082c0745adb1a90e15bad12b40373587c1f36c1&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/png"
+        }
+      ],
+      "aspect_ratio": "16:9",
+      "area": "2K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "end_ascend"
+    },
+    {
+      "prompt": "以图1为风格基准：只沿用图1的水墨淡彩笔触与整体调性（墨线为骨、青金淡彩晕染、米白宣纸底色、柔和光影氛围），不沿用图1的具体画面内容与人物形象。\n画面主体：一扇半掩的窗，窗外是暮色与远山，一朵云正慢慢归向山头，窗前空无一人，只有一张旧椅。\n中国水墨淡彩游戏概念插画，墨线为骨，青金淡彩晕染，米白宣纸底色，柔和光影氛围感，横构图 16:9，画面干净，无文字、无印章、无 UI 元素、无边框。",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F7e53b4d9-0940-4d87-89db-3d7633e6db79.png?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T021906Z&x-oss-expires=3600&x-oss-signature=bcea1d6221bf1ddfd90246905082c0745adb1a90e15bad12b40373587c1f36c1&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/png"
+        }
+      ],
+      "aspect_ratio": "16:9",
+      "area": "2K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "end_xiaoyao"
+    },
+    {
+      "prompt": "以图1为风格基准：只沿用图1的水墨淡彩笔触与整体调性（墨线为骨、青金淡彩晕染、米白宣纸底色、柔和光影氛围），不沿用图1的具体画面内容与人物形象。\n画面主体：山道两旁的人群齐齐低首不敢言语，只看见远处山道上有一个背影缓缓走过，衣袂不动。\n中国水墨淡彩游戏概念插画，墨线为骨，青金淡彩晕染，米白宣纸底色，柔和光影氛围感，横构图 16:9，画面干净，无文字、无印章、无 UI 元素、无边框。",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F7e53b4d9-0940-4d87-89db-3d7633e6db79.png?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T021906Z&x-oss-expires=3600&x-oss-signature=bcea1d6221bf1ddfd90246905082c0745adb1a90e15bad12b40373587c1f36c1&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/png"
+        }
+      ],
+      "aspect_ratio": "16:9",
+      "area": "2K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "end_xianzun"
+    },
+    {
+      "prompt": "以图1为风格基准：只沿用图1的水墨淡彩笔触与整体调性（墨线为骨、青金淡彩晕染、米白宣纸底色、柔和光影氛围），不沿用图1的具体画面内容与人物形象。\n画面主体：一条由森白之物铺成的窄路通向山顶寒风，路上一人独行，斗篷翻卷，身后是翻涌的浓云与晦暗天色。\n中国水墨淡彩游戏概念插画，墨线为骨，青金淡彩晕染，米白宣纸底色，柔和光影氛围感，横构图 16:9，画面干净，无文字、无印章、无 UI 元素、无边框。",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F7e53b4d9-0940-4d87-89db-3d7633e6db79.png?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T021906Z&x-oss-expires=3600&x-oss-signature=bcea1d6221bf1ddfd90246905082c0745adb1a90e15bad12b40373587c1f36c1&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/png"
+        }
+      ],
+      "aspect_ratio": "16:9",
+      "area": "2K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "end_modao"
+    },
+    {
+      "prompt": "以图1为风格基准：只沿用图1的水墨淡彩笔触与整体调性（墨线为骨、青金淡彩晕染、米白宣纸底色、柔和光影氛围），不沿用图1的具体画面内容与人物形象。\n画面主体：八柱圆满的夜里，庙前一坐深，佛前晨光初照，香客满阶个个低头，阶前香炉青烟与晨雾相合。\n中国水墨淡彩游戏概念插画，墨线为骨，青金淡彩晕染，米白宣纸底色，柔和光影氛围感，横构图 16:9，画面干净，无文字、无印章、无 UI 元素、无边框。",
+      "reference_images": [
+        {
+          "url": "https://matrix-internal-cn.oss-cn-shanghai.aliyuncs.com/user_file_upload_tmp%2F2026-11-18%2F7e53b4d9-0940-4d87-89db-3d7633e6db79.png?x-oss-credential=LTAI5tKjcNxbSxktvpFqdYgH%2F20261118%2Fcn-shanghai%2Foss%2Faliyun_v4_request&x-oss-date=20261118T021906Z&x-oss-expires=3600&x-oss-signature=bcea1d6221bf1ddfd90246905082c0745adb1a90e15bad12b40373587c1f36c1&x-oss-signature-version=OSS4-HMAC-SHA256",
+          "mime_type": "image/png"
+        }
+      ],
+      "aspect_ratio": "16:9",
+      "area": "2K",
+      "n": 1,
+      "output_format": "png",
+      "output_file": "end_shizun"
+    }
+  ]
+}

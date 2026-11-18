@@ -19,8 +19,8 @@ function grab(name) {
   const i = gcodeAll.indexOf('function ' + name + '(');
   if (i < 0) throw new Error('找不到 ' + name);
   let depth = 0, started = false, j = i;
-  for (; j < gcode.length; j++) {
-    const ch = gcode[j];
+  for (; j < gcodeAll.length; j++) {
+    const ch = gcodeAll[j];
     if (ch === '{') { depth++; started = true; }
     else if (ch === '}') { depth--; if (started && depth === 0) { j++; break; } }
   }
