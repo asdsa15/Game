@@ -19,6 +19,8 @@
 import shutil
 import sys
 import hashlib
+import base64
+import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -27,8 +29,15 @@ DIST = ROOT / 'dist'
 
 HTML_SRC = SRC / '问道长生v6.html'
 DATA_SRC = SRC / 'wxcs3-data.js'
+RULES_SRC = SRC / 'wxcs3-rules.js'
 GAME_SRC = SRC / 'wxcs3-game.js'
 CSS_SRC = ROOT / 'mobile.css'
+ART_TAG = '<script src="wxcs3-art.js"></script>'
+
+# 扩展文件命名约定：wxcs3-ext-*.js
+# 注入顺序＝文件名排序，所以需要「先加载」的用 10-、20- 前缀，
+# 不必改 HTML、也不必改这个脚本。
+EXT_GLOB = 'wxcs3-ext-*.js'
 
 
 def read(p: Path) -> str:
@@ -37,10 +46,46 @@ def read(p: Path) -> str:
     return p.read_text(encoding='utf-8')
 
 
+def art_data_script() -> str:
+    """art/scenes/*.jpg → base64 → window.ART_DATA（dist 单文件用）。
+    目录为空或缺图不报错：wxcs3-art.js 兜底独立文件路径，渲染层再兜底纯文字。"""
+    art_dir = SRC / 'art' / 'scenes'
+    data = {}
+    if art_dir.is_dir():
+        for jpg in sorted(art_dir.glob('*.jpg')):
+            b64 = base64.b64encode(jpg.read_bytes()).decode('ascii')
+            data[jpg.stem] = 'data:image/jpeg;base64,' + b64
+    return ('<script>window.ART_DATA=' +
+            json.dumps(data, separators=(',', ':'), ensure_ascii=False) +
+            '</script>\n' + ART_TAG)
+
+
 def main() -> None:
     html = read(HTML_SRC)
     css = read(CSS_SRC)
-    scripts = [('wxcs3-data.js', read(DATA_SRC)), ('wxcs3-game.js', read(GAME_SRC))]
+    # v9.0 第2步：rules 必须排在 game 之前——
+    # game.js 在文件开头就把 RULES.* 绑成局部常量，缺了就 throw。
+    scripts = [('wxcs3-data.js', read(DATA_SRC)),
+               ('wxcs3-rules.js', read(RULES_SRC)),
+               ('wxcs3-game.js', read(GAME_SRC))]
+
+    # ---- 0. 插画 base64 注入（在 ART_TAG 还未被内联替换之前插入） ----
+    art_inline = read(SRC / 'wxcs3-art.js')
+    if ART_TAG not in html:
+        sys.exit(f'找不到脚本标签：{ART_TAG}（HTML 结构变了？）')
+    html = html.replace(ART_TAG, art_data_script(), 1)
+    scripts.insert(1, ('wxcs3-art.js', art_inline))
+
+    # ---- 0.5 扩展文件：wxcs3-ext-*.js 自动收集 ----
+    # 目的：新玩法一律写在独立文件里，不再往 10k 行的 game.js 里堆。
+    # 约定：文件名排序即加载顺序；HTML 不需要出现这些 <script> 标签。
+    # 注入点放在 game.js 之后——扩展要读 window.WXCS3 / WXCS3_DATA，
+    # 必须在它们已经建立之后再执行。
+    ext_files = sorted(SRC.glob(EXT_GLOB))
+    ext_scripts = [(p.name, p.read_text(encoding='utf-8')) for p in ext_files]
+    for name, code in ext_scripts:
+        if '</script' in code.lower():
+            sys.exit(f'{name} 里含 </script 字样，无法安全内联')
 
     # ---- 1. 内联脚本 ----
     for name, code in scripts:
@@ -50,6 +95,19 @@ def main() -> None:
         if '</script' in code.lower():
             sys.exit(f'{name} 里含 </script 字样，无法安全内联')
         html = html.replace(tag, '<script>\n' + code + '\n</script>', 1)
+
+    # 扩展紧跟 game.js 之后一次性插入
+    if ext_scripts:
+        block = '\n'.join('<script>\n' + code + '\n</script>' for _n, code in ext_scripts)
+        anchor = '<script>\n' + read(GAME_SRC) + '\n</script>'
+        if anchor not in html:
+            # 兜底：game.js 内容被其他步骤改过时，退到「最后一个内联 script 之后」
+            idx = html.rfind('</script>')
+            if idx < 0:
+                sys.exit('无法定位 game.js 注入点')
+            html = html[:idx + len('</script>')] + '\n' + block + html[idx + len('</script>'):]
+        else:
+            html = html.replace(anchor, anchor + '\n' + block, 1)
 
     # ---- 2. 注入移动端补丁 ----
     if '</style' in css.lower():

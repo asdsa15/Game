@@ -8,6 +8,28 @@
 (function (G) {
   'use strict';
   const D = G.WXCS3_DATA;
+  /* v9.0 第2步：纯规则层。
+     这 31 个函数已搬到 wxcs3-rules.js（不碰 DOM、不写 S、不产 HTML）。
+     在这里绑成同名局部常量，本文件内 400 多处调用点一行都不用改。
+     若 wxcs3-rules.js 未加载，直接报错而不是静默降级——
+     缺了 fmtNum 会让所有数值显示变成 undefined，那种「能跑但显示错」更难查。 */
+  const RULES = G.WXCS3_RULES;
+  if (!RULES) throw new Error('缺少 wxcs3-rules.js：纯规则层未加载');
+  const fmtNum = RULES.fmtNum, fmtTime = RULES.fmtTime, pad2 = RULES.pad2;
+  const stampName = RULES.stampName, realmNameOf = RULES.realmNameOf;
+  const buildMeta = RULES.buildMeta, envelope = RULES.envelope;
+  const checkSaveVersion = RULES.checkSaveVersion;
+  const keMul = RULES.keMul, qualityDef = RULES.qualityDef;
+  const costLine = RULES.costLine, mainlineFor = RULES.mainlineFor;
+  const placeVerse = RULES.placeVerse, tribDetail = RULES.tribDetail;
+  const discipleStageOf = RULES.discipleStageOf, insightAt = RULES.insightAt;
+  const unlockRow = RULES.unlockRow, unlockTable = RULES.unlockTable;
+  const rankBaseXian = RULES.rankBaseXian, daotongClassOf = RULES.daotongClassOf;
+  const shenTongKindMarked = RULES.shenTongKindMarked, stShort = RULES.stShort;
+  const artName = RULES.artName, outNameOf = RULES.outNameOf;
+  const matUsedBy = RULES.matUsedBy, hookDef = RULES.hookDef;
+  const tallyInit = RULES.tallyInit, placeBaseLingqi = RULES.placeBaseLingqi;
+  const goalRewardText = RULES.goalRewardText;
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   /* v8.1 P0 M4：clamp 会原样放行 NaN（Math.min(NaN, x) → NaN）。
@@ -33,26 +55,13 @@
   let _rngSeed = null;      // null = 未注入，走系统随机
   let _rngState = 0;
   let _rngImpl = null;      // 当前 PRNG 实例
-  function mulberry32(a) {
-    return function () {
-      a |= 0; a = (a + 0x6D2B79F5) | 0;
-      let t = Math.imul(a ^ (a >>> 15), 1 | a);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
   function rng() { return _rngImpl ? _rngImpl() : Math.random(); }
   /* 注入/清除种子。seed 变化后序列从头开始，便于「同一测试存档复现」。 */
   function setSeed(seed) {
     if (seed === null || seed === undefined) { _rngSeed = null; _rngImpl = null; _rngState = 0; return null; }
-    const n = (typeof seed === 'number' && isFinite(seed)) ? (seed | 0) : hashStr(String(seed));
-    _rngSeed = n; _rngState = n; _rngImpl = mulberry32(n);
+    const n = (typeof seed === 'number' && isFinite(seed)) ? (seed | 0) : RULES.hashStr(String(seed));
+    _rngSeed = n; _rngState = n; _rngImpl = RULES.mulberry32(n);
     return n;
-  }
-  function hashStr(s) {
-    let h = 2166136261;
-    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
-    return h | 0;
   }
   function currentSeed() { return _rngSeed; }
   const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -728,17 +737,6 @@
        xun: 0 表示顺手（不占旬），1 表示占一旬。
      成本只写「这一下真正要付的」，不重复计月度固定开销——
      固定开销另有账本，这里混进来玩家会以为被收两次。 */
-  function costLine(c) {
-    if (!c) return '';
-    const p = [];
-    if (c.xun) p.push('占 ' + c.xun + ' 旬');
-    else if (c.xun === 0) p.push('不占旬');
-    if (c.stones) p.push(c.stones + ' 石');
-    if (c.contrib) p.push(c.contrib + ' 贡献');
-    if (c.xianghuo) p.push(c.xianghuo + ' 香火');
-    if (c.herb) p.push(c.herb);
-    return p.join(' · ');
-  }
   /* 带预览的动作行：正文一行，成本另作一行小字。390 宽下不会把标题挤成竖排。 */
   function optRowX(k, txt, tag, note, dis, act, cost) {
     const t = tag ? `<span class="tag ${tag.cls}">${esc(tag.name)}</span>` : '';
@@ -843,14 +841,6 @@
      现在：rank 由各境真实阶数累加得出；反向有 realmIdxRank / stageIdxRank。
      跨体系（仙↔神）不靠 rank 比大小，改用 realmGap() 只比"大境差"，
      具体强弱一律交给战力比 R。 */
-  function rankBaseXian() {
-    const out = [0];
-    const rs = D.XIAN_REALMS || [];
-    for (let i = 0; i < rs.length; i++) {
-      out.push(out[i] + Math.max(1, (rs[i].stages || []).length || 1));
-    }
-    return out;
-  }
   function positionRank() {
     if (isShen()) return S.pillar * 4 + S.pos;
     const b = rankBaseXian();
@@ -1182,16 +1172,6 @@
     }
     if (g.kind === 'followers') return (S.followers || 0) + ' / ' + g.n;
     return '';
-  }
-  function goalRewardText(g) {
-    const r = g.reward || {}, p = [];
-    if (r.stones) p.push('灵石 +' + fmtNum(r.stones));
-    if (r.xianghuo) p.push('香火 +' + fmtNum(r.xianghuo));
-    if (r.pill) {
-      const it = D.PILL_EXT.find(function (x) { return x.id === r.pill; });
-      if (it) p.push(it.name + ' ×1');
-    }
-    return p.join(' · ') || '无';
   }
   function grantGoal(g) {
     const r = g.reward || {};
@@ -1649,9 +1629,6 @@
     const r = xrealm();
     return !!r && S.xStage >= (r.stages || []).length - 1;
   }
-  function tribDetail(id) {
-    return D.TRIBULATION.filter(function (x) { return x.id === id; })[0] || D.TRIBULATION[0];
-  }
   function rollTribulation() {
     const W = D.TRIB_WEIGHT;
     let total = 0;
@@ -1824,11 +1801,6 @@
      逆徒、杀师两条成就的计数器就挂在这里。 */
   function discipleLimit() { return D.DISCIPLE_LIMIT; }
   function discipleList() { return Array.isArray(S.disciples) ? S.disciples : (S.disciples = []); }
-  function discipleStageOf(d) {
-    let st = D.DISCIPLE_STAGE[0];
-    D.DISCIPLE_STAGE.forEach(function (x) { if (numOr(d.days, 0) >= x.need) st = x; });
-    return st;
-  }
   function discipleAdd(name, bond) {
     const list = discipleList();
     if (list.length >= discipleLimit()) return { ok: false, why: '门下已满（上限 ' + discipleLimit() + ' 人）' };
@@ -1921,10 +1893,6 @@
     return t;
   }
   function tierLabel(k) { return statTier(k).label; }
-  function insightAt(statKey, minV) {
-    const row = D.INSIGHT_LINES.find(function (x) { return x.stat === statKey && x.min === minV; });
-    return row ? row.text : '';
-  }
   /* 某属性在门槛之上才返回线索，否则空串。渲染处直接拼，空串等于没这行。 */
   function clue(statKey) {
     const rows = D.INSIGHT_LINES.filter(function (x) { return x.stat === statKey; });
@@ -1937,13 +1905,8 @@
   /* ---------- 功能门（v8.1 P0 §2.2） ----------
      UNLOCK_XIAN / UNLOCK_SHEN 两张表建了很久却零引用：16 条境界词永远不出现。
      这里只做软门——抬档时把该档的境界词写进纪事，帮助面板按档显示
-     「能做什么 / 还有什么未显」。硬门一概不加：老档被锁在门外比没有门更糟。 */
-  function unlockTable(line) { return line === 'shen' ? D.UNLOCK_SHEN : D.UNLOCK_XIAN; }
-  function unlockRow(line, stage) {
-    const t = unlockTable(line);
-    for (const r of t) if (r.stage === stage) return r;
-    return null;
-  }
+     「能做什么 / 还有什么未显」。硬门一概不加：老档被锁在门外比没有门更糟。
+     unlockTable / unlockRow 已移入 wxcs3-rules.js（纯查表）。 */
   function bumpUnlock(line, stage) {
     if (!(stage > (S.unlockStage || 0))) return false;
     S.unlockStage = stage;
@@ -2202,10 +2165,6 @@
     return '冬。霜封了洞口，吐纳时呼出的气会凝成白雾。';
   }
   /* 地名题咏 */
-  function placeVerse(id) {
-    const v = (D.VERSES && D.VERSES.places) || {};
-    return v[id] || '';
-  }
 
   function renderLog() {
     if (!S.log.length) return '';
@@ -2231,6 +2190,11 @@
 
   /* ============ 行动 ============ */
   const ACT = {};
+  /* v9.0 第1步：扩展动作注册表。
+     与 ACT 同形（key 不带 do_ 前缀亦可，dispatch 两处都会试），
+     但由外部文件通过 G.WXCS3_EXT_ACT 写入。
+     放在这里而不是新建全局，是为了让 dispatch 只有一条查找路径。 */
+  const EXT_ACT = (G.WXCS3_EXT_ACT = G.WXCS3_EXT_ACT || {});
 
   /* v8.1 P0 M5：指令坞折叠组开关 */
   ACT.do_dockGrp = (g) => {
@@ -5132,45 +5096,6 @@
   const SLOT_N = 5;
   const slotKey = (i) => 'wxcs3_slot_' + i;
 
-  function pad2(n) { return (n < 10 ? '0' : '') + n; }
-  function fmtTime(ms) {
-    const d = new Date(ms || Date.now());
-    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) +
-      ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
-  }
-  function stampName() {
-    const d = new Date();
-    return '' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) +
-      '-' + pad2(d.getHours()) + pad2(d.getMinutes());
-  }
-
-  /* 只读地算出存档里的境界名（不污染当前 S） */
-  function realmNameOf(st) {
-    if (!st) return '—';
-    if (st.cultivation === 'shen') {
-      const p = D.PILLARS[clamp(parseInt(st.pillar, 10) || 0, 0, 7)];
-      const pos = D.POSITIONS[clamp(parseInt(st.pos, 10) || 0, 0, 3)] || '';
-      return (p ? p.name : '—') + '·' + pos;
-    }
-    const r = D.XIAN_REALMS[clamp(parseInt(st.xRealm, 10) || 0, 0, 5)];
-    if (!r) return '—';
-    const s = r.stages[clamp(parseInt(st.xStage, 10) || 0, 0, 4)] || '';
-    return r.name + (s ? '·' + s : '');
-  }
-
-  function buildMeta(st) {
-    if (!st) return null;
-    return {
-      name: st.name || '无名',
-      dao: st.dao || st.name || '无名',
-      realm: realmNameOf(st),
-      age: st.age,
-      year: Math.floor((st.turn || 0) / 12),
-      when: fmtTime(Date.now()),
-      phase: st.phase || ''
-    };
-  }
-
   function slotMeta() {
     let m = null;
     try { m = JSON.parse(localStorage.getItem(SLOT_META) || '{}'); } catch (e) { m = null; }
@@ -5188,9 +5113,6 @@
   }
 
   /* 把局面打包成能导入导出的信封 */
-  function envelope(st) {
-    return { format: 'wxcs3-save', version: VER, savedAt: Date.now(), state: st };
-  }
 
   /* 读回来时补齐缺失字段，免得旧档 / 残档把引擎打崩 */
   function applyState(st) {
@@ -5757,13 +5679,6 @@
 
   /* ---------- P0-3 神通授予 ---------- */
   /* 道统 → 大类（DAOTONG 表按金木水火土/十二炁/雷/孤独分九组） */
-  function daotongClassOf(name) {
-    const k = D.DAOTONG_CLASS || {};
-    for (const key in D.DAOTONG) {
-      if ((D.DAOTONG[key] || []).indexOf(name) >= 0) return k[key] || '';
-    }
-    return '';
-  }
 
   /* ---------- 神通：原著里只有少数标了类别（命/术/身/目），其余按名字稳定分配 ----------
      为什么要四类而不是统一倍率：神通是这个游戏里唯一「属于你自己的道」的东西。
@@ -5779,15 +5694,7 @@
     normal: '朴素', sword: '剑', fire: '火', water: '水', wood: '木',
     earth: '土', poison: '毒', thunder: '雷', control: '控', blood: '血炼'
   };
-  function stShort(n) { return String(n || '').replace(/（[^）]*）/g, ''); }
-  function shenTongKindMarked(name) {
-    const m = /（([命术身目]+)）/.exec(name || '');
-    return m ? m[1] : '';
-  }
   function shenTongKind(name) {
-    /* 三类来源：① 抽取时记下的 S.stKind（最准，能避重）
-                  ② 原著标注（命/术/身/目）
-                  ③ 名字哈希（老存档兜底，至少保证同一个人每次一致） */
     if (S.stKind && S.stKind[name]) return S.stKind[name];
     const mk = shenTongKindMarked(name);
     if (mk) return mk;
@@ -6020,25 +5927,8 @@
      ============================================================ */
 
   /* ---------- P3-24 大数字格式化 ---------- */
-  function fmtNum(n) {
-    n = Math.round(Number(n) || 0);
-    const a = Math.abs(n);
-    if (a >= 100000000) return (n / 100000000).toFixed(2).replace(/\.?0+$/, '') + ' 亿';
-    if (a >= 10000) return (n / 10000).toFixed(2).replace(/\.?0+$/, '') + ' 万';
-    if (a >= 1000) return n.toLocaleString('en-US');
-    return String(n);
-  }
 
   /* ---------- P2-19 五行相克 ---------- */
-  function keMul(myEl, foeEl) {
-    if (!myEl || !foeEl) return 1;
-    const me = D.ELEMENTS[myEl];
-    if (!me) return 1;
-    if (me.ke === foeEl) return 1.3;                  // 我克敌
-    const fo = D.ELEMENTS[foeEl];
-    if (fo && fo.ke === myEl) return 0.85;            // 敌克我
-    return 1;
-  }
   function mainEl() { return (S.rootEls && S.rootEls[0]) || null; }
 
   /* 八柱正位：不再是「继续破柱」，而是证真君的结算口 */
@@ -6205,10 +6095,6 @@
   /* 地点基础灵气 + 洞府升级档 分开存，最终值取两者较高者。
      旧代码迁地时直接用地点基础灵气覆盖 S.lingqi，
      花灵石升的洞府被一次旅行清零，还能靠迁到高灵气处免费拿高灵气。 */
-  function placeBaseLingqi(id) {
-    const pl = (typeof PLACES !== 'undefined' ? PLACES : []).find(function (p) { return p.id === id; });
-    return pl ? pl.lingqi : 1;
-  }
   function syncLingqi() {
     const base = placeBaseLingqi(S.place || 'qingyue');
     const up = clamp(parseInt(S.lingqiUp, 10) || 0, 0, D.LINGQI.length - 1);
@@ -6250,14 +6136,6 @@
   }
 
   /* ---------- P3-27 存档版本校验 ---------- */
-  function checkSaveVersion(o) {
-    if (!o || typeof o !== 'object') return { ok: false, why: '不是对象' };
-    const v = String(o.version || o.format || '');
-    if (o.format === 'wxcs3-all') return { ok: true, why: '备份包' };
-    if (o.format === 'wxcs3-save' && v !== VER) return { ok: true, why: '存自 v' + v + '（字段已兜底）' };
-    if (!o.format && !o.state && o.started === undefined) return { ok: false, why: '无法识别的存档' };
-    return { ok: true, why: 'ok' };
-  }
 
   /* ============================================================
      回血 / 疗伤 / 法宝 / 招式 / 奇遇（素材扩充）
@@ -8205,7 +8083,11 @@
     if (act.startsWith('act:')) { const k = act.slice(4); if (ACT[k]) ACT[k](); return; }
     if (act.startsWith('do;')) {
       const parts = act.slice(3).split(':');
-      const fn = ACT['do_' + parts[0]] || ACT[parts[0]];
+      /* v9.0 第1步：先查扩展注册表，再回退到本文件的 ACT。
+         这样新玩法写在 wxcs3-ext-*.js 里也能被同一个 do; 通道调用，
+         而 game.js 只需要这一处转发，不必为每个新功能再改一次。 */
+      const extFn = EXT_ACT[parts[0]] ? EXT_ACT[parts[0]] : EXT_ACT['do_' + parts[0]];
+      const fn = extFn || ACT['do_' + parts[0]] || ACT[parts[0]];
       if (fn) fn(parts[1], parts[2], parts[3]);
       else toast('无此指令：' + act);
       return;
@@ -8391,17 +8273,6 @@
     return a[Math.floor(rng()*10)] + b[Math.floor(rng()*10)];
   }
 
-  function mainlineFor(p) {
-    const m = {
-      ascend: '自创功法、参悟天机，寻飞升之路——但要先补回断掉的那四境。',
-      long: '你要护住的人尚在，可百年千年，总有人先走。',
-      revenge: '血亲旧怨未雪。仇家已在青岳附近露过面。',
-      guard: '某位挚友身负隐疾，寿元将尽，你在寻药。',
-      rule: '从外门弟子爬到一宗之主，第一步先要筑基。',
-      free: '无根无绊——机缘自会找上门，也可能找上门的是刀。'
-    };
-    return m[p] || m.free;
-  }
 
   /* ---------- 结局（接 D.ENDINGS 表） ---------- */
   /* 之前结局是硬编码的一行字，12 个结局全在 data 里躺着没人用。
@@ -8567,10 +8438,6 @@
      唯一的硬约束：每次制作占 1 个月，和打坐采气互斥。
      ============================================================ */
 
-  function artName(id) {
-    const a = D.CRAFT_ARTS.find(function (x) { return x.id === id; });
-    return a ? a.name : id;
-  }
   function craftTierOf(art) {
     const lv = clamp(parseInt((S.craftLv || {})[art], 10) || 1, 1, D.CRAFT_LEVELS.length);
     return D.CRAFT_LEVELS[lv - 1].tier;
@@ -8637,17 +8504,6 @@
   function outPriceOf(recipe, quality) {
     const base = matCostOf(recipe) * 2.2;
     return Math.round(base * (quality ? quality.mul : 1));
-  }
-  function outNameOf(recipe) {
-    const t = D.TALISMANS.find(function (x) { return x.id === recipe.out; });
-    if (t) return t.name;
-    const p = D.PILL_EXT.find(function (x) { return x.id === recipe.out; });
-    if (p) return p.name;
-    const a = D.ARTIFACT_EXT.find(function (x) { return x.id === recipe.out; });
-    if (a) return a.name;
-    const dk = D.ARRAY_DISKS.find(function (x) { return x.id === recipe.out; });
-    if (dk) return dk.name;
-    return recipe.name;
   }
   function addMat(id, n) {
     S.bagMat = S.bagMat || {};
@@ -9081,10 +8937,6 @@
   };
   function closeModalSoon() { }
 
-  function matUsedBy(id) {
-    return D.RECIPES.filter(function (r) { return (r.mats || {})[id]; })
-      .map(function (r) { return outNameOf(r); });
-  }
   ACT.openBagMat = () => {
     const keys = Object.keys(S.bagMat || {}).filter(function (k) { return (S.bagMat[k] || 0) > 0; });
     let b = '';
@@ -9279,9 +9131,6 @@
   };
 
   /* ---------- 坊市卖出 ---------- */
-  function qualityDef(id) {
-    return D.QUALITY.find(function (q) { return q.id === id; }) || D.QUALITY.find(function (q) { return q.id === 'zhong'; });
-  }
   function addQuality(id, qid, n) {
     if (!S.craftedQ || typeof S.craftedQ !== 'object') S.craftedQ = {};
     if (!Array.isArray(S.craftedQ[id])) S.craftedQ[id] = [];
@@ -9840,9 +9689,6 @@
      ============================================================ */
   const HOOK_MAX = 3;
 
-  function hookDef(id) {
-    return (D.HOOKS || []).find(function (h) { return h.id === id; }) || null;
-  }
   function hookAll() {
     if (!Array.isArray(S.hooks)) S.hooks = [];
     return S.hooks;
@@ -10129,26 +9975,6 @@
   const ACH_KEY = 'wxcs3.ach';
   let achBusy = false;
 
-  function tallyInit() {
-    return {
-      craft: 0, qZhong: 0, qShang: 0, qJi: 0,
-      warFight: 0, warWin: 0, warOver: 0, warOne: 0, warHold: 0,
-      kingKill: 0, seizeWin: 0, takeXianji: 0, killMaster: 0, godKill: 0, overNoPill: 0,
-      escapeDesperate: 0, reverseWin: 0, oldGrudge: 0,
-      sell: 0, sellMax: 0, bestMonthNet: 0, auctionWin: 0, blackSell: 0,
-      enc: 0, encIds: {}, gate: 0, places: { qingyue: 1 }, relic: 0,
-      talk: {},
-      kill: 0,
-      deaths: 0, deathBySame: 0, deathCrush: 0, deathSit: 0, deathDaohua: 0,
-      deathLonely: 0, deathEmpty: 0,
-      stones0: 0, templeBroken: 0, pillStreak: 0, pillUsed: 0, heartBreak: 0,
-      zifuFail: 0, killMortals: 0, bloodRite: 0, quanbingLost: 0,
-      collapseSurvive: 0, edgeBreak: 0, buyAtZero: 0, badDisciple: 0,
-      saveAndKill: 0, dongtianMonth: 0, nameBorrow: 0,
-      npcFuneral: 0, npcFuneralSameRealm: 0, enemyToFriend: 0,
-      foundedSect: 0, leftSect: 0, gfChanged: 0, cheated: 0, aloneCert: 0
-    };
-  }
   function tly() {
     if (!S.tally || typeof S.tally !== 'object') S.tally = tallyInit();
     return S.tally;
@@ -10515,7 +10341,13 @@
     costLine,
     /* v9.0 M0：事件池探针。验的是「when 真的在筛事件」，
        否则条件字段又会变成写不读的死字段。 */
-    eventSlot };
+    eventSlot,
+    /* v9.0 第1步：给扩展文件用的最小工具面。
+       只导出「写纪事 / 弹提示」两个，不给扩展开 render 与内部状态，
+       避免扩展绕过既有渲染管线另起一套。 */
+    logLine,
+    toast,
+    get EXT_ACT() { return EXT_ACT; } };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

@@ -10,9 +10,12 @@ vm.runInNewContext(fs.readFileSync(path.join(ROOT, 'wxcs3-data.js'), 'utf8'),
   { window: w, G: w, Math, Object, Array, JSON, String, Number });
 const D = w.WXCS3_DATA;
 const gcode = fs.readFileSync(path.join(ROOT, 'wxcs3-game.js'), 'utf8');
+const rcode = fs.readFileSync(path.join(ROOT, 'wxcs3-rules.js'), 'utf8');
 
 function grab(name) {
-  const i = gcode.indexOf('function ' + name + '(');
+  /* v9.0 第2步：纯函数已移入 wxcs3-rules.js，两边都要找 */
+  const gcodeAll = gcode + '\n' + rcode;
+  const i = gcodeAll.indexOf('function ' + name + '(');
   if (i < 0) throw new Error('找不到 ' + name);
   let depth = 0, started = false, j = i;
   for (; j < gcode.length; j++) {
@@ -20,7 +23,7 @@ function grab(name) {
     if (ch === '{') { depth++; started = true; }
     else if (ch === '}') { depth--; if (started && depth === 0) { j++; break; } }
   }
-  return gcode.slice(i, j);
+  return gcodeAll.slice(i, j);
 }
 
 let pass = 0, fail = 0;
