@@ -15,7 +15,10 @@ const w = {};
 vm.runInNewContext(fs.readFileSync(path.join(ROOT, 'wxcs3-data.js'), 'utf8'),
   { window: w, G: w, Math, Object, Array, JSON, String, Number });
 const D = w.WXCS3_DATA;
-const gcode = fs.readFileSync(path.join(ROOT, 'wxcs3-game.js'), 'utf8');
+const gcode = [path.join(ROOT, 'wxcs3-game.js')].concat(
+  fs.readdirSync(ROOT).filter(function (f) { return /^wxcs3-ext-.*\.js$/.test(f); })
+    .sort().map(function (f) { return path.join(ROOT, f); })
+).map(function (p) { return fs.readFileSync(p, 'utf8'); }).join('\n');
 
 /* ---------- 1. 被写入过的 tally 键 ---------- */
 const written = new Set();
@@ -59,7 +62,6 @@ function readKeysOf(src) {
 const ARCHIVED = {
   takeXianji: '需要「夺仙基」玩法（击败他人后夺取其仙基）',
 
-  foundedSect: '需要「开宗立派」玩法（自立门户、立规矩、收弟子）',
   relic: '需要「上古遗迹发现」玩法（舆图浮现遗迹、入内探查）',
   killMortals: '需要「凡人杀戮」场景（现无凡人战斗单位）',
   bloodRite: '需要「血祭」玩法（献 99 绝材的祭祀流程）',

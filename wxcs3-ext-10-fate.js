@@ -150,7 +150,16 @@
       out.push({ id: FATE_LINES[i].id, score: FATE_LINES[i].score(S) });
     }
     out.sort(function (a, b) { return b.score - a.score; });
-    return out.slice(0, 3).map(function (x) { return x.id; });
+    /* v9.0 M4：逍遥道果多一道候选；血债道果把「血债偿心」塞进候选，
+       哪怕这一世杀得不够——上世的旧怨会自己找上门。 */
+    var fruit = S.daoFruit;
+    var want = (fruit && fruit.kind === 'free') ? 4 : 3;
+    var ids = out.slice(0, want).map(function (x) { return x.id; });
+    if (fruit && fruit.kind === 'blood' && exclude !== 'xuezhai' && ids.indexOf('xuezhai') < 0) {
+      if (ids.length >= want) ids[ids.length - 1] = 'xuezhai';
+      else ids.push('xuezhai');
+    }
+    return ids;
   };
   /* 破境结算处（game.js 缝）问一句：要不要把「择痕」排进破境后的手续 */
   EXT.fateWanted = function () {
@@ -185,7 +194,7 @@
   /* ---------- 面板：择痕（破境后的手续之一） ---------- */
   function optRowsFor(cands) {
     var rows = '';
-    var keys = ['A', 'B', 'C'];
+    var keys = ['A', 'B', 'C', 'D'];
     for (var i = 0; i < cands.length; i++) {
       var line = lineOf(cands[i]);
       if (!line) continue;

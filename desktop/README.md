@@ -11,7 +11,7 @@ desktop/
 ├─ scripts/sync-app.js  把 mobile/dist 的页面搬进 app/，并补一条 CSP
 ├─ assets/icon.ico      Windows 图标（由 mobile/icons/icon-512.png 生成）
 ├─ app/                 临时目录：同步出来的页面（已 gitignore）
-└─ release/             打包产物（已 gitignore）
+└─ release_m4/          打包产物（已 gitignore）
 ```
 
 ## 三种用法
@@ -24,8 +24,8 @@ npm start
 
 # 2) 打包 Windows x64
 npm run pack
-#   产物：release/问道长生-win32-x64/问道长生.exe
-#   压缩：release/问道长生-win32-x64.zip（约 110 MB）
+#   产物：release_m4/问道长生-win32-x64/问道长生.exe
+#   压缩：release_m4/问道长生-win32-x64.zip（约 110 MB）
 
 # 3) 页面更新后重新出包
 python ../mobile/build.py     # 先重建网页产物
@@ -42,9 +42,9 @@ ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ npm install
 
 | 项 | 值 |
 |---|---|
-| 目录 | `release/问道长生-win32-x64/`（270 MB，Electron 运行时占大头） |
+| 目录 | `release_m4/问道长生-win32-x64/`（270 MB，Electron 运行时占大头） |
 | 可执行 | `问道长生.exe`（8.1.0 · 雾见川） |
-| 压缩包 | `release/问道长生-win32-x64.zip`（110 MB，解压即用，无需安装） |
+| 压缩包 | `release_m4/问道长生-win32-x64.zip`（110 MB，解压即用，无需安装） |
 | 平台 | Windows x64 |
 
 **分发给别人就发那个 zip**：解压到任意目录，双击 `问道长生.exe` 即可，不需要装 Node、不需要联网。
@@ -72,7 +72,7 @@ C:\Users\<你>\AppData\Roaming\问道长生\Local Storage\
 设置环境变量 `WENDAO_SMOKE_OUT` 指向一个 json 路径，程序加载完页面会写一份探针结果再退出：
 
 ```bash
-WENDAO_SMOKE_OUT="C:/temp/smoke.json" "release/问道长生-win32-x64/问道长生.exe"
+WENDAO_SMOKE_OUT="C:/temp/smoke.json" "release_m4/问道长生-win32-x64/问道长生.exe"
 ```
 
 返回字段：`ok` / `errors`（渲染进程 console 的 warn+error）/ `title` / `hasGame` / `phase` / `hasDesktopBridge` / `lsProbe`（第一次 `first-run`，第二次读到上一轮写入的时间戳，即证明存档跨重启有效）/ `visibleText`。

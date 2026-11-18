@@ -10,7 +10,7 @@
 ├─ wxcs3-data.js            数据层：全部表 107 张（境界/功法/事件/NPC/插画键…）
 ├─ wxcs3-art.js             插画层：ART_DATA 优先，缺图回落 art/scenes/*.jpg
 ├─ wxcs3-rules.js           纯规则层：33 个不碰 DOM、不写 S 的函数（v9.0 第2步新增）
-├─ wxcs3-game.js            规则与 UI：381 函数 / 170 个 ACT 入口（M1 后只留薄缝）
+├─ wxcs3-game.js            规则与 UI：381 函数 / 172 个 ACT 入口（M1 后只留薄缝）
 ├─ wxcs3-icons.js           图标层：内联 SVG（48 行 / 12KB）
 ├─ wxcs3-ext-10-fate.js        扩展：道痕命格（v9.0 M1）——六系命格、进阶、重悟
 ├─ wxcs3-ext-20-trib.js        扩展：五类天劫增强（v9.0 M1）——行为权重、劫类失败余波、破境预览
@@ -21,6 +21,11 @@
 ├─ wxcs3-ext-70-root.js        扩展：灵根差异（v10.1 第二梯队）——战力出口、多系副属、香火五档
 ├─ wxcs3-ext-80-gate.js        扩展：破境瓶颈（v10.1 第三梯队）——表驱动条件门槛 + 解法说明
 ├─ wxcs3-ext-90-revive.js      扩展：死表盘活（v10.1 第三梯队）——PIETY 档位/QIHE 三态/法相五行/悟道点
+├─ wxcs3-ext-91-disciple.js    扩展：师徒四出路（v9.0 M3）——留山执事/遣出历练/先亡葬礼/结构式叛师
+├─ wxcs3-ext-92-school.js      扩展：轻量道统（v9.0 M3）——道号/三门规/讲道/迁山门/声望与维护费
+├─ wxcs3-ext-93-timed.js       扩展：时限事件与属性分档（v9.0 M3）——五类约期、神识/道心/仙缘/遁速出口
+├─ wxcs3-ext-94-ruin.js        扩展：上古遗迹（v9.0 M4）——7 处遗址、5~7 节点、机关守关、三选一、遗物乘区
+├─ wxcs3-ext-95-fruit.js       扩展：百世道果（v9.0 M4）——六类来世信息、旧庙月账、血债命格候选
 ├─ wxcs3-ext-demo.js        扩展模板：新玩法照抄改名（v9.0 第1步新增）
 │
 ├─ README.md                项目总说明（玩法、版本、构建）
@@ -43,8 +48,8 @@
 │  └─ 99_归档/               过期文档
 │
 ├─ tools/                   测试与检查
-│  ├─ test_*.js             断言：v80 / play / econ / hooks / loops / text / m1 / m2 / beast_disciple / rank / tier2 / tier3 / gate_e2e
-│  ├─ smoke_econ.js         DOM 桩真跑运行时（经济面）
+│  ├─ test_*.js             断言：v80 / play / econ / hooks / loops / text / m1 / m2 / m3 / m4 / beast_disciple / rank / tier2 / tier3 / gate_e2e / reachability
+│  ├─ smoke_econ.js         DOM 桩真跑运行时（经济面 26 项）
 │  ├─ check_ach.js         成就可达性
 │  ├─ check_actions.py     动作分发覆盖
 │  ├─ check_time.py        行动预算口径（读 docs/03 分档表）
@@ -61,7 +66,7 @@
 │  ├─ main.js / preload.js  主进程与预加载
 │  ├─ scripts/sync-app.js   把 dist 页面搬进 app/ 并补 CSP
 │  ├─ assets/icon.ico       程序图标
-│  ├─ release_clean/       当前打包产物（gitignore，约 277 MB + 115 MB 压缩包）
+│  ├─ release_m4/          当前打包产物（gitignore，约 277 MB + 128 MB 压缩包）
 │  └─ release*/            历史中间包（gitignore；含体积异常与占用锁的旧目录，可自行清理）
 │
 ├─ _archive/                归档：只增不删
@@ -85,7 +90,8 @@
 | 表现 | `wxcs3-game.js` | 状态、渲染、ACT | 其余全部 |
 
 **新玩法一律写 `wxcs3-ext-<名字>.js`，不要再往 `game.js` 里堆。**
-`build.py` 自动扫描该模式并按文件名排序内联，HTML 不需要加 `<script>` 标签。
+`build.py` 自动扫描该模式并按文件名排序内联；开发页 `问道长生v6.html` 也直接列出 `<script>` 标签，
+**新增扩展要同时改构建扫描与 HTML 两处**，否则 dev 页面加载不到。
 
 扩展骨架的四条约定（详见 `wxcs3-ext-demo.js` 文件头）：
 
@@ -120,6 +126,43 @@ M2 发现：单个函数槽位（`EXT.fightRows = ...`）会被后加载的扩�
 另有两个单件口不属于数组：`EXT.fixedCosts2()`（月账第二条缝，benming 温养 + beast 兽官俸禄）与
 `EXT.benmingArtBonus(kind)`（认主加持翻倍，game.js `artBonus` 里加回一遍）。
 
+### M3 扩展协作模式三：薄缝 + 链式包装
+
+M3 的四个玩法（师徒/道统/时限/属性）都只往既有面板与结算上「补一行」，game.js 继续收薄：
+
+| 缝 | 扩展出口 | 用在哪 |
+|---|---|---|
+| 收徒门槛 | `EXT.schoolAdmitFav()` | 候选筛选 + `do_dpadd` 二次把关 |
+| 门下面板行 | `EXT.discipleRows(d)` | 留山/免差/遣出历练 |
+| 出师结算 | `EXT.schoolOnGraduate(d)` | 道统声望 |
+| 论道 | `EXT.schoolOnTalk(n,id)` | 每人每月一次声望 |
+| 问心选项 | `EXT.askExtraRows(n,id)` | 道心 ≥13 |
+| 来意/拍品暗线 | `EXT.npcIntentLine` / `EXT.auctionHint` | 神识 ≥13 |
+| 月账 | `EXT.fixedCosts2()` 链式包一层 | 91 弟子供奉、92 山门维护 |
+| 指令坞 | `EXT.dockItems()` 链式包一层 | 92「统」、93「急」 |
+| 月结 | `EXT.onMonthHooks` | 弟子月结/欠缴预警 |
+
+名字避让：`S.daotong` 是五行道统字符串，组织状态用 `S.school`；时限事件 `S.timed` + `S.timedDone`。
+扩展文件名用 91/92/93：`build.py` 用 Python `sorted()` 字典序，`100-*` 会排到 `10-*` 前面。
+
+### M4 扩展协作模式四：状态迁移 + 创角结算
+
+遗迹与道果不改既有结算，只加新的状态块与几个一次性接缝：
+
+| 缝 | 扩展出口 | 用在哪 |
+|---|---|---|
+| 舆图 | `EXT.mapRows()` | 已知/已探尽遗址 |
+| 历练 | `EXT.exploreRows()` | 「访古」入口 |
+| 线索 | `EXT.onBookRead` / `EXT.onAuctionWin` / `EXT.onNpcTalk` | 道书二读 / 拍卖残图 / 故人高好感 |
+| 遗物乘区 | `EXT.registerMul(kind, fn)` + `S.relics` | 七件遗物各加一处，不另开战斗数值 |
+| 月账 | `EXT.fixedCosts2()` 链式包一层 | 旧庙残香每月 −15 香火（仅神道/双修且带庙） |
+| 创角 | `EXT.fruitBanner()` / `EXT.applyFruit()` | 第一屏展示道果；创角完成时兑现一次 |
+| 轮回 | `EXT.fruitSnapshot()` | `do_legacy` / `do_rebor` 重置前取快照 |
+
+名字避让：遗迹探索进度用 `S.ruin`，已知/已探尽用 `S.ruinsKnown` / `S.ruinsCleared`，
+遗物收藏用 `S.relics`，道果用 `S.daoFruit`。`S.ruin` 只存当前一趟，读档可续；
+已探尽按 id 永久记。扩展文件名 94/95，仍遵守 100 以下前缀。
+
 ### 判断一个函数能否搬进 `rules.js`
 
 不看它自己写了什么，**看它调用链上还有谁在读 `S`**。实测例子：
@@ -133,12 +176,13 @@ M2 发现：单个函数槽位（`EXT.fightRows = ...`）会被后加载的扩�
 ## 常用命令
 
 ```bash
-# 断言与检查（全绿 = 570 条断言 + 三项检查）
+# 断言与检查（全绿 = 842 条断言 + 三项检查）
 node tools/test_v80.js && node tools/test_play.js && node tools/test_loops.js
 node tools/test_hooks.js && node tools/test_econ.js && node tools/test_text.js
 node tools/test_beast_disciple.js && node tools/smoke_econ.js
-node tools/test_m1.js && node tools/test_m2.js && node tools/test_reachability.js
-node tools/test_m1.js && node tools/test_m2.js
+node tools/test_m1.js && node tools/test_m2.js && node tools/test_m3.js && node tools/test_m4.js
+node tools/test_reachability.js && node tools/test_tier2.js && node tools/test_tier3.js
+node tools/test_gate_e2e.js
 python tools/check_actions.py && python tools/check_time.py && node tools/check_ach.js
 
 # 网页单文件
@@ -148,7 +192,7 @@ python mobile/build.py            # → mobile/dist/index.html（插画已 base6
 python mobile/sync_apk.py         # → D:\wendao-apk，HBuilderX 里云打包
 
 # 桌面版
-cd desktop && npm run pack        # → desktop/release_clean/问道长生-win32-x64/
+cd desktop && npm run pack        # → desktop/release_m4/问道长生-win32-x64/
 
 # 插画压缩（原图 → 交付图）
 python art/pipeline/compress_art.py
@@ -160,7 +204,7 @@ python art/pipeline/compress_art.py
 - **新文档** → `docs/` 下对应主题号，不在根目录新增散文档。
 - **过期/重复文档** → `_archive/docs-duplicates/`，不直接删。
 - **临时文件** → `_archive/tmp/` 或系统临时目录，不在根目录建 `.tmp`。
-- **构建产物**（dist / release_clean / app）→ 各自目录内，已 gitignore。
+- **构建产物**（dist / release_m4 / app）→ 各自目录内，已 gitignore。
 - **打包忽略规则**：`package.json` 的 `pack` 里有一串 `--ignore`，必须挡住 `art/`、`_archive/`、`_backup/`、`docs/`、`mobile/`、`tools/` 等。漏了会把 1.5 GB 素材塞进 `app.asar`（本轮踩过）。
 
 ## 本轮搬迁对照（只移动，未删除任何文件）

@@ -170,13 +170,21 @@
       /* v9.0 M2：外物有命——本命法器与主战灵兽 */
       benming: null, warBeast: 0, beastOfficer: false, beastFedMonth: 0,
       /* v8.1 P0 批次4：师徒。disciple 每项 {id,name,days,stage,bond,alive}，
-         与 NPC 好感（S.npcs[id].fav）分开存——师徒是人锚，情缘是另一条线。 */
+         与 NPC 好感（S.npcs[id].fav）分开存——师徒是人锚，情缘是另一条线。
+         v9.0 M3：npcId 记人物身份，stay 记留山执事；school 与 timed 由扩展读写。
+         注意 S.daotong 是「金行/木行」那种道统字符串，不是组织，别混用。 */
       disciples: [], masterId: null,
+      school: null, timed: null, timedDone: {},
       anchorDone: { wu: false, ren: false, shi: false, yi: false },
       luHistory: [],               // 已受过的箓
       daoyinOk: false,             // 四印是否配成对
       shenweiIdx: 0, renGong: 0,   // 神位与renGong
       pages: 3, legacy: null,      // 百世书
+      /* v9.0 M4：上古遗迹与百世道果。
+         ruin 只存「当前这一次探索」的进度；已知/已探尽按处记，
+         relics 是遗物收藏，道果是上一世留下、创角时兑现的一枚。 */
+      ruin: null, ruinsKnown: {}, ruinsCleared: {}, relics: [],
+      daoFruit: null,
       stoneAcc: 0,                 // 灵石零头（神道按月摊销）
       anchorMiss: { wu: 0, ren: 0, shi: 0, yi: 0 },// 误期计数
       collapse: 0,                  // 崩解期月数
@@ -1570,9 +1578,9 @@
     }
     /* v8.1 P0 M4：师徒。门下有人才常驻显示，没有时不占坞位——
        与「洞天」「锚定」同一套出现规则，不给空面板留位置。 */
-    if (discipleList().length) {
+    if (discipleList().length || (S.disciplesOut || []).length) {
       const _d = discipleList();
-      const _dn = _d[0] ? discipleStageOf(_d[0]).name : '';
+      const _dn = _d[0] ? discipleStageOf(_d[0]).name : ((S.disciplesOut || []).length + ' 人已离门下');
       list.push({
         k: '徒', t: '门下',
         s: _d.length + '/' + discipleLimit() + ' · ' + _dn,
@@ -1594,11 +1602,12 @@
     }
     const GROUP = {
       客: '常用', 引: '常用', 府: '常用', 庙: '常用', 市: '常用', 拍: '常用', 历: '常用', 情: '常用', 锚: '常用',
+      急: '常用',
       功: '修炼', 艺: '修炼', 书: '修炼', 胎: '修炼', 构: '修炼',
-      命: '修炼', 兽: '修炼',
+      命: '修炼', 兽: '修炼', 果: '修炼',
       器: '经营', 愿: '经营', 族: '经营', 宝: '经营',
-      缘: '人事', 宗: '人事', 徒: '人事',
-      图: '更多', 囊: '更多', 洞: '更多'
+      缘: '人事', 宗: '人事', 徒: '人事', 统: '人事',
+      图: '更多', 囊: '更多', 洞: '更多', 迹: '更多'
     };
     for (const it of list) it.g = GROUP[it.k] || '更多';
     return list;
@@ -1976,6 +1985,13 @@
      四条出路都要能结算：授业（涨进度）→ 出师（独立门户）→ 叛师 / 先死。
      逆徒、杀师两条成就的计数器就挂在这里。 */
   function discipleLimit() { return D.DISCIPLE_LIMIT; }
+  /* v9.0 M3：门规可以改收徒门槛（宽 15 / 中 20 / 严 25）。
+     扩展未加载时退回 20，老玩法一字不变。 */
+  function discipleAdmitFav() {
+    const X = G.WXCS3_EXT;
+    const v = (X && X.schoolAdmitFav) ? X.schoolAdmitFav() : 20;
+    return (typeof v === 'number' && v > 0) ? v : 20;
+  }
   function discipleList() { return Array.isArray(S.disciples) ? S.disciples : (S.disciples = []); }
   function discipleAdd(name, bond) {
     const list = discipleList();
@@ -2009,9 +2025,12 @@
     if (st.key !== 'chu') return { ok: false, why: '还没到出师的火候（' + st.name + '）' };
     /* 出师：给一笔「束脩」，弟子离开门下但记在仙谱里（不删记录，改 alive 语义为已出师） */
     list.splice(i, 1);
-    S.disciplesOut = (S.disciplesOut || []).concat([{ name: d.name, bond: d.bond, at: S.year + '年' }]);
+    S.disciplesOut = (S.disciplesOut || []).concat([{ name: d.name, bond: d.bond, at: S.year + '年', kind: 'graduate' }]);
     S.stones += 300;
     ledgerAdd('in', '弟子出师束脩', 300);
+    /* v9.0 M3：出师是道统声望的正经来源（买不到）。扩展未加载时无副作用。 */
+    const _XS = G.WXCS3_EXT;
+    if (_XS && _XS.schoolOnGraduate) _XS.schoolOnGraduate(d);
     return { ok: true, name: d.name };
   }
   function discipleBetray(id) {
@@ -2105,6 +2124,9 @@
   function renderCreate() {
     if (S.createStep === 0) {
       let b = `<div class="muted small" style="margin-bottom:10px">${esc(pick(D.SCRIPTS))}</div>`;
+      /* v9.0 M4：道果在创角第一眼就要看得见，否则「世界记得你」只是一句空话。 */
+      const _XB = G.WXCS3_EXT;
+      if (_XB && _XB.fruitBanner) b += _XB.fruitBanner();
       b += `<div class="creation-step">第零步 · 主修（比灵根重要）</div>`;
       b += `<div class="muted small" style="margin:4px 0">这不是选职业，是选死法。</div>`;
       b += `<div class="selgrid" style="margin-top:6px">`;
@@ -4135,6 +4157,9 @@
         dq.suggest || '', here || !ok, 'do;travel:' + p.id);
     }
     b += '</ul>';
+    /* v9.0 M4：已知遗迹按地点挂在舆图上——它和迁地共用同一张地图。 */
+    const _XR = G.WXCS3_EXT;
+    if (_XR && _XR.mapRows) { const _rr = _XR.mapRows(); if (_rr) b += _rr; }
     /* v8.1 P0 第6项：属性进文本。神识不够就一个字都不给——
        这不是「少一行装饰」，是「你在同一张地图上比别人少看见一条路」。 */
     const _mc = clue('sense');
@@ -4149,6 +4174,9 @@
     b += `<span class="chip" data-act="do;xing:wild">山野历练</span>`;
     b += `<span class="chip" data-act="do;xing:market">坊市打探</span>`;
     b += `</div>`;
+    /* v9.0 M4：遗迹入口与山野并列——访古也是一次外出。 */
+    const _XE = G.WXCS3_EXT;
+    if (_XE && _XE.exploreRows) { const _er = _XE.exploreRows(); if (_er) b += _er; }
     openModal('外出历练', b);
   };
 
@@ -4717,6 +4745,9 @@
         b += optRow('·', '准其出师', { name: '出师', cls: 'chance' },
           canGrad ? '得束脩 300 石，记入仙谱' : ('火候未到（' + esc(st.name) + '）'),
           !canGrad, 'do;dpgrad:' + d.id);
+        /* v9.0 M3：留山/遣出历练/叛师由扩展补行；扩展未加载时这一行是空串。 */
+        const _XR = (G.WXCS3_EXT && G.WXCS3_EXT.discipleRows) ? G.WXCS3_EXT.discipleRows(d) : '';
+        if (_XR) b += _XR;
         b += optRow('·', '逐出门墙', { name: '断', cls: 'risk' }, '亲密清零，记一笔逆徒', false,
           'do;dpbetray:' + d.id);
         b += '</ul>';
@@ -4726,12 +4757,16 @@
 
     /* 收徒：从已见过且好感够的 NPC 里挑。门槛 20 = FAVOR_TIERS 的「相熟」一档，
        太低会让路边点头之交也来磕头。 */
+    const _admit = discipleAdmitFav();
     const cands = Object.keys(S.npcs || {}).filter(function (id) {
       const r = S.npcs[id];
       if (!r || !r.met) return false;
       if (!r.alive) return false;
-      if ((r.fav || 0) < 20) return false;
-      return !list.some(function (d) { return d.name === (D.NPC_POOL.find(function (x) { return x.id === id; }) || {}).name; });
+      if ((r.fav || 0) < _admit) return false;
+      return !list.some(function (d) {
+        if (d.npcId) return d.npcId === id;
+        return d.name === (D.NPC_POOL.find(function (x) { return x.id === id; }) || {}).name;
+      });
     });
     if (list.length < discipleLimit() && cands.length) {
       b += '<div class="small muted">可收为门下</div><ul class="opts">';
@@ -4744,16 +4779,19 @@
       });
       b += '</ul>';
     } else if (list.length < discipleLimit()) {
-      b += '<div class="small muted">暂无可收之人。好感到「相熟」（20）之上，才谈得上托付。</div>';
+      b += '<div class="small muted">暂无可收之人。好感到「' + _admit + '」之上，才谈得上托付。</div>';
     } else {
       b += '<div class="small muted">门下已满（' + discipleLimit() + ' 人）。教得过来才叫教。</div>';
     }
 
     if ((S.disciplesOut || []).length) {
-      b += divider() + '<div class="small muted">已出师</div>';
+      b += divider() + '<div class="small muted">仙谱 · 已离门下</div>';
       (S.disciplesOut || []).forEach(function (x) {
+        /* v9.0 M3：出路不止出师——先亡与叛去也记在谱上，只是记法不同。 */
+        const _fate = x.kind === 'died' ? '亡故' : x.kind === 'betray' ? '叛去' : '出师';
+        const _extra = x.kind === 'died' ? (x.cause ? '　' + esc(x.cause) : '') : ('　别时好感 ' + Math.round(x.bond || 0));
         b += '<div class="sl"><span class="k">' + esc(x.name) + '</span><span class="v">' +
-          esc(x.at || '') + ' 出师　别时好感 ' + Math.round(x.bond || 0) + '</span></div>';
+          esc(x.at || '') + ' ' + _fate + _extra + '</span></div>';
       });
     }
 
@@ -4793,9 +4831,14 @@
     /* 面板只列出好感够的人，但动作本身也必须自己把关——
        面板过滤是「不给你点」，这里才是「点了也不算」。两者缺一，就有绕过路径。 */
     if (!r || !r.met) { toast('尚未见过此人'); return; }
-    if (numOr(r.fav, 0) < 20) { toast('好感不足（需 20），他还没到肯磕头的地步'); return; }
+    const _need = discipleAdmitFav();
+    if (numOr(r.fav, 0) < _need) { toast('好感不足（需 ' + _need + '），他还没到肯磕头的地步'); return; }
     const res = discipleAdd(n.name, numOr(r.fav, 0));
     if (!res.ok) { toast(res.why); return; }
+    /* v9.0 M3：师徒与情缘共用人物身份，但两套关系分开记。
+       npcId 用于留山/先亡/叛师回写 NPC 状态；disciple 标记补上「收徒」成就。 */
+    res.disciple.npcId = id;
+    r.disciple = true;
     logLine(n.name + '跪下去，磕了三个头。你受了。', 'good');
     /* 人锚：收徒是「人」这一锚的现实来源之一 */
     S.anchors = S.anchors || {};
@@ -4884,6 +4927,12 @@
     const n = D.NPC_POOL.find(x => x.id === id);
     let b = `<div class="small">${esc(n.look)}</div>`;
     b += `<div class="small muted" style="margin:4px 0">${esc(n.inner)}</div>` + divider();
+    /* v9.0 M3：高神识看得见他这一趟的来意。 */
+    const _XI = G.WXCS3_EXT;
+    if (_XI && _XI.npcIntentLine) {
+      const _il = _XI.npcIntentLine(n, S.npcs[id]);
+      if (_il) b += _il;
+    }
     b += `<div class="small">喜：${n.likes.join('、')}　｜　忌：${esc(n.taboo)}</div>`;
     b += `<div class="small muted" style="margin:4px 0">讨好之道：${esc(n.approach)}</div>`;
     // 当前阶段台词：先让他说一句，再给选项
@@ -4908,6 +4957,12 @@
     n.ask.opts.forEach(function (o, i) {
       b += optRow('ABC'[i], o.t, { name: '回答', cls: 'peace' }, '他在等你', false, 'do;iaans:' + id + ':' + i);
     });
+    /* v9.0 M3：高道心多一个「问心」选项——属性进选项，而不只进成功率。 */
+    const _XH = G.WXCS3_EXT;
+    if (_XH && _XH.askExtraRows) {
+      const _xr = _XH.askExtraRows(n, id);
+      if (_xr) b += _xr;
+    }
     b += '</ul>';
     b += '<div class="hint">三个说法都没有对错。但你怎么答，他就怎么记你。</div>';
     openModal('论道 · ' + n.name, b);
@@ -4928,6 +4983,11 @@
     rec.fav = clamp(rec.fav + d, 0, 120);
     rec.answers = (rec.answers || 0) + 1;
     bumpIn('talk', id);                                   // 「论道百回」按人计数
+    /* v9.0 M3：论道也是道统声望的来源——同一人每月只记一次，防止刷声望。 */
+    const _XT = G.WXCS3_EXT;
+    if (_XT && _XT.schoolOnTalk) _XT.schoolOnTalk(n, id);
+    /* v9.0 M4：交情够深，对方会说起一处古遗迹。每人只提一次。 */
+    if (_XT && _XT.onNpcTalk) _XT.onNpcTalk(n, id, rec);
     if (favBefore <= -60 && rec.fav >= 40) bump('enemyToFriend');   // 「化敌」
     /* 相识年数从第一次见面起算，给「故人」用 */
     if (rec.since === undefined) rec.since = S.turn || 0;
@@ -5401,6 +5461,25 @@
     /* v8.1 P0 M4：师徒字段同理，缺就是没徒弟，但不能是 undefined */
     if (!Array.isArray(out.disciples)) out.disciples = [];
     if (out.masterId === undefined) out.masterId = null;
+    /* v9.0 M3：师徒四出路与道统/时限事件。
+       老档的弟子没有 npcId —— 按名字回填一次，顺便补上「收徒」成就所需的
+       S.npcs[id].disciple 标记（旧版从没写过，于是这条成就一直挂着）。
+       读档时刻的时限事件是临场窗口，不继承；已完成记录保留。 */
+    if (!Array.isArray(out.disciplesOut)) out.disciplesOut = [];
+    out.disciplesOut.forEach(function (x) { if (x && !x.kind) x.kind = 'graduate'; });
+    out.disciples.forEach(function (d) {
+      if (!d || typeof d !== 'object') return;
+      if (!d.stay) d.stay = false;
+      let nid = d.npcId;
+      if (!nid) {
+        const nn = (D.NPC_POOL || []).find(function (x) { return x.name === d.name; });
+        if (nn) nid = d.npcId = nn.id;
+      }
+      if (nid && out.npcs && out.npcs[nid]) out.npcs[nid].disciple = true;
+    });
+    out.school = (st.school && typeof st.school === 'object') ? st.school : null;
+    out.timedDone = (st.timedDone && typeof st.timedDone === 'object') ? st.timedDone : {};
+    out.timed = null;
     out.tribLock = clamp(parseInt(st.tribLock, 10) || 0, 0, 9);
     /* v9.0 M0：存档带随机种子。
        新局写入一个 seed，读档时按它恢复序列——同一存档重放同一段剧情，
@@ -5411,6 +5490,13 @@
        绝对旬数）直接沿用旧值，过期自动失效，无需迁移。 */
     out.fate = st.fate || null;
     out.fateReroll = st.fateReroll || 0;
+    /* v9.0 M4：遗迹与道果都是后加字段。探索到一半的进度要能读回来；
+       已探尽/已拿遗物按 id 保留；道果只在创角前存在，读过就照旧。 */
+    out.ruin = (st.ruin && typeof st.ruin === 'object') ? st.ruin : null;
+    out.ruinsKnown = (st.ruinsKnown && typeof st.ruinsKnown === 'object') ? st.ruinsKnown : {};
+    out.ruinsCleared = (st.ruinsCleared && typeof st.ruinsCleared === 'object') ? st.ruinsCleared : {};
+    out.relics = Array.isArray(st.relics) ? st.relics.slice() : [];
+    out.daoFruit = (st.daoFruit && typeof st.daoFruit === 'object') ? st.daoFruit : null;
     /* v9.0 M2：外物有命。旧档无本命按未认主处理；主战兽栏序号越界归零；
        beastFedMonth 缺省 0＝从没喂过，第一个月结就会开始饥饿倒计时，
        与「旧档灵兽从无喂养记录」的语义一致。 */
@@ -6154,11 +6240,14 @@
     if (pageCount() > 0) { toast('还有页可烧，先烧一页'); return; }
     const pact = S.legacyPact || null;
     const debt = (S.bloodDebt || 0) + 0.1;
+    /* 道果不是遗产，是「世界记得你」：空手投胎也带得走。 */
+    const fruit = (G.WXCS3_EXT && G.WXCS3_EXT.fruitSnapshot) ? G.WXCS3_EXT.fruitSnapshot() : null;
     S = newGame();
     S.draft = draftInit();
     S.pages = 0;
     S.legacy = null;          // 关键：什么都不带
     S.legacyPact = pact;      // 临终所托仍生效——那是别人的承诺，不是你的遗产
+    S.daoFruit = fruit;
     S.bloodDebt = debt;
     S.reborCount = 1 + ((typeof S.reborCount === 'number') ? S.reborCount : 0);
     closeModal();
@@ -6173,11 +6262,14 @@
     const pages = Math.max(0, pageCount() - 1);
     const debt = (S.bloodDebt || 0) + 0.1;
     const pact = S.legacyPact || null;    // 临终所托要跨过 newGame 带到来世
+    /* 烧页之前先取下这一世的道果——它读的是本世的 tally/声望/遗迹。 */
+    const fruit = (G.WXCS3_EXT && G.WXCS3_EXT.fruitSnapshot) ? G.WXCS3_EXT.fruitSnapshot() : null;
     S = newGame();
     S.draft = draftInit();
     S.pages = pages;
     S.legacy = { kind: kind };
     S.legacyPact = pact;
+    S.daoFruit = fruit;
     S.bloodDebt = debt;
     if (kind === 'treasure') S.stones = 400;
     closeModal();
@@ -8625,6 +8717,11 @@
     S.npcs[n0.id] = { fav: 8, met: false, pendingMeet: true };
     if (S.talents.includes('peach')) S.npcs[n0.id].fav = Math.round(S.npcs[n0.id].fav * 1.2);
 
+    /* v9.0 M4：上一世道果在此兑现。
+       只给信息、候选与初始关系；旧庙是唯一带月账的一项。 */
+    const _XF = G.WXCS3_EXT;
+    if (_XF && _XF.applyFruit) _XF.applyFruit();
+
     S.started = true; S.phase = 'play'; S.turn = 0;
     /* v9.0 M0：开局就把本局种子注入随机源。
        创角阶段的随机（灵根、外貌）已按种子走，开局后继续同一条序列。 */
@@ -9330,6 +9427,9 @@
     if (xiuGain) gainXiuwei(parseInt(xiuGain[1], 10));
     if (/阅历/.test(gain)) S.insightXp = (S.insightXp || 0) + 1 + fateAdd('book');   // v9.0 M1：负薪问道
     logLine('读 ' + bk.name + ' 第 ' + (rc + 1) + ' 层：' + gain, 'good');
+    /* v9.0 M4：读到第二层起，书里可能夹着一条上古遗迹的方位。 */
+    const _XBK = G.WXCS3_EXT;
+    if (_XBK && _XBK.onBookRead) _XBK.onBookRead(bk, rc);
     let b = '<div class="daoshu">';
     b += '<div class="ds-head">' + esc(bk.name) + '　<span class="muted small">第 ' + (rc + 1) + ' 读</span></div>';
     b += '<div class="ds-text">' + esc(layer.text).replace(/\n/g, '<br>') + '</div>';
@@ -9700,6 +9800,10 @@
     b += divider() + `<div class="muted small">客籍拍品</div>`;
     b += `<div class="small"><b>${esc(lot.name)}</b>　起拍 ${fmtNum(lot.base)} 石</div>`;
     b += `<div class="small muted" style="margin:2px 0 6px">${esc(lot.desc)}　<span class="good">${esc(lot.eff)}</span></div>`;
+    /* v9.0 M3：高神识看得出拍品之外的价——隐藏拍品的另一种给法。 */
+    const _XA = G.WXCS3_EXT;
+    const _ah = (_XA && _XA.auctionHint) ? _XA.auctionHint(lot) : '';
+    if (_ah) b += _ah;
     b += `<ul class="opts">`;
     [1.0, 1.25, 1.55].forEach(function (m, i) {
       const bid = Math.round(lot.base * m);
@@ -9759,6 +9863,9 @@
       lot.apply();
       S.aucLotWon = lot.name;
       logLine('拍得「' + lot.name + '」，' + lot.eff + '。', 'good');
+      /* v9.0 M4：半卷残图拍下后，舆图上多一处可去的遗迹。 */
+      const _XA = G.WXCS3_EXT;
+      if (_XA && _XA.onAuctionWin) _XA.onAuctionWin(lot);
       toast('落槌 · ' + lot.name);
     } else {
       logLine('「' + lot.name + '」被旁人叫走，你的号牌没再举。', '');
@@ -10738,6 +10845,8 @@
        而这些函数在模块内是私有的——不给出口，就只能靠面板 HTML 猜。 */
     applyState,
     gainXiuwei,
+    addGongfa,
+    checkAch,
     clue,
     statTier,
     beastAtkBonus,
