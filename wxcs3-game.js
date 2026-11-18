@@ -683,8 +683,8 @@
       let solid = 0;
       for (const k in S.anchors) if (S.anchors[k] >= 1) solid++;
       if (solid < 2) {
-        die(isXian() ? '道化：你的意识散成一片山雾。你还在，只是不再是你。'
-                     : '枯朽：那尊像还在，只是不再应你。');
+        die(isXian() ? '道化：意识散作山雾。形犹在，已非汝。'
+                     : '枯朽：像犹在，不复应汝。');
         return;
       }
       S.collapse = 0;
@@ -1816,34 +1816,34 @@
     const shen = isShen();
     if (id === 'lei') {
       const h = st('heart');
-      return { bonus: h >= 12 ? 0.12 : 0, text: '道心 ' + h + (h >= 12 ? '，雷声不乱' : '，心先怯了') };
+      return { bonus: h >= 12 ? 0.12 : 0, text: '道心 ' + h + (h >= 12 ? '，雷声不乱' : '，其心先怯') };
     }
     if (id === 'shui') {
       if (!shen) {
         const g = getDaogong();
         const el = (g && g.el) || null;
-        return { bonus: el === 'water' ? 0.12 : 0, text: el === 'water' ? '道基属水，河声认你' : '道基非水，水势压人' };
+        return { bonus: el === 'water' ? 0.12 : 0, text: el === 'water' ? '道基属水，河声相认' : '道基非水，水势逼人' };
       }
       const p = S.piety || 1;
-      return { bonus: p >= 1.5 ? 0.10 : 0, text: '信众虔诚 ×' + p.toFixed(1) + (p >= 1.5 ? '，香火压得住水' : '，香火压不住') };
+      return { bonus: p >= 1.5 ? 0.10 : 0, text: '信众虔诚 ×' + p.toFixed(1) + (p >= 1.5 ? '，香火可制水' : '，香火不敌') };
     }
     if (id === 'huo') {
       /* v9.0 M1：无灯焰不能只认神道神器——仙道佩着法宝（外物）同样护得住灯火 */
       if (!shen) {
         const n = (S.arts || []).length;
-        return { bonus: n > 0 ? 0.10 : 0, text: n ? '法宝 ' + n + ' 件，灯火有遮拦' : '无神器无法宝，灯火照不到你' };
+        return { bonus: n > 0 ? 0.10 : 0, text: n ? '法宝 ' + n + ' 件，灯焰有蔽' : '无神器法宝，灯不及身' };
       }
       const artN = (S.dArt ? (S.dArt.staff || 0) + (S.dArt.mirror || 0) + (S.dArt.seal || 0) : 0);
-      return { bonus: artN > 0 ? 0.12 : 0, text: artN ? '神器 ' + artN + ' 级，灯自明' : '无神器，灯灭了' };
+      return { bonus: artN > 0 ? 0.12 : 0, text: artN ? '神器 ' + artN + ' 级，灯自明' : '无神器，灯遂灭' };
     }
     if (id === 'feng') {
       const q = quenchLv();
       const b = q >= 6 ? 0.16 : q >= 3 ? 0.10 : 0;
-      return { bonus: b, text: '淬体 ' + q + ' 阶' + (b ? '，骨已换过' : '，皮肉未坚') };
+      return { bonus: b, text: '淬体 ' + q + ' 阶' + (b ? '，骨已换' : '，皮肉未坚') };
     }
     if (id === 'gu') {
       const n = hookUnsettled().length;
-      return { bonus: n === 0 ? 0.12 : 0, text: n ? '还有 ' + n + ' 笔恩义未了' : '恩义皆清' };
+      return { bonus: n === 0 ? 0.12 : 0, text: n ? '尚有 ' + n + ' 笔恩义未偿' : '恩义皆清' };
     }
     return { bonus: 0, text: '无' };
   }
@@ -1853,7 +1853,7 @@
     S.xiuwei = Math.round((S.xiuwei || 0) * 0.7);
     /* 含本次这一旬：破境本身要走一旬，所以记 4，玩家实等 3 旬 */
     S.tribLock = 4;
-    logLine('天劫未过：气血只剩一成，修为再跌三成，三旬之内不得再破。', 'danger');
+    logLine('天劫未渡：气血仅余一成，修为再退三成，三旬内不得复破。', 'danger');
     /* v9.0 M1：劫类专属余波在扩展里（道心受挫/气海受损/外物遭劫/折骨之伤/故人成仇） */
     const id = S.trib && S.trib.id;
     const X = G.WXCS3_EXT;
@@ -1870,8 +1870,8 @@
       (c.bonus ? '<span class="good">+' + Math.round(c.bonus * 100) + '%</span>' : '<span class="danger">无</span>') + '</span></div>';
     b += '<div class="statline"><span class="k">成功率</span><span class="v">' + Math.round(rate * 100) + '% → <b>' +
       Math.round(clamp(rate + c.bonus, 0.05, 0.95) * 100) + '%</b></span></div>';
-    b += '<div class="hint">过不去：气血落一成，修为再跌三成，三旬之内不得再破境。</div>';
-    b += '<ul class="opts">' + optRow('A', '过劫', { name: '风险', cls: 'risk' }, '该来的总要来', false, 'do;tribGo') + '</ul>';
+    b += '<div class="hint">若不渡：气血去一成，修为退三成，三旬内不得复破。</div>';
+    b += '<ul class="opts">' + optRow('A', '渡劫', { name: '风险', cls: 'risk' }, '该来者终须来', false, 'do;tribGo') + '</ul>';
     openModal('天劫 · ' + t.name, b, true);
   }
 
@@ -2717,7 +2717,7 @@
     const next = xrealm().stages[S.xStage + 1] || '下一境';
     const pct = function (v) { return (v > 0 ? '+' : '') + Math.round(v * 100) + '%'; };
     let b = `<div class="small">${esc(realmName())} → ${esc(next)}</div>`;
-    b += `<div class="row"><span class="lab">合计成功率</span><b style="color:${r > .6 ? 'var(--merit)' : 'var(--cinnabar)'}">${Math.round(r * 100)}%</b><span class="muted small">道心 ${st('heart')} · 悟性 ${st('insight')}</span></div>`;
+    b += `<div class="row"><span class="lab">成败之机</span><b style="color:${r > .6 ? 'var(--merit)' : 'var(--cinnabar)'}">${Math.round(r * 100)}%</b><span class="muted small">道心 ${st('heart')} · 悟性 ${st('insight')}</span></div>`;
     /* v10.1 第三梯队·问题7：把门槛摊开给玩家看——已满足的打勾，未满足的写解法。 */
     if (G.WXCS3_EXT && G.WXCS3_EXT.breakGateHtml) b += G.WXCS3_EXT.breakGateHtml();
     b += divider();
@@ -2740,20 +2740,20 @@
       b += `<span class="chip${p.pill === id ? ' on' : ''}" data-act="do;prep:pill:${id}">` +
         esc(it.name) + ` ×${S.bag[id]}</span>`;
     });
-    if (p.pill) b += `<span class="chip" data-act="do;prep:pill:none">不服药</span>`;
+    if (p.pill) b += `<span class="chip" data-act="do;prep:pill:none">不服丹</span>`;
     b += `</div>`;
 
     /* 护法 */
     const guards = prepGuardCandidates();
     b += `<div class="statline"><span class="k">护法</span><span class="v">${pct(prepGuardBonus())}</span></div>`;
     b += `<div class="row" style="gap:6px;flex-wrap:wrap;margin:2px 0 8px">`;
-    if (!guards.length) b += `<span class="chip" style="opacity:.45">无可托之人（需好感 60）</span>`;
+    if (!guards.length) b += `<span class="chip" style="opacity:.45">无可托之人（须好感 60）</span>`;
     guards.forEach(function (id) {
       const n = D.NPC_POOL.find(function (x) { return x.id === id; }) || { name: id };
       b += `<span class="chip${p.guard === id ? ' on' : ''}" data-act="do;prep:guard:${id}">` +
         esc(n.name) + `（好感 ${S.npcs[id].fav}）</span>`;
     });
-    if (p.guard) b += `<span class="chip" data-act="do;prep:guard:none">不必护法</span>`;
+    if (p.guard) b += `<span class="chip" data-act="do;prep:guard:none">无须护法</span>`;
     b += `</div>`;
 
     /* 四印是否成对，直接在面板上写出来——不然那 +6% 是隐形的，玩家不知道它从哪来 */
@@ -2762,8 +2762,8 @@
     /* v9.0 M1：天劫预览（劫类/克法/缺口/代价/成功率）由扩展渲染 */
     const tp = (G.WXCS3_EXT && G.WXCS3_EXT.tribPreview) ? G.WXCS3_EXT.tribPreview(r) : '';
     if (tp) b += tp;
-    b += `<div class="hint">准备要花东西：丹药吃了就没，护法欠一次人情。择地只在这一次管用。</div>`;
-    b += `<div class="hint danger">失败：修为跌回 ${S.jinxing ? '88' : '70'}%，气血逆冲。</div>`;
+    b += `<div class="hint">所备皆有费：丹服即耗，护法欠一人情；择地之益，仅此一度。</div>`;
+    b += `<div class="hint danger">若败：修为退至 ${S.jinxing ? '88' : '70'}%，气血逆冲。</div>`;
     b += `<div style="margin-top:10px"><button class="btn" data-act="do;xbreak">开坛破境</button>
       <button class="btn ghost" data-act="act:screen" style="margin-left:6px">再等等</button></div>`;
     openModal('破境 · ' + xrealm().name, b, true);
@@ -2797,7 +2797,7 @@
     const p = prepState();
     if (p.pill) {
       if ((S.bag[p.pill] || 0) < 1) {
-        toast('那颗丹药已经不在了');
+        toast('丹已不在手中');
         S.prep = null;
         render();
         return;
@@ -2913,7 +2913,7 @@
         if (S.xRealm >= 2 && (S.daoyin || []).length < 4) tryOpenYin();
       } else {
         // 跨大境界（越界保护：道胎以上不再靠破境推进）
-        if (S.xRealm >= 5) { S.xiuwei = 0; toast('已至道胎，再无以破境推进之路'); render(); return; }
+        if (S.xRealm >= 5) { S.xiuwei = 0; toast('道胎既成，破境之路已尽'); render(); return; }
         const lifeBefore = S.lifeMax || 0;
         S.xRealm++; S.xStage = 0; S.xiuwei = 0;
         const nr = xrealm() || D.XIAN_REALMS[D.XIAN_REALMS.length - 1];
@@ -2946,16 +2946,16 @@
         };
       }
       S.renGong = (S.renGong || 0) + 80;
-      if (S.trib) { logLine('天劫过了：' + S.trib.name + '这一关，你走的是活路。', 'good'); S.trib = null; }
+      if (S.trib) { logLine('天劫已渡：' + S.trib.name + '此关，得生路焉。', 'good'); S.trib = null; }
       toast('破境 · ' + realmName());
       // 借来的运：钩子给的功法让你走得快，也让你走火
       if (hasDebuff('borrowed_luck') && rng() < 0.15) {
         const z = Math.round(S.hpMax * 0.3);
         S.hp = Math.max(1, S.hp - z);
         S.xiuwei = Math.round((xrealm().need || 100) * 0.2);
-        logLine('那缕不属你的气忽然逆冲——走火。气血 −' + z + '，修为倒退。', 'danger');
+        logLine('一缕非我之气忽焉逆冲，是为气机倒行。气血 −' + z + '，修为退。', 'danger');
         bump('heartBreak');   // 功过格「走火」需要两次
-        toast('走火');
+        toast('气机逆行');
       }
       // holdEvent 期间不抢先弹传法：破境的诗还没看完，传法等 afterbreak 放行
       if (S.phase === 'play' && !S.holdEvent) maybeTransmitNow();
@@ -2964,16 +2964,16 @@
          旧版 S.jinxing 只在结丹时置 true，之后再没人读过——
          「煅出金性」这个金丹的核心设定等于没写。 */
       const keep = S.jinxing ? 0.88 : 0.70;
-      if (S.jinxing) logLine('金性不动。修为没有散，只是这一夜过不去。', 'good');
+      if (S.jinxing) logLine('金性不动，修为未散，此夜终难度。', 'good');
       S.xiuwei = Math.round((xrealm().need || 100) * keep);
       const dmg = Math.round(S.hpMax * (0.12 + rng() * 0.15));
       S.hp = Math.max(1, S.hp - dmg);   // 破境失败不致死，最低留 1 血
       let extra = '';
-      if (S.xRealm === 1) { extra = '六轮退回气海，需重修一段'; }
+      if (S.xRealm === 1) { extra = '六轮复归气海，须重修一段'; }
       const fline = pick(D.VERSES.fail);
       logLine('· ' + fline, 'danger');
       S.lastLiturgy = fline;
-      logLine('破境失败，气血逆冲 -' + dmg + '，修为跌回七成。', 'danger');
+      logLine('破境未成，气血逆冲 −' + dmg + '，修为退至七成。', 'danger');
       if (S.trib) { tribFailPenalty(); S.trib = null; }
       S.holdEvent = true;
       S.breakPop = {
@@ -2983,7 +2983,7 @@
         fail: true,
         dmg: dmg, extra: extra
       };
-      toast('破境失败');
+      toast('此关未过');
     }
     advanceXun(1);
     // 破境的诗必须压在最后弹：advanceMonth 可能开奇遇，先弹会被顶掉
@@ -3086,7 +3086,7 @@
         false, 'do;jindan:' + encodeURIComponent(g.n));
     });
     b += `</ul>`;
-    b += `<div class="hint">至尊三位（天河水／天上火／大海水）：去抢，等于向当世最强者宣战。</div>`;
+    b += `<div class="hint">至尊三位（天河水／天上火／大海水）：取之，是向当世最强者宣战。</div>`;
     openModal('金丹 · 果位', b, true);
   }
 
@@ -3102,7 +3102,7 @@
       S.xiuwei = 0;
       S.hp = Math.max(1, Math.round(S.hp - S.hpMax * 0.3));
       S.karma += 3;
-      logLine(`抢「${g.n}」没抢到。丹在气海里碎了一次，修为散尽，气血去了三成。`, 'danger');
+      logLine(`取「${g.n}」未得。丹碎于气海，修为尽散，气血去三成。`, 'danger');
       toast('证位未成');
       closeModal(); advanceXun(1); if (S.phase === 'play') render();
       return;
@@ -3124,14 +3124,14 @@
 
   /* 道胎：需三个剧情条件 */
   ACT.openDaotai = () => {
-    let b = `<div class="small">道胎不可修，只能「化」——须有一件事让你彻底放下「我」。</div>`;
+    let b = `<div class="small">道胎非修可得，唯「化」耳：须有一事，令人尽忘此我。</div>`;
     b += divider();
-    b += `<div class="small">三个条件（剧情门槛，无数值门槛）：</div>`;
-    b += `<div class="small muted">1. 一件事让你放下「我」——不是牺牲，是不再计较。</div>`;
-    b += `<div class="small muted">2. 一处可以钉住你的东西（物／人／事／仪四锚之一）。</div>`;
-    b += `<div class="small muted">3. 一次无人护法的孤身证位。</div>`;
+    b += `<div class="small">三事既具，方可证之：</div>`;
+    b += `<div class="small muted">1. 一事令人忘我：非为殉身，乃不复计较。</div>`;
+    b += `<div class="small muted">2. 一物足以系汝（物／人／事／仪，四锚其一）。</div>`;
+    b += `<div class="small muted">3. 一度孤身证位，无人护法。</div>`;
     b += divider();
-    b += `<div class="danger small">道胎没有寿元上限。寿元栏从这里起是空的，取而代之的是锚。</div>`;
+    b += `<div class="danger small">道胎无寿元之限。自此寿元一栏空，代之以锚。</div>`;
     b += `<div style="margin-top:10px"><button class="btn gold" data-act="do;daotai">化道胎</button></div>`;
     openModal('道胎 · 元婴', b, true);
   };
@@ -3141,8 +3141,8 @@
     S.lifeMax = 0; S.lifeStop = true;
     S.anchors = { wu: 1, ren: 1, shi: 1, yi: 1 };
     bumpUnlock('xian', 6);
-    logLine('化道胎。寿元栏空了，取而代之的是锚。', 'good');
-    toast('道胎 · 无寿元，只有锚');
+    logLine('道胎既化，寿元遂空，唯锚相系。', 'good');
+    toast('道胎 · 寿元已尽，唯锚系之');
     closeModal(); advanceXun(1); render();
   };
 
@@ -3197,14 +3197,14 @@
   function openPillarBreak() {
     // 八柱正位已是神道终点：再点破柱会读 D.PILLARS[8].name 抛 TypeError
     if (S.pillar >= D.PILLARS.length - 1) { openZhenjunEnd(); return; }
-    let b = `<div class="small">${esc(realmName())} 已至正位。破柱＝立一座新庙。庙址、名分、香火来源，三样缺一不可。</div>`;
+    let b = `<div class="small">${esc(realmName())} 已正其位。破柱者，立新庙也：庙址、名分、香火之来源，三者缺一不可。</div>`;
     b += `<div class="muted small" style="margin:4px 0">下一柱：${D.PILLARS[S.pillar+1].name}《${D.PILLARS[S.pillar+1].title}》</div>`;
     b += `<ul class="opts">`;
-    b += optRow('A', '自建（正祀）——购址建庙', { name: '平和', cls: 'peace' }, `${pillarRate('self')}% · 慢但正`, false, 'do;pilbreak:self');
-    b += optRow('B', '借祀（附祀）——依附宗门/朝廷', { name: '机缘', cls: 'chance' }, `${pillarRate('borrow')}% · 年供20%`, false, 'do;pilbreak:borrow');
-    b += optRow('C', '夺祀（抢祀）——砸人庙', { name: '风险', cls: 'risk' }, `${pillarRate('seize')}% · 业力+15~30`, false, 'do;pilbreak:seize');
+    b += optRow('A', '自建（正祀）：购址营庙', { name: '平和', cls: 'peace' }, `${pillarRate('self')}% · 慢但正`, false, 'do;pilbreak:self');
+    b += optRow('B', '借祀（附祀）：附于宗门、朝廷', { name: '机缘', cls: 'chance' }, `${pillarRate('borrow')}% · 年供20%`, false, 'do;pilbreak:borrow');
+    b += optRow('C', '夺祀（抢祀）：毁人之庙', { name: '风险', cls: 'risk' }, `${pillarRate('seize')}% · 业力+15~30`, false, 'do;pilbreak:seize');
     b += `</ul>`;
-    b += `<div class="hint">失败：一~三柱香火散 30%、庙塌一角；四~六柱散 50%、跌回上一阶；七~八柱法相崩解，当场神形俱灭。</div>`;
+    b += `<div class="hint">若败：一至三柱散香 30%、庙塌一角；四至六柱散 50%、退一阶；七至八柱法相崩解，神形俱灭。</div>`;
     openModal('破柱 · 三法抉择', b, true);
   }
 
@@ -3223,7 +3223,7 @@
     S.trib = tb;
     let rate = pillarRate(mode);
     rate = clamp(rate + tc.bonus * 100, 5, 95);
-    logLine('破柱当日天劫至：' + tb.name + '（' + tc.text + '）。', '');
+    logLine('破柱之日，天劫乃至：' + tb.name + '（' + tc.text + '）。', '');
     if (rnd100() <= rate) {
       S.pillar++; S.pos = 0; S.xianghuo = 0;
       /* v10.1 第三梯队·问题6：记录破柱所用之法，供 QIHE 三态判定（ext-90 读取）。
@@ -3237,11 +3237,11 @@
         S.karma += 15 + rnd(15);
         S.enemy = true;
         S.enemyName = pick(['邻庙庙祝', '血奉执事', '游方邪修']);
-        logLine('你砸了' + S.enemyName + '的庙——从此多了一门死仇。', 'danger');
+        logLine('毁' + S.enemyName + '之庙，自是结一死仇。', 'danger');
       }
       /* 神道：破柱后 pillar 已 ++，一柱对应 stage 1；创角处已置 1，故二柱起从 2 续上 */
       bumpUnlock('shen', Math.min(8, S.pillar + 1));
-      logLine(`破柱成功！晋入 ${realmName()}。`, 'good');
+      logLine(`破柱功成，晋入 ${realmName()}。`, 'good');
       S.followers = Math.round(S.followers * 1.5);
       S.renGong = (S.renGong || 0) + 200;
       toast('破柱 · ' + realmName());
@@ -3258,20 +3258,20 @@
       S.xianghuo = Math.round(S.xianghuo * 0.7);
       S.followers = Math.round(S.followers * 0.8);
       S.templeBroken = true; bump('templeBroken');
-      logLine('破柱失败：香火散 30%，庙墙塌了一角。', 'danger');
+      logLine('破柱未成：香火散 30%，庙墙颓其一角。', 'danger');
     } else if (S.pillar <= 5) {
       S.xianghuo = Math.round(S.xianghuo * 0.5);
       S.pos = Math.max(1, S.pos - 1);
       S.templeBroken = true; bump('templeBroken');
-      logLine('破柱失败：香火散 50%，塑像碎裂，跌回上一阶。', 'danger');
+      logLine('香火散 50%，塑像碎，退一阶。', 'danger');
     } else {
-      if (rng() < 0.5) { die('法相崩解，你化成一堆香灰。'); return; }
+      if (rng() < 0.5) { die('法相崩解，身化香灰。'); return; }
       S.sui = true; S.karma += 20;
-      logLine('破柱失败：你堕落为「祟」。', 'danger');
+      logLine('遂堕为「祟」。', 'danger');
     }
     S.trib = null;
     S.tribLock = 4;   // 含本次这一旬，玩家实等 3 旬
-    logLine('天劫未过：三旬之内不得再破柱。', 'danger');
+    logLine('天劫未渡：三旬之内不得再破柱。', 'danger');
     advanceXun(1); maybeEvent(); render();
   };
 
@@ -3343,12 +3343,12 @@
       S.piety = Math.min(2.0, S.piety + (lv === 'big' ? 0.2 : 0.1));
       logLine(`显圣灵验，信众 +${gain}`, 'good');
       addRenGong(220);
-      toast('灵验');
+      toast('神迹显');
     } else {
       S.piety = Math.max(0.5, S.piety - 0.2);
       logLine('神迹未显，虔诚 -0.2', 'danger');
       addRenGong(60);
-      toast('不灵');
+      toast('神迹不显');
     }
     maybeEvent(); render();
   };
@@ -3462,7 +3462,7 @@
   ACT.do_vots = (id) => {
     const v = votItem(id);
     if (!v) { toast('无此愿物'); return; }
-    if ((S.votSold || 0) >= votSellCap()) { toast('今日香客已散，明日再来'); return; }
+    if ((S.votSold || 0) >= votSellCap()) { toast('今日香客已散，来日再至'); return; }
     if (votHave(id) <= 0) { toast('仓里没有' + v.name); return; }
     S.votive[id] = votHave(id) - 1;
     S.stones += v.price;
@@ -3518,7 +3518,7 @@
     let b = `<div class="small">${esc(rit.name)} —— ${esc(rit.period)}，${esc(rit.duration)}</div>`;
     b += `<div class="muted small" style="margin:4px 0">${esc(rit.note)}</div>`;
     b += divider();
-    b += `<div class="small danger">仪式进行时不可中断。若被打断，当场断一锚且反噬（气血 −30%、道心 −1）。</div>`;
+    b += `<div class="small danger">法事方行，不可中辍。若中断，立断一锚且遭反噬（气血 −30%、道心 −1）。</div>`;
     b += `<div style="margin-top:10px"><button class="btn" data-act="do;ritualDo">如期举行</button></div>`;
     openModal('仪式 · ' + rit.name, b, true);
   };
@@ -3532,12 +3532,12 @@
       S.anchors.ren = Math.min(S.anchors.ren, 0.5);
       S.hp = Math.round(S.hp * 0.7);
       S.stats.heart = Math.max(1, S.stats.heart - 1);
-      logLine('法事中途被人闯了。当场断一锚，气血 -30%，道心 -1。', 'danger');
-      toast('仪式被打断');
+      logLine('法事为外人所扰，立断一锚，气血 −30%，道心 −1。', 'danger');
+      toast('法事中辍');
     } else {
       doAnchorMaintain('yi');
       logLine(`${isXian() ? '续灯仪' : '岁时大醮'}如期举行，仪锚复固，周期重计。`, 'good');
-      toast('仪式完成');
+      toast('法事告成');
     }
     render();
   };
@@ -3563,7 +3563,7 @@
     const _gc = clue('insight');
     if (_gc) b += '<div class="hint">' + esc(_gc) + '</div>';
     b += divider();
-    b += '<div class="small muted">换道基功法会重算境界上限。修到上限之上会被卡住——这不是 bug，是设定。</div>';
+    b += '<div class="small muted">换道基功法会重算境界上限。修至上限之上则被卡住——此非舛误，乃其制如此。</div>';
     b += '<div class="selgrid" style="margin-top:6px">';
     for (const x of D.GONGFA) {
       if (!S.ownedGongfa || !S.ownedGongfa.includes(x.id)) continue;
@@ -4227,7 +4227,7 @@
         b += optRow('ABCD'[i], h, { name: '外门', cls: 'peace' }, '记名弟子 · 无月俸', false, 'do;joinsect:' + i);
       });
       b += '</ul>';
-      b += '<div class="hint">立誓之后叛门，代价是修为倾泻一个大境。跳槽不是换个门派继续玩。</div>';
+      b += '<div class="hint">立誓之后叛门，代价是修为倾泻一个大境。叛门非易宗而复游戏。</div>';
       openModal('宗门 · ' + D.SECT.name, b);
       return;
     }
@@ -4631,7 +4631,7 @@
         n <= 0, 'do;ind:' + x.id + ':minus');
     });
     b += '</ul>';
-    b += `<div class="hint">点一下加一成人口。派去跑商来钱最快，但族运可能折损。</div>`;
+    b += `<div class="hint">一择而增一成之口。派去跑商来钱最快，但族运可能折损。</div>`;
     openModal('家族产业 · 族人怎么用', b);
   };
 
@@ -4832,7 +4832,7 @@
        面板过滤是「不给你点」，这里才是「点了也不算」。两者缺一，就有绕过路径。 */
     if (!r || !r.met) { toast('尚未见过此人'); return; }
     const _need = discipleAdmitFav();
-    if (numOr(r.fav, 0) < _need) { toast('好感不足（需 ' + _need + '），他还没到肯磕头的地步'); return; }
+    if (numOr(r.fav, 0) < _need) { toast('好感不足（须 ' + _need + '），其人尚未肯折腰'); return; }
     const res = discipleAdd(n.name, numOr(r.fav, 0));
     if (!res.ok) { toast(res.why); return; }
     /* v9.0 M3：师徒与情缘共用人物身份，但两套关系分开记。
@@ -5368,11 +5368,11 @@
 
   /* 认不出来的输入：也要照着他写的字回一句，而不是一句「没落下什么」 */
   const FREE_FALLBACK = [
-    '一月过去。这件事没有做成，但你也说不清是为什么没做成。',
-    '你以为这事很简单。做起来才发现，它只是不难，不是简单。',
-    '没有人拦你。你把这件事做完了，只是没有人知道，也没有人需要知道。',
-    '做到一半就停了。停下来的理由，你后来自己也记不清。',
-    '这一个月就这么过去了。山里的日子一向如此，做与不做，日头都照常落。'
+    '一月既往，事未成，所以未成，汝亦不能言。',
+    '初以为易。及动手，方知是不难，非是易。',
+    '无阻之者，事竟成。人莫之知，亦无须知。',
+    '半途而止。所以止之由，后亦不复记。',
+    '此月遂过。山中日月，素来如是，作与不作，日皆照常西沉。'
   ];
 
   ACT.do_free = () => {
@@ -6253,7 +6253,7 @@
     closeModal();
     bump('cheated');
     render();
-    toast('空手投胎。来世什么都不记得，除了你自己。');
+    toast('赤手投生。前尘尽忘，唯余此心');
     if (S.legacy || pageCount() < 3) { const _m = unlockedMemories(); if (_m.length) offerMemory(); }
   };
 
@@ -6275,7 +6275,7 @@
     closeModal();
     bump('cheated');
     render();
-    toast('烧了一页。来世会记得。');
+    toast('焚其一页。来世或有记焉');
     if (S.legacy || pageCount() < 3) { const _m = unlockedMemories(); if (_m.length) offerMemory(); }
   };
 
@@ -6291,12 +6291,12 @@
         S.hp = 1;
         S.lifeMax = Math.max(20, (S.lifeMax || 60) - 10);
         S.stats.heart = Math.max(1, st('heart') - 2);
-        logLine('你硬撑了回来。气血只剩一线，寿元上限少了十年，道心动了一动。', 'danger');
-        toast('撑过来了');
+        logLine('强撑得返。气血仅余一线，寿元上限损十年，道心微动。', 'danger');
+        toast('此关得渡');
         render();
         return;
       }
-      logLine('这一搏没有搏回来。', 'danger');
+      logLine('此搏未回。', 'danger');
       finalizeDeath(reason + '　最后一搏未成。');
       render();
       return;
@@ -6307,12 +6307,12 @@
       if (heir) {
         S.legacyPact = 'pass';
         S.npcs[heir.id].fav = clamp((S.npcs[heir.id].fav || 0) + 20, 0, 120);
-        logLine('你把一生所学尽数传给了' + heir.name + '。', 'good');
+        logLine('一生所学，尽传' + heir.name + '。', 'good');
       }
     } else if (a === 'daotong') {
       if (S.sect || S.clan) {
         S.legacyPact = 'daotong';
-        logLine('道统托付了下去。' + (S.clan ? '族里会有人接着走。' : '宗门会记得这个名字。'), 'good');
+        logLine('道统已有所托。' + (S.clan ? '宗族中自有人继之。' : '宗门当记此名。'), 'good');
       }
     }
     finalizeDeath(reason);
@@ -6336,20 +6336,20 @@
   /* 八柱正位：不再是「继续破柱」，而是证真君的结算口 */
   function openZhenjunEnd() {
     const solid = Object.keys(S.anchors || {}).filter(function (k) { return S.anchors[k] >= 1; }).length;
-    let b = '<div class="small">八柱已满。第十二真君的法相早就空着——现在轮到有人去坐。</div>' + divider();
+    let b = '<div class="small">八柱既满。第十二真君法相久悬，今当有坐之者。</div>' + divider();
     b += '<div class="statline"><span class="k">柱位</span><span class="v">' + esc(realmName()) + '</span></div>';
     b += '<div class="statline"><span class="k">信众</span><span class="v">' + fmtNum(S.followers) + '</span></div>';
     b += '<div class="statline"><span class="k">固锚</span><span class="v">' + solid + '/4</span></div>';
     b += '<div class="statline"><span class="k">功德/业力</span><span class="v">' + S.merit + ' / ' + S.karma + '</span></div>';
     b += divider();
     if (solid < 4) {
-      b += '<div class="small danger">四锚不固，法相坐不稳。先补锚再来。</div>';
+      b += '<div class="small danger">四锚未固，法相难安。先补其锚。</div>';
       b += '<ul class="opts">' + optRow('A', '去补锚', { name: '平和', cls: 'peace' }, '', false, 'act:openAnchor') + '</ul>';
     } else {
-      b += '<div class="small good">四锚皆固。可以证位了。</div>';
+      b += '<div class="small good">四锚皆固，可以证位。</div>';
       b += '<ul class="opts">' + optRow('A', '证真君 · 法相归位（终局）', { name: '风险', cls: 'risk' }, '功德 ≥ 300 更稳', false, 'do;zhenjun') + '</ul>';
     }
-    b += '<div class="hint">真君不是修上去的，是被这一方水土认下来的。</div>';
+    b += '<div class="hint">真君非修而得，乃为一方水土所认。</div>';
     openModal('八柱·正位 · 法相归位', b, true);
   }
 
@@ -6416,7 +6416,7 @@
         S.stats.insight = Math.max(1, S.stats.insight - 1);
         bump('zifuFail');
         logLine('幻想关渡败——你所见皆妄，修为尽散，气血逆冲。', 'danger');
-        toast('幻想关败 · 修为全散');
+        toast('幻想关败 · 修为尽散');
       } else {
         S.xiuwei = Math.round((xrealm().need || 100) * 0.5);
         S.hp = Math.max(1, S.hp - Math.round(S.hpMax * 0.15));
@@ -6430,12 +6430,12 @@
   function openZifuGate() {
     const gate = zifuGateName();
     const rate = clamp(0.55 + st('heart') * 0.02 + st('insight') * 0.012 - S.xStage * 0.06, 0.15, 0.9);
-    let b = '<div class="small">紫府三关：<b>升阳 → 蒙昧 → 幻想</b>。每一关都问一次「你是谁」。</div>';
+    let b = '<div class="small">紫府三关：<b>升阳 → 蒙昧 → 幻想</b>。每关一问：「汝为谁」。</div>';
     b += '<div class="row"><span class="lab">当前</span><b>' + esc(gate) + '</b>' +
       '<span class="muted small">第 ' + Math.min(ZIFU_GATES.length, S.xStage + 1) + ' / ' + ZIFU_GATES.length + ' 关</span></div>';
-    if (zifuIsLastGate()) b += '<div class="small good">这是最后一关——渡过去便是金丹。</div>';
+    if (zifuIsLastGate()) b += '<div class="small good">此最后一关，渡之即金丹。</div>';
     b += '<div class="row"><span class="lab">通过率</span><b style="color:' + (rate > .5 ? 'var(--merit)' : 'var(--cinnabar)') + '">' + Math.round(rate * 100) + '%</b></div>';
-    b += '<div class="hint danger">幻想关渡败：修为尽散、气血减半、悟性 −1。这是紫府最贵的一关。</div>';
+    b += '<div class="hint danger">幻想关败：修为尽散、气血减半、悟性 −1。紫府之最贵者。</div>';
     b += '<div style="margin-top:10px"><button class="btn" data-act="do;zifu">渡关</button> ' +
       '<button class="btn ghost" data-act="modal:close">再等等</button></div>';
     openModal('紫府 · ' + gate, b, true);
@@ -6622,7 +6622,7 @@
   /* ---------- 战斗后疗伤提示 ---------- */
   function afterCombatCheck() {
     const lv = injuryLevel();
-    if (lv.warn) toast('你伤得不轻（' + lv.name + '）——记得疗伤');
+    if (lv.warn) toast('伤势颇重（' + lv.name + '），宜早疗之');
     // —— v6.6 功过格钩子 2：战斗类 / 越境 / 击杀 / 夺祀
     if (S && S.phase !== 'create') checkAch();
   }
@@ -8117,7 +8117,7 @@
     // 滑头：血量低于一半会试着跑
     if (c.foe.trait === 'slippery' && c.foe.hp <= c.foe.hpMax * 0.5 && rng() < 0.35) {
       if (c.noFoeFlee) {
-        logLine(c.foe.name + '想遁走，却被锁灵阵逼了回来。', 'good');
+        logLine(c.foe.name + '欲遁，为锁灵阵所遏。', 'good');
         c.foe.trait = 'normal';
         c.round++;
         return true;
@@ -8152,11 +8152,11 @@
       '　气血 −' + dmg + (myDefl >= 0.25 ? '（卸去 ' + Math.round(myDefl * 100) + '%）' : ''), 'danger');
     c.defending = false;
     if (S.hp <= 0) {
-      if (rng() < 0.4) { die(`被${c.foe.name}当场击杀，血溅当场。`); return false; }
+      if (rng() < 0.4) { die(`为${c.foe.name}所戕，血溅于地。`); return false; }
       S.combat = null; S.phase = 'play'; S.hp = 1;
       S.stones = Math.floor(S.stones * 0.5);
       S.followers = Math.round(S.followers * 0.6);
-      logLine('重伤昏迷。醒来时财物尽失。', 'danger');
+      logLine('重伤而仆。及醒，资财尽失。', 'danger');
       toast('重伤 · 财物被劫');
       advanceXun(1);   // 时间要往前走（内部可能再次 die，交给调用方 render 兜底）
       return false;
@@ -8317,7 +8317,7 @@
       const odds = clamp(0.25 + st('insight') * 0.02 + S.fame / 2000 - diff * 0.05, 0.05, 0.7);
       if (rng() < odds) {
         S.combat = null; S.phase = 'play';
-        logLine('你说了几句，对方退了半步，转身走了。', 'good');
+        logLine('数言甫毕，彼却半步，回身而去。', 'good');
         S.fame += 3;
         advanceXun(1); render(); return;
       }
@@ -8331,7 +8331,7 @@
       if (rng() < clamp(0.4 + st('speed') * 0.035 + artBonus('move') + _gesc - gap * 0.18 - diff * 0.02, 0.05, 0.95)) {
         if (combatTierNow(c) === '绝境') bump('escapeDesperate');
         S.combat = null; S.phase = 'play';
-        logLine('你遁走成功。', '');
+        logLine('遁去得脱。', '');
         advanceXun(1); render(); return;
       }
       note = '走不脱';
@@ -8346,7 +8346,7 @@
     } else if (sub === 'talk') {
       if (rng() < clamp(0.2 + st('fate') * 0.02 - gap * 0.1 - diff * 0.01, 0.05, 0.6)) {
         S.combat = null; S.phase = 'play';
-        logLine(`言语周旋，${c.foe.name}收了杀意。`, 'good');
+        logLine(`以言周旋，${c.foe.name}杀意遂敛。`, 'good');
         advanceXun(1); render(); return;
       }
       note = '不为所动';
@@ -8387,8 +8387,8 @@
       const loot = Math.round((100 + c.foe.rank * 200) * fateMul('loot'));   // v9.0 M1：血债偿心
       S.stones += loot; S.fame += 5;
       logLine(combatLine('kill') + '。', 'danger');
-      if (_slayMaster) logLine('倒下的是教你的人。他没有叫你的名字。', 'danger');
-      logLine(isShen() ? `散去对方的香火，得灵石 ${loot}。` : `一剑了结${c.foe.name}，得灵石 ${loot}。`, 'danger');
+      if (_slayMaster) logLine('仆者，授业之人也。不呼汝名。', 'danger');
+      logLine(isShen() ? `散去对方的香火，得灵石 ${loot}。` : `一剑毕${c.foe.name}，得灵石 ${loot}。`, 'danger');
       // 生死之间有一线明悟：打赢同一境的对手，不该只值几块灵石
       const insight = Math.max(1, Math.round(c.foe.power * 0.35));
       if (isShen()) {
@@ -8808,21 +8808,21 @@
     b += '<div class="endingname">临终</div>';
     b += '<div class="endingtext">' + esc(d.reason || '气血将尽。') + '</div>';
     b += divider();
-    b += '<div class="small muted">还有一件事没做完。只做一件。</div>';
+    b += '<div class="small muted">尚有一事未了，止可为一件。</div>';
     b += '<ul class="opts">';
     b += optRow('A', '最后一搏', { name: '搏', cls: 'risk' },
-      '三成五活下来 · 寿元上限 −10 · 道心 −2', false, 'do;die:stand');
+      '生还三成五 · 寿元上限 −10 · 道心 −2', false, 'do;die:stand');
     b += optRow('B', '传功后人', { name: '传', cls: 'peace' },
-      heir ? ('尽数传给' + heir.name + '，来世起手悟性 +1') : '身边无人可传',
+      heir ? ('尽传于' + heir.name + '，来世起手悟性 +1') : '侧无人可传',
       !heir, 'do;die:pass');
     b += optRow('C', '托付道统', { name: '道', cls: 'peace' },
-      hasOrg ? ((S.clan ? S.clan.name + '氏' : D.SECT.ranks[S.sect.rank].name) + '接下这一脉，来世起手灵石 +300')
-        : '无宗无族可托',
+      hasOrg ? ((S.clan ? S.clan.name + '氏' : D.SECT.ranks[S.sect.rank].name) + '承此一脉，来世起手灵石 +300')
+        : '无宗族可托',
       !hasOrg, 'do;die:daotong');
-    b += optRow('D', '就此闭眼', { name: '静', cls: 'warn' }, '不再挣扎', false, 'do;die:close');
+    b += optRow('D', '就此瞑目', { name: '静', cls: 'warn' }, '不复挣扎', false, 'do;die:close');
     b += '</ul>';
-    b += '<div class="hint">这一局只给一次。搏不回来，就没有第二次了。</div>';
-    return panel('临终 · 最后一件事', b, { cls: 'warn', sub: '一口气还在' });
+    b += '<div class="hint">此局仅有一次。一搏不回，再无第二次。</div>';
+    return panel('临终 · 最后一事', b, { cls: 'warn', sub: '一息尚存' });
   }
 
   function renderOver() {
@@ -8848,13 +8848,13 @@
     { const _st = achStat();
       const _cats = ['道','艺','争','缘','势','秘'];
       let _g = 0; _cats.forEach(function(k){ _g += (_st.cats[k]||0); });
-      b += '<div class="small">这一生：功 ' + _g + ' · 过 ' + (_st.cats['过']||0) + ' · 隐 ' + (_st.cats['隐']||0) + '</div>';
+      b += '<div class="small">此生：功 ' + _g + ' · 过 ' + (_st.cats['过']||0) + ' · 隐 ' + (_st.cats['隐']||0) + '</div>';
       const _big = D.ACHIEVEMENTS.filter(function(a){ return (a.tier==='dian'||a.tier==='tian') && S.ach && S.ach[a.id]; });
       b += '<div class="small muted">入典 ' + _big.length + ' 项' + (_big.length ? '（' + _big.map(function(a){return esc(a.name);}).join('、') + '）' : '') + '　天书 ' + (_st.tian) + ' 项</div>';
       b += '<div class="small muted">前世累计：入典 ' + _st.past + '　天书 ' + _st.tian + '/' + _st.tianAll + '</div>';
-      if (S.legacyMemory) { const _m = D.ACH_MEMORY.find(function(x){return x.id===S.legacyMemory;}); if (_m) b += '<div class="small muted">带走了「' + esc(_m.name) + '」</div>'; }
+      if (S.legacyMemory) { const _m = D.ACH_MEMORY.find(function(x){return x.id===S.legacyMemory;}); if (_m) b += '<div class="small muted">携「' + esc(_m.name) + '」而去</div>'; }
     }
-    b += `<div class="small muted">${isXian() ? '你走到今法的尽头了——或者没走到。' : '那尊像还在，只是不再应你。'}</div>`;
+    b += `<div class="small muted">${isXian() ? '汝已至此法之尽头，抑或未至。' : '像犹在，不复应汝。'}</div>`;
     /* v10.1 第一梯队 · 软死档修复。
        旧版这里只有一个按钮「烧一页重来」，而 do_burn 在 pages===0 时直接
        toast('没有页可烧') 返回 —— 第 4 次死亡后整屏无任何可用操作，
@@ -8867,9 +8867,9 @@
     if (pageCount() > 0) {
       b += `<div style="margin-top:10px"><button class="btn gold" data-act="do;burn">百世书 · 烧一页重来</button></div>`;
     } else {
-      b += '<div class="hint danger">末页亦焚。你手里已经没有页了。</div>';
+      b += '<div class="hint danger">末页亦焚，手中更无余页。</div>';
       b += `<div style="margin-top:10px"><button class="btn" data-act="do;rebor">空手投胎 · 从零再走</button></div>`;
-      b += '<div class="small muted" style="margin-top:6px">不带宝物、不带修为、不带寿元；功过格与前世记忆仍在。</div>';
+      b += '<div class="small muted" style="margin-top:6px">无宝、无修为、无寿元；功过与前世之忆尚存。</div>';
     }
     return panel('道途终章', b, { cls: 'warn', sub: '坐化 / 道化 / 陨落' });
   }
@@ -9617,7 +9617,7 @@
       cls = 'good';
     }
     logLine(msg, cls);
-    toast(ok ? '成器' : '废了');
+    toast(ok ? '成器' : '毁弃');
     // v6.6：四艺记账（成败都计炉数，只有成功的才计品相）
     bump('craft');
     if (ok) {
@@ -9755,7 +9755,7 @@
     if (aucUsed()) {
       let b = `<div class="small">本场已经散场了。下一次在 <b>${aucNextYear()}</b> 年。</div>`;
       const won = S.aucLotWon;
-      if (won) b += `<div class="small good">你带走了「${esc(won)}」。</div>`;
+      if (won) b += `<div class="small good">携「${esc(won)}」而去。</div>`;
       b += divider() + `<div class="hint">拍卖会三年一场，一人一场只准进场一次。</div>`;
       openModal('拍卖会 · 已散场', b);
       return;
@@ -10184,7 +10184,7 @@
       if (document.visibilityState === 'hidden') autoSave();
     });
     if (localStorage.getItem(SAVE_KEY)) setTimeout(function () {
-      toast('检测到自动存档，可在右上角「系统 → 读档」恢复');
+      toast('有自动存档在，可于右上「系统 → 读档」复之');
     }, 900);
   }
 

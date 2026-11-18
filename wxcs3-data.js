@@ -233,132 +233,132 @@
   /* ====== 功法（扩充 · 全品阶可购） ====== */
   const GONGFA_EXT = [
     /* 黄阶 · 入门 */
-    { id: 'juqi',     name: '聚气诀',     tier: 'huang', el: null,    price: 120,  eff: '入门内功，最稳的引气法门' },
-    { id: 'liehuo',   name: '烈火掌',     tier: 'huang', el: 'fire',  price: 160,  eff: '火系小威力法术' },
+    { id: 'juqi',     name: '聚气诀',     tier: 'huang', el: null,    price: 120,  eff: '入门内功，引气之正' },
+    { id: 'liehuo',   name: '烈火掌',     tier: 'huang', el: 'fire',  price: 160,  eff: '火属小术' },
     { id: 'yufeng',   name: '御风术',     tier: 'huang', el: 'wind',  price: 140,  eff: '遁速 +5%' },
-    { id: 'lianqi',   name: '敛气诀',     tier: 'huang', el: null,    price: 180,  eff: '收敛气机，不易被窥探' },
-    { id: 'daoahai',  name: '蹈海诀',     tier: 'huang', el: 'water', price: 200,  eff: '水系步法，涉水如履平地' },
+    { id: 'lianqi',   name: '敛气诀',     tier: 'huang', el: null,    price: 180,  eff: '敛其气机，人莫能窥' },
+    { id: 'daoahai',  name: '蹈海诀',     tier: 'huang', el: 'water', price: 200,  eff: '水属步法，涉水如夷' },
     { id: 'guixi',    name: '龟息延年诀', tier: 'huang', el: 'earth', price: 220,  eff: '吐纳绵长，寿元 +10' },
-    { id: 'jinguang', name: '金光咒',     tier: 'huang', el: 'metal', price: 190,  eff: '护身金光，减伤一成' },
+    { id: 'jinguang', name: '金光咒',     tier: 'huang', el: 'metal', price: 190,  eff: '金光护体，减伤一成' },
     /* 玄阶 */
-    { id: 'changchun',name: '长春功',     tier: 'xuan',  el: 'wood',  price: 520,  eff: '气血回复，疗伤本钱' },
-    { id: 'liuhuo',   name: '流火剑诀',   tier: 'xuan',  el: 'fire',  price: 560,  eff: '火系剑法，可灼烧' },
-    { id: 'bingpo',   name: '冰魄诀',     tier: 'xuan',  el: 'ice',   price: 600,  eff: '冰系，减速' },
-    { id: 'tunhai',   name: '吞海功',     tier: 'xuan',  el: 'water', price: 640,  eff: '气海容量 +15%，最扎实的玄阶' },
-    { id: 'bihai',    name: '碧海功',     tier: 'xuan',  el: 'water', price: 660,  eff: '水系常法，绵长不绝' },
-    { id: 'zhenlei',  name: '震雷诀',     tier: 'xuan',  el: 'thunder', price: 680, eff: '雷系起手，破防' },
+    { id: 'changchun',name: '长春功',     tier: 'xuan',  el: 'wood',  price: 520,  eff: '气血自复，疗伤之资' },
+    { id: 'liuhuo',   name: '流火剑诀',   tier: 'xuan',  el: 'fire',  price: 560,  eff: '火属剑法，中者灼' },
+    { id: 'bingpo',   name: '冰魄诀',     tier: 'xuan',  el: 'ice',   price: 600,  eff: '冰属，缓其行' },
+    { id: 'tunhai',   name: '吞海功',     tier: 'xuan',  el: 'water', price: 640,  eff: '气海 +15%，玄阶之厚者' },
+    { id: 'bihai',    name: '碧海功',     tier: 'xuan',  el: 'water', price: 660,  eff: '水属常法，绵绵不绝' },
+    { id: 'zhenlei',  name: '震雷诀',     tier: 'xuan',  el: 'thunder', price: 680, eff: '雷属起手，破其防' },
     { id: 'lingbo',   name: '凌波仙经',   tier: 'xuan',  el: 'water', price: 700,  eff: '身法：遁速 +12%' },
-    { id: 'meihua',   name: '梅花易',     tier: 'xuan',  el: null,    price: 720,  eff: '占卜之术，机缘 +6，可窥因果一线' },
-    { id: 'xumai',    name: '续脉决',     tier: 'xuan',  el: 'wood',  price: 700,  eff: '经脉受损可自愈，疗伤效率 +30%' },
+    { id: 'meihua',   name: '梅花易',     tier: 'xuan',  el: null,    price: 720,  eff: '卜筮之术，机缘 +6，窥因果一线' },
+    { id: 'xumai',    name: '续脉决',     tier: 'xuan',  el: 'wood',  price: 700,  eff: '经脉损而自复，疗伤 +30%' },
     /* 地阶 */
-    { id: 'zixiao',   name: '紫霄雷法',   tier: 'di',    el: 'thunder', price: 2400, eff: '雷系大威力，需雷灵根' },
-    { id: 'xuanyuan', name: '玄元剑经',   tier: 'di',    el: 'metal', price: 2600, eff: '剑系威力 +40%' },
-    { id: 'tianhe',   name: '天河剑诀',   tier: 'di',    el: 'metal', price: 2800, eff: '剑势如天河倒泻，伤害 +50%' },
-    { id: 'tianli',   name: '天遁剑诀',   tier: 'di',    el: 'metal', price: 2900, eff: '攻遁一体，遁走成功率 +15' },
-    { id: 'jiuhuan',   name: '九寰天书',   tier: 'di',    el: null,    price: 3100, eff: '包罗九寰，诸法皆可入' },
-    { id: 'jujing',   name: '九变化龙诀', tier: 'di',    el: null,    price: 3200, eff: '九变之身，攻守俱佳（魔门正统）' },
-    { id: 'jixing',  name: '剑君谈玄执金秘章', tier: 'di', el: 'metal', price: 3000, eff: '执金执剑，双绝之章' },
-    { id: 'wuling',   name: '万灵归墟道经', tier: 'di', el: null,    price: 3300, eff: '万灵归墟，可借众物之气' },
+    { id: 'zixiao',   name: '紫霄雷法',   tier: 'di',    el: 'thunder', price: 2400, eff: '雷属大威，须雷灵根' },
+    { id: 'xuanyuan', name: '玄元剑经',   tier: 'di',    el: 'metal', price: 2600, eff: '剑属威力 +40%' },
+    { id: 'tianhe',   name: '天河剑诀',   tier: 'di',    el: 'metal', price: 2800, eff: '剑势若天河倒泻，伤害 +50%' },
+    { id: 'tianli',   name: '天遁剑诀',   tier: 'di',    el: 'metal', price: 2900, eff: '攻遁合一，遁走 +15' },
+    { id: 'jiuhuan',   name: '九寰天书',   tier: 'di',    el: null,    price: 3100, eff: '包罗九寰，诸法可入' },
+    { id: 'jujing',   name: '九变化龙诀', tier: 'di',    el: null,    price: 3200, eff: '九变之身，攻守兼顾（魔门正统）' },
+    { id: 'jixing',  name: '剑君谈玄执金秘章', tier: 'di', el: 'metal', price: 3000, eff: '执金执剑，二者并绝' },
+    { id: 'wuling',   name: '万灵归墟道经', tier: 'di', el: null,    price: 3300, eff: '万灵归墟，借众物之气' },
     /* 天阶 */
-    { id: 'taixu',    name: '太虚剑典',   tier: 'tian',  el: 'metal', price: 12000, eff: '剑系大成，一念千剑' },
-    { id: 'zaohua',   name: '造化丹经',   tier: 'tian',  el: null,    price: 13000, eff: '炼丹大宗师之路' },
+    { id: 'taixu',    name: '太虚剑典',   tier: 'tian',  el: 'metal', price: 12000, eff: '剑属大成，一念千剑' },
+    { id: 'zaohua',   name: '造化丹经',   tier: 'tian',  el: null,    price: 13000, eff: '丹道登峰之途' },
     { id: 'butian',   name: '补天真经',   tier: 'tian',  el: null,    price: 14000, eff: '补天之缺，寿元上限 +80' },
     { id: 'xuanrong', name: '乾天一元统摄诸天神法', tier: 'tian', el: null, price: 15000, eff: '统摄诸天，位格压制 +1 档' },
-    { id: 'xianghuo', name: '香火成神法', tier: 'tian',  el: null,    price: 14500, eff: '以香火铸神，神道正统' },
+    { id: 'xianghuo', name: '香火成神法', tier: 'tian',  el: null,    price: 14500, eff: '以香火铸神，神道之正' },
     { id: 'datie',    name: '天语焜烨龙章', tier: 'tian', el: null,  price: 15500, eff: '龙章凤姿，威压自生' },
     /* 仙阶 */
     /* 玄鉴仙族取材 */
-    { id: 'jianghe',   name: '江河一气诀',     tier: 'di',    el: 'water', price: 0, eff: '一气贯江河，修为绵长不绝' },
-    { id: 'zilei',     name: '紫雷秘元功',     tier: 'di',    el: 'thunder', price: 0, eff: '雷元内蕴，破境时抗反噬' },
+    { id: 'jianghe',   name: '江河一气诀',     tier: 'di',    el: 'water', price: 0, eff: '一气贯江河，修为绵长' },
+    { id: 'zilei',     name: '紫雷秘元功',     tier: 'di',    el: 'thunder', price: 0, eff: '雷元内蕴，破境抗噬' },
     { id: 'jindian',   name: '金殿煌元诀',     tier: 'tian',  el: 'metal', price: 0, eff: '金殿煌煌，护体不破' },
     { id: 'minghua',   name: '明华煌元经',     tier: 'tian',  el: null,   price: 0, eff: '明华照世，威压自生' },
     { id: 'yingyue',   name: '月阙剑典',       tier: 'di',    el: 'metal', price: 0, eff: '月阙悬空，剑出无影' },
-    { id: 'xuanShui',  name: '玄水剑诀',       tier: 'xuan',  el: 'water', price: 640, eff: '水凝为剑，柔中带刚' },
-    { id: 'chaoXia',   name: '朝霞采露诀',     tier: 'huang', el: 'wood', price: 210, eff: '采朝露之气，入门最稳' },
+    { id: 'xuanShui',  name: '玄水剑诀',       tier: 'xuan',  el: 'water', price: 640, eff: '水凝为剑，柔中寓刚' },
+    { id: 'chaoXia',   name: '朝霞采露诀',     tier: 'huang', el: 'wood', price: 210, eff: '采朝露之气，入门之正' },
     { id: 'yueHu',     name: '月湖映秋诀',     tier: 'xuan',  el: 'water', price: 700, eff: '月湖映秋，心境不扰' },
-    { id: 'taixuDou',  name: '太虚斗转诀',     tier: 'di',    el: null,   price: 0, eff: '斗转星移，可易位躲避' },
+    { id: 'taixuDou',  name: '太虚斗转诀',     tier: 'di',    el: null,   price: 0, eff: '斗转星移，易位而避' },
     { id: 'taiyinTuna',name: '太阴吐纳养轮经', tier: 'tian',  el: null,   price: 0, eff: '养轮之法，寿元上限 +60' },
     { id: 'baishou',   name: '白首叩庭经',     tier: 'di',    el: null,   price: 0, eff: '白首叩庭，道心不堕' },
-    { id: 'xuanguang', name: '玄光赶山经',     tier: 'di',    el: 'earth', price: 0, eff: '玄光赶山，御土如驱畜' },
-    { id: 'hongmeng', name: '鸿蒙紫气诀', tier: 'xian',  el: null,    price: 68000, eff: '万法归宗，需天道机缘' },
-    { id: 'taiyin',   name: '太阴蜕形尸解真法', tier: 'xian', el: null, price: 72000, eff: '形蜕而神存，死生不再受形所囿' },
+    { id: 'xuanguang', name: '玄光赶山经',     tier: 'di',    el: 'earth', price: 0, eff: '玄光赶山，御土如驱' },
+    { id: 'hongmeng', name: '鸿蒙紫气诀', tier: 'xian',  el: null,    price: 68000, eff: '万法归宗，须天道机缘' },
+    { id: 'taiyin',   name: '太阴蜕形尸解真法', tier: 'xian', el: null, price: 72000, eff: '形蜕神存，死生不复为形所囿' },
     { id: 'bailian',  name: '百炼成仙道法', tier: 'xian', el: null, price: 75000, eff: '百炼凡骨，终成仙体' }
   ];
 
   /* ====== 丹药（扩充） ====== */
   const PILL_EXT = [
     /* 回气血 */
-    { id: 'pillHp',   name: '回春丹',     price: 50,    tier: 'huang', type: 'hp',   v: 50,    desc: '回血 50' },
-    { id: 'xiaoSheng',name: '生肌续骨丹', price: 140,   tier: 'xuan',  type: 'hp',   v: 160,   desc: '回血 160，接骨生肌' },
-    { id: 'shengji',  name: '复原丹',     price: 480,   tier: 'xuan',  type: 'hpPct', v: 0.5,  desc: '回血 50%（按上限算）' },
-    { id: 'fuYuan',   name: '大还丹',     price: 1600,  tier: 'di',    type: 'hpFull', desc: '气血全满，重伤立愈' },
-    { id: 'huichun',  name: '九转回春散', price: 3600,  tier: 'di',    type: 'hpFull', desc: '气血全满，并清除一切伤势异常' },
+    { id: 'pillHp',   name: '回春丹',     price: 50,    tier: 'huang', type: 'hp',   v: 50,    desc: '复气血 50' },
+    { id: 'xiaoSheng',name: '生肌续骨丹', price: 140,   tier: 'xuan',  type: 'hp',   v: 160,   desc: '复气血 160，续骨生肌' },
+    { id: 'shengji',  name: '复原丹',     price: 480,   tier: 'xuan',  type: 'hpPct', v: 0.5,  desc: '复气血 50%（依上限计）' },
+    { id: 'fuYuan',   name: '大还丹',     price: 1600,  tier: 'di',    type: 'hpFull', desc: '气血尽复，重伤立瘳' },
+    { id: 'huichun',  name: '九转回春散', price: 3600,  tier: 'di',    type: 'hpFull', desc: '气血尽复，诸伤悉除' },
     /* 疗伤 / 续命 */
-    { id: 'heal',     name: '疗伤药',     price: 80,    tier: 'huang', type: 'cure', desc: '治轻/重伤' },
-    { id: 'xuming',   name: '续命丹',     price: 2200,  tier: 'di',    type: 'life', v: 20,   desc: '寿元 +20 年（只在此刻续，不再增长）' },
-    { id: 'jiebang',  name: '接骨膏',     price: 260,   tier: 'xuan',  type: 'cure', desc: '断肢续接，重伤转轻' },
+    { id: 'heal',     name: '疗伤药',     price: 80,    tier: 'huang', type: 'cure', desc: '疗轻重之伤' },
+    { id: 'xuming',   name: '续命丹',     price: 2200,  tier: 'di',    type: 'life', v: 20,   desc: '寿元 +20 年（一时所续，不复增）' },
+    { id: 'jiebang',  name: '接骨膏',     price: 260,   tier: 'xuan',  type: 'cure', desc: '断肢可续，重伤转轻' },
     /* 回灵 */
-    { id: 'pillMp',   name: '聚气丹',     price: 40,    tier: 'huang', type: 'mp',   v: 40,    desc: '回灵 40' },
-    { id: 'huiLing',  name: '回灵散',     price: 180,   tier: 'xuan',  type: 'mpPct', v: 0.4,  desc: '灵力回 40%' },
-    { id: 'yuhuaShui',name: '玉华灵水',   price: 760,   tier: 'di',    type: 'mpFull', desc: '灵力全满（补气草+合神花+玉华宝鱼汁所炼）' },
+    { id: 'pillMp',   name: '聚气丹',     price: 40,    tier: 'huang', type: 'mp',   v: 40,    desc: '复灵力 40' },
+    { id: 'huiLing',  name: '回灵散',     price: 180,   tier: 'xuan',  type: 'mpPct', v: 0.4,  desc: '复灵力 40%' },
+    { id: 'yuhuaShui',name: '玉华灵水',   price: 760,   tier: 'di',    type: 'mpFull', desc: '灵力尽复（补气草、合神花、玉华宝鱼汁所炼）' },
     /* 道心 / 修为 */
     { id: 'clear',    name: '清心丹',     price: 120,   tier: 'huang', type: 'heart', v: 2,  desc: '道心 +2' },
-    { id: 'ningShen', name: '凝神散',     price: 320,   tier: 'xuan',  type: 'heart', v: 4,  desc: '道心 +4，渡关前必服' },
-    { id: 'xiaoPo',   name: '小破障丹',   price: 900,   tier: 'xuan',  type: 'break', v: 0.12, desc: '破境成功率 +12%' },
-    { id: 'zhuji',    name: '筑基丹',     price: 1500,  tier: 'xuan',  type: 'break', v: 0.15, desc: '筑基辅助，成功率 +15%' },
-    { id: 'daPo',     name: '大破障丹',   price: 6800,  tier: 'di',    type: 'break', v: 0.28, desc: '破境成功率 +28%' },
-    { id: 'ningYing', name: '凝婴丹',     price: 12000, tier: 'di',    type: 'break', v: 0.35, desc: '金丹→元婴一关成功率 +35%' },
+    { id: 'ningShen', name: '凝神散',     price: 320,   tier: 'xuan',  type: 'heart', v: 4,  desc: '道心 +4，渡关前宜服' },
+    { id: 'xiaoPo',   name: '小破障丹',   price: 900,   tier: 'xuan',  type: 'break', v: 0.12, desc: '破境之机 +12%' },
+    { id: 'zhuji',    name: '筑基丹',     price: 1500,  tier: 'xuan',  type: 'break', v: 0.15, desc: '助筑基，成事 +15%' },
+    { id: 'daPo',     name: '大破障丹',   price: 6800,  tier: 'di',    type: 'break', v: 0.28, desc: '破境之机 +28%' },
+    { id: 'ningYing', name: '凝婴丹',     price: 12000, tier: 'di',    type: 'break', v: 0.35, desc: '金丹证元婴一关，成事 +35%' },
     /* 增益 */
-    { id: 'xiaoXuan', name: '日月玄浆',   price: 2400,  tier: 'di',    type: 'cult', desc: '服用后闭关效率 +30%（一个月）' },
-    { id: 'xiang',    name: '信香',       price: 30,    tier: 'huang', type: 'xiang', v: 20, desc: '+20 香火（神道用）' }
+    { id: 'xiaoXuan', name: '日月玄浆',   price: 2400,  tier: 'di',    type: 'cult', desc: '服之，闭关所得 +30%（一月）' },
+    { id: 'xiang',    name: '信香',       price: 30,    tier: 'huang', type: 'xiang', v: 20, desc: '香火 +20（神道用）' }
   ];
 
   /* ====== 符箓（制符产物，战斗中一次性消耗） ====== */
   const TALISMANS = [
-    { id: 'fuHuo',  name: '火符',   tier: 'huang', price: 110, eff: '一次性火伤，相当于一记免费大招', kind: 'atk', v: 0.9,  el: 'fire' },
-    { id: 'fuJin',  name: '金刚符', tier: 'huang', price: 130, eff: '抵挡一次攻击（减伤 60%）',      kind: 'def', v: 0.6 },
-    { id: 'fuDun',  name: '遁符',   tier: 'huang', price: 150, eff: '必逃，无视境界压制',            kind: 'escape' },
-    { id: 'fuZeng', name: '增益符', tier: 'xuan',  price: 240, eff: '下三回合伤害 +30%',             kind: 'buff', v: 0.30 },
-    { id: 'fuLei',  name: '雷符',   tier: 'xuan',  price: 320, eff: '必中且无视一半护甲，雷伤',      kind: 'atk', v: 1.3, el: 'thunder' }
+    { id: 'fuHuo',  name: '火符',   tier: 'huang', price: 110, eff: '一用即焚，火伤 0.9，不耗灵力', kind: 'atk', v: 0.9,  el: 'fire' },
+    { id: 'fuJin',  name: '金刚符', tier: 'huang', price: 130, eff: '当一击，减伤 60%',             kind: 'def', v: 0.6 },
+    { id: 'fuDun',  name: '遁符',   tier: 'huang', price: 150, eff: '必遁，境界之压不能阻',         kind: 'escape' },
+    { id: 'fuZeng', name: '增益符', tier: 'xuan',  price: 240, eff: '此后三回合，伤害 +30%',        kind: 'buff', v: 0.30 },
+    { id: 'fuLei',  name: '雷符',   tier: 'xuan',  price: 320, eff: '必中，破半甲，雷伤 1.3',       kind: 'atk', v: 1.3, el: 'thunder' }
   ];
 
   /* ====== 法器 / 法宝（扩充） ====== */
   const ARTIFACT_EXT = [
-    { id: 'qingyezhou', name: '青叶舟',     price: 400,   tier: 'huang', slot: 'move', bonus: { move: 0.10 }, eff: '遁走成功率 +10，赶路不耗灵力' },
-    { id: 'guixibao',   name: '护身玉符',   price: 600,   tier: 'huang', slot: 'body', bonus: { body: 0.08 }, eff: '斗法减伤 8%（常驻）' },
-    { id: 'duzuo',      name: '破宝锥',     price: 1200,  tier: 'xuan',  slot: 'once', eff: '一次性：无视境界压制，必然切开一条生路（可遁走）' },
-    { id: 'wanyePiu',    name: '百魂幡',     price: 2400,  tier: 'xuan',  slot: 'atk', bonus: { atk: 0.15, hpCost: 5 }, eff: '斗法时伤害 +15%，消耗气血 5' },
-    { id: 'jiuzhuan',    name: '九转飞剑',   price: 3200,  tier: 'di',    slot: 'atk', bonus: { atk: 0.25 }, eff: '本命飞剑，攻击 +25%' },
-    { id: 'taiyinBao',   name: '太阴宝鉴',   price: 4600,  tier: 'di',    slot: 'body', bonus: { hit: 0.10 }, eff: '照见虚妄，命中 +10，看破幻术' },
-    { id: 'huoyuyuan',   name: '火云符',     price: 180,   tier: 'huang', slot: 'once', eff: '一次性符箓：斗法首击火伤 +60%' },
-    { id: 'jinchuan',    name: '传音符',     price: 90,    tier: 'huang', slot: 'once', eff: '一次性：向任意认识的人传讯，好感 +5' },
-    { id: 'wanlingfan',  name: '万灵幡',     price: 8600,  tier: 'tian',  slot: 'atk', bonus: { atk: 0.40 }, eff: '万灵归幡，斗法伤害 +40%，可收妖物' },
-    { id: 'wuyun',       name: '五雷符',     price: 520,   tier: 'xuan',  slot: 'once', eff: '一次性：斗法首击必定命中且 +80% 伤害' },
-    { id: 'hanhuo',      name: '祈雨符箓',   price: 160,   tier: 'huang', slot: 'once', eff: '神道：一场显圣不耗香火' },
+    { id: 'qingyezhou', name: '青叶舟',     price: 400,   tier: 'huang', slot: 'move', bonus: { move: 0.10 }, eff: '遁走 +10，行路不耗灵力' },
+    { id: 'guixibao',   name: '护身玉符',   price: 600,   tier: 'huang', slot: 'body', bonus: { body: 0.08 }, eff: '斗法减伤 8%，常驻' },
+    { id: 'duzuo',      name: '破宝锥',     price: 1200,  tier: 'xuan',  slot: 'once', eff: '一用：破境界之压，必开生路，可遁' },
+    { id: 'wanyePiu',    name: '百魂幡',     price: 2400,  tier: 'xuan',  slot: 'atk', bonus: { atk: 0.15, hpCost: 5 }, eff: '斗法伤害 +15%，耗气血 5' },
+    { id: 'jiuzhuan',    name: '九转飞剑',   price: 3200,  tier: 'di',    slot: 'atk', bonus: { atk: 0.25 }, eff: '可为本命，攻击 +25%' },
+    { id: 'taiyinBao',   name: '太阴宝鉴',   price: 4600,  tier: 'di',    slot: 'body', bonus: { hit: 0.10 }, eff: '照见虚妄，命中 +10，幻术立破' },
+    { id: 'huoyuyuan',   name: '火云符',     price: 180,   tier: 'huang', slot: 'once', eff: '一用之符：斗法首击火伤 +60%' },
+    { id: 'jinchuan',    name: '传音符',     price: 90,    tier: 'huang', slot: 'once', eff: '一用：传讯相识之人，好感 +5' },
+    { id: 'wanlingfan',  name: '万灵幡',     price: 8600,  tier: 'tian',  slot: 'atk', bonus: { atk: 0.40 }, eff: '万灵归幡，斗法伤害 +40%，可收妖' },
+    { id: 'wuyun',       name: '五雷符',     price: 520,   tier: 'xuan',  slot: 'once', eff: '一用：斗法首击必中，伤害 +80%' },
+    { id: 'hanhuo',      name: '祈雨符箓',   price: 160,   tier: 'huang', slot: 'once', eff: '神道：一场显圣，不耗香火' },
     { id: 'juxian',      name: '拘仙敕神符', price: 2800,  tier: 'di',    slot: 'once', eff: '神道：位格压制 +1 档，限一场' }
   ];
 
   /* ====== 炼器 / 炼丹材料 ====== */
   const MATERIAL_EXT = [
-    { id: 'buqiCao',    name: '补气草',     price: 60,  tier: 'huang', eff: '炼丹主材：回灵类丹药' },
-    { id: 'heshenHua',  name: '合神花',     price: 90,  tier: 'huang', eff: '炼丹主材：宁神类丹药' },
+    { id: 'buqiCao',    name: '补气草',     price: 60,  tier: 'huang', eff: '炼丹主材：回灵诸丹' },
+    { id: 'heshenHua',  name: '合神花',     price: 90,  tier: 'huang', eff: '炼丹主材：宁神诸丹' },
     { id: 'yuhuaYu',    name: '玉华宝鱼汁', price: 220, tier: 'xuan',  eff: '炼丹主材：玉华灵水' },
-    { id: 'gulingHua',  name: '骨灵花',     price: 380, tier: 'xuan',  eff: '疗伤类丹药引子' },
+    { id: 'gulingHua',  name: '骨灵花',     price: 380, tier: 'xuan',  eff: '疗伤诸丹之引' },
     { id: 'tianying',   name: '天婴果',     price: 900, tier: 'di',    eff: '凝婴丹主材' },
-    { id: 'jidaoGuo',   name: '剑道果',     price: 1100, tier: 'di',   eff: '剑修大成之果，剑系功法效率 +20%' },
-    { id: 'wuxingling', name: '五行灵果',   price: 660, tier: 'xuan',  eff: '五行俱全，补灵根偏废' },
+    { id: 'jidaoGuo',   name: '剑道果',     price: 1100, tier: 'di',   eff: '剑修大成之果，剑属功法之效 +20%' },
+    { id: 'wuxingling', name: '五行灵果',   price: 660, tier: 'xuan',  eff: '五行俱备，补灵根之偏' },
     { id: 'starSand',   name: '天璇星砂',   price: 1500, tier: 'di',   eff: '炼器主材：法器品阶 +1' },
-    { id: 'mudanYao',   name: '妖丹',       price: 800, tier: 'xuan',  eff: '妖兽内丹，炼器炼丹通用' },
-    { id: 'qunfangSui', name: '群芳髓',     price: 420, tier: 'xuan',  eff: '双修与容颜之物' },
-    { id: 'wulianXue',  name: '万炼血',     price: 1300, tier: 'di',   eff: '魔门血炼主材，业力 +5 但威力可观' },
-    { id: 'lanyouCao',  name: '蓝幽草',     price: 140, tier: 'huang', eff: '最常见的疗伤草药' },
+    { id: 'mudanYao',   name: '妖丹',       price: 800, tier: 'xuan',  eff: '妖兽内丹，器丹两用' },
+    { id: 'qunfangSui', name: '群芳髓',     price: 420, tier: 'xuan',  eff: '双修、驻颜之物' },
+    { id: 'wulianXue',  name: '万炼血',     price: 1300, tier: 'di',   eff: '魔门血炼主材，业力 +5，其威亦可观' },
+    { id: 'lanyouCao',  name: '蓝幽草',     price: 140, tier: 'huang', eff: '疗伤常草，山野多有' },
     /* —— 四艺专用材料（符纸/符墨/阵材/器料）—— */
-    { id: 'fuZhi',      name: '符纸',       price: 20,  tier: 'huang', eff: '制符承载之物，一张一符' },
-    { id: 'zhuSha',     name: '朱砂',       price: 30,  tier: 'huang', eff: '制符定属性，赤色最灵' },
-    { id: 'zhenQi',     name: '阵旗',       price: 260, tier: 'xuan',  eff: '布阵必须，可重复使用' },
+    { id: 'fuZhi',      name: '符纸',       price: 20,  tier: 'huang', eff: '制符所载，一纸一符' },
+    { id: 'zhuSha',     name: '朱砂',       price: 30,  tier: 'huang', eff: '制符定属，赤者最灵' },
+    { id: 'zhenQi',     name: '阵旗',       price: 260, tier: 'xuan',  eff: '布阵所必需，可再用' },
     { id: 'huanShi',    name: '幻属石',     price: 180, tier: 'xuan',  eff: '迷踪阵主材' },
-    { id: 'jinLing',    name: '金灵砂',     price: 200, tier: 'xuan',  eff: '炼器刻阵用，导灵' },
-    { id: 'tieMu',      name: '铁木心',     price: 150, tier: 'huang', eff: '器胚主材，坚韧' },
+    { id: 'jinLing',    name: '金灵砂',     price: 200, tier: 'xuan',  eff: '炼器刻阵所用，善导灵气' },
+    { id: 'tieMu',      name: '铁木心',     price: 150, tier: 'huang', eff: '器胚主材，坚而韧' },
     { id: 'longYan',    name: '龙岩铁',     price: 700, tier: 'di',    eff: '地阶器胚主材' }
   ];
 
@@ -372,66 +372,66 @@
     /* —— 炼丹 —— */
     { id: 'dan_huichun', kind: 'dan', name: '回春丹',   tier: 'huang', lv: 1,
       mats: { lanyouCao: 1, buqiCao: 1 }, out: 'pillHp', need: 1, base: 0.75, risk: 'explode',
-      note: '最基础的疗伤丹，会做的人一辈子不愁药钱' },
+      note: '疗伤之基。习此一方，终身无缺药之虞' },
     { id: 'dan_juhui',   kind: 'dan', name: '聚气丹',   tier: 'huang', lv: 1,
       mats: { buqiCao: 2 }, out: 'pillMp', need: 1, base: 0.75, risk: 'explode',
-      note: '补灵之物，散修最先学会的就是这个' },
+      note: '补灵之物。散修入门，先习此方' },
     { id: 'dan_qingxin', kind: 'dan', name: '清心丹',   tier: 'huang', lv: 2,
       mats: { heshenHua: 1, lanyouCao: 1 }, out: 'clear', need: 1, base: 0.70, risk: 'explode',
-      note: '道心不稳时服一丸' },
+      note: '道心动摇，服一丸以定' },
     { id: 'dan_shengji', kind: 'dan', name: '生肌续骨丹', tier: 'xuan', lv: 3,
       mats: { lanyouCao: 2, gulingHua: 1 }, out: 'xiaoSheng', need: 1, base: 0.65, risk: 'explode',
-      note: '接骨生肌，重伤也拉得回来' },
+      note: '续骨生肌，虽重伤亦可挽' },
     { id: 'dan_yuhua',   kind: 'dan', name: '玉华灵水', tier: 'di', lv: 5,
       mats: { buqiCao: 1, heshenHua: 1, yuhuaYu: 1 }, out: 'yuhuaShui', need: 1, base: 0.55, risk: 'explode',
-      note: '三味合炼，灵力可一时全满' },
+      note: '三味同炉，灵力顷刻复满' },
     /* —— 制符 —— */
     { id: 'fu_huo',  kind: 'fu', name: '火符',   tier: 'huang', lv: 1,
       mats: { fuZhi: 1, zhuSha: 1 }, out: 'fuHuo', need: 3, base: 0.72, risk: 'ruin',
-      note: '一炉三张，链条最短，周转最快' },
+      note: '一炉三纸，工省而成速' },
     { id: 'fu_jin',  kind: 'fu', name: '金刚符', tier: 'huang', lv: 2,
       mats: { fuZhi: 1, zhuSha: 2 }, out: 'fuJin', need: 3, base: 0.70, risk: 'ruin',
-      note: '贴一张，抵一次' },
+      note: '佩一纸，当一击' },
     { id: 'fu_dun',  kind: 'fu', name: '遁符',   tier: 'huang', lv: 2,
       mats: { fuZhi: 2, zhuSha: 1 }, out: 'fuDun', need: 3, base: 0.68, risk: 'ruin',
-      note: '打不过就跑，跑得掉才活得久' },
+      note: '势不可敌，则遁。能遁者，得长生' },
     { id: 'fu_zeng', kind: 'fu', name: '增益符', tier: 'xuan', lv: 3,
       mats: { fuZhi: 2, zhuSha: 2, heshenHua: 1 }, out: 'fuZeng', need: 3, base: 0.60, risk: 'ruin',
-      note: '三回合伤害三成，越阶杀人的本钱' },
+      note: '三回合增伤三成，越阶取胜之资' },
     { id: 'fu_lei',  kind: 'fu', name: '雷符',   tier: 'xuan', lv: 4,
       mats: { fuZhi: 3, zhuSha: 3, jinLing: 1 }, out: 'fuLei', need: 3, base: 0.55, risk: 'ruin',
-      note: '必中、破甲，最贵的一张' },
+      note: '必中破甲，诸符之贵者' },
     /* —— 炼器 —— */
     { id: 'qi_qingye', kind: 'qi', name: '青叶舟', tier: 'huang', lv: 2,
       mats: { tieMu: 2, jinLing: 1 }, out: 'qingyezhou', need: 1, base: 0.65, risk: 'ruin',
-      note: '器胚一次成型，刻阵可重来' },
+      note: '器胚一成，刻阵可再' },
     { id: 'qi_hushen', kind: 'qi', name: '护身玉符', tier: 'huang', lv: 3,
       mats: { tieMu: 1, jinLing: 2, huanShi: 1 }, out: 'guixibao', need: 1, base: 0.60, risk: 'ruin',
-      note: '常驻减伤，最实用的一件' },
+      note: '常驻减伤，佩之无时或离' },
     { id: 'qi_jiuzhuan', kind: 'qi', name: '九转飞剑', tier: 'di', lv: 5,
       mats: { longYan: 1, jinLing: 3, starSand: 1 }, out: 'jiuzhuan', need: 1, base: 0.50, risk: 'ruin',
-      note: '本命飞剑，攻击 +25%' },
+      note: '可为本命。攻击 +25%' },
     /* —— 阵法（阵盘，布在洞府持续生效）—— */
     { id: 'zhen_juling', kind: 'zhen', name: '聚灵阵', tier: 'huang', lv: 2,
       mats: { jinLing: 2, buqiCao: 2 }, out: 'zhenJuLing', need: 1, base: 0.70, risk: 'ruin',
-      note: '洞府灵气 +1 档，需灵石维持' },
+      note: '洞府灵气 +1 档，岁糜灵石以养之' },
     { id: 'zhen_mizong', kind: 'zhen', name: '迷踪阵', tier: 'xuan', lv: 3,
       mats: { huanShi: 3, zhenQi: 1 }, out: 'zhenMiZong', need: 1, base: 0.62, risk: 'ruin',
-      note: '洞府不被窥探' },
+      note: '藏形洞府，人莫能窥' },
     { id: 'zhen_wuxing', kind: 'zhen', name: '五行轮杀阵', tier: 'di', lv: 5,
       mats: { jinLing: 1, buqiCao: 1, huanShi: 1, zhenQi: 1, longYan: 1 }, out: 'zhenWuXing', need: 1, base: 0.52, risk: 'ruin',
-      note: '五行各一份，洞府防御，可伤来犯者' },
+      note: '五行各一，环镇洞府，犯者伤' },
     { id: 'zhen_suoling', kind: 'zhen', name: '锁灵阵', tier: 'xuan', lv: 4,
       mats: { zhenQi: 1, jinLing: 2, huanShi: 1 }, out: 'zhenSuoLing', need: 1, base: 0.58, risk: 'ruin',
-      note: '战斗中限制敌人遁走' }
+      note: '斗法之际，锁其去路' }
   ];
 
   /* 阵盘（阵地产物，与法宝分开存） */
   const ARRAY_DISKS = [
     { id: 'zhenJuLing', name: '聚灵阵',     tier: 'huang', eff: '洞府灵气 +1 档',       upkeep: 20 },
-    { id: 'zhenMiZong', name: '迷踪阵',     tier: 'xuan',  eff: '洞府不被窥探',         upkeep: 40 },
-    { id: 'zhenSuoLing',name: '锁灵阵',     tier: 'xuan',  eff: '战斗中禁敌遁走',       upkeep: 50 },
-    { id: 'zhenWuXing', name: '五行轮杀阵', tier: 'di',    eff: '洞府防御，可伤来犯者', upkeep: 90 }
+    { id: 'zhenMiZong', name: '迷踪阵',     tier: 'xuan',  eff: '藏形洞府，人莫能窥',   upkeep: 40 },
+    { id: 'zhenSuoLing',name: '锁灵阵',     tier: 'xuan',  eff: '斗法时锁敌去路',       upkeep: 50 },
+    { id: 'zhenWuXing', name: '五行轮杀阵', tier: 'di',    eff: '环镇洞府，犯者受伤',   upkeep: 90 }
   ];
 
   /* ====== 四艺等级（九品）==========
@@ -469,10 +469,10 @@
 
   /* 四艺：名称 / 主属性 / 说明 */
   const CRAFT_ARTS = [
-    { id: 'dan',  name: '炼丹', stat: 'insight', desc: '自用省药钱，外卖需求刚性' },
-    { id: 'qi',   name: '炼器', stat: 'qualify', desc: '单笔最贵，法宝词条更强' },
-    { id: 'fu',   name: '制符', stat: 'sense',   desc: '链条最短，越阶杀人的手段' },
-    { id: 'zhen', name: '阵法', stat: 'insight', desc: '资产而非消耗品，改变胜负' }
+    { id: 'dan',  name: '炼丹', stat: 'insight', desc: '自服省药资，出市亦有恒需' },
+    { id: 'qi',   name: '炼器', stat: 'qualify', desc: '所费最巨，而成器之效尤胜' },
+    { id: 'fu',   name: '制符', stat: 'sense',   desc: '工省而效速，越阶制敌之资' },
+    { id: 'zhen', name: '阵法', stat: 'insight', desc: '一设而长久，可决胜负' }
   ];
 
   /* 品相五档（四艺共用） */
@@ -498,31 +498,31 @@
                   zhen 真传层（地/天阶，非真传不得学）
      习得之后还要「装配」才能带进斗法，装配上限见 equipLimit() */
   const SKILLS = [
-    { id: 'zhiquan',   name: '直取',       cost: 0,   mul: 1.0,  kind: 'normal',  lvl: 'wai',  desc: '朴实一击，无消耗' },
-    { id: 'jianqi',    name: '剑气纵横',   cost: 20,  mul: 1.35, kind: 'sword',   lvl: 'wai',  desc: '剑修常法，耗灵力' },
-    { id: 'liehuo',    name: '焚山掌',     cost: 25,  mul: 1.45, kind: 'fire',    lvl: 'wai',  desc: '火系一掌，可灼烧' },
-    { id: 'hanshui',   name: '寒水箭',     cost: 22,  mul: 1.30, kind: 'water',   lvl: 'wai',  desc: '凝水成箭，克制火属' },
-    { id: 'mumin',     name: '缠木根',     cost: 28,  mul: 1.20, kind: 'wood',    lvl: 'nei',  desc: '缠绕束缚，敌方一回合伤害减半' },
-    { id: 'luoshi',    name: '落石诀',     cost: 26,  mul: 1.40, kind: 'earth',   lvl: 'nei',  desc: '沉重一击，破防' },
-    { id: 'dugu',      name: '毒火丝',     cost: 30,  mul: 1.15, kind: 'poison',  lvl: 'nei',  desc: '真伤持续三回合' },
-    { id: 'zhentian',  name: '镇压八方',   cost: 50,  mul: 1.60, kind: 'control', lvl: 'nei',  desc: '压制敌方下一回合不能攻击' },
-    { id: 'liuJian',   name: '流转剑罡',   cost: 35,  mul: 1.50, kind: 'sword',   lvl: 'nei',  desc: '剑罡绕身，攻守两便' },
-    { id: 'leiming',   name: '惊雷引',     cost: 40,  mul: 1.75, kind: 'thunder', lvl: 'zhen', desc: '雷系，必定命中且无视一半护甲' },
-    { id: 'baigu',     name: '白骨飞剑',   cost: 45,  mul: 1.80, kind: 'sword',   lvl: 'zhen', desc: '白骨凝剑，锋利易折（命中低）' },
-    { id: 'xueLian',   name: '血炼神光',   cost: 0,   mul: 1.55, kind: 'blood',   lvl: 'zhen', desc: '魔门常法：以自身气血十成换伤害' },
+    { id: 'zhiquan',   name: '直取',       cost: 0,   mul: 1.0,  kind: 'normal',  lvl: 'wai',  desc: '平实一击，不耗灵力' },
+    { id: 'jianqi',    name: '剑气纵横',   cost: 20,  mul: 1.35, kind: 'sword',   lvl: 'wai',  desc: '剑修常法，耗灵力 20' },
+    { id: 'liehuo',    name: '焚山掌',     cost: 25,  mul: 1.45, kind: 'fire',    lvl: 'wai',  desc: '火属一掌，中者灼' },
+    { id: 'hanshui',   name: '寒水箭',     cost: 22,  mul: 1.30, kind: 'water',   lvl: 'wai',  desc: '凝水成箭，克火' },
+    { id: 'mumin',     name: '缠木根',     cost: 28,  mul: 1.20, kind: 'wood',    lvl: 'nei',  desc: '缠根缚身，敌一回合伤害减半' },
+    { id: 'luoshi',    name: '落石诀',     cost: 26,  mul: 1.40, kind: 'earth',   lvl: 'nei',  desc: '沉雄一击，破其防' },
+    { id: 'dugu',      name: '毒火丝',     cost: 30,  mul: 1.15, kind: 'poison',  lvl: 'nei',  desc: '真伤绵延三回合' },
+    { id: 'zhentian',  name: '镇压八方',   cost: 50,  mul: 1.60, kind: 'control', lvl: 'nei',  desc: '镇压八方，敌下一回合不能攻' },
+    { id: 'liuJian',   name: '流转剑罡',   cost: 35,  mul: 1.50, kind: 'sword',   lvl: 'nei',  desc: '剑罡绕身，攻守兼顾' },
+    { id: 'leiming',   name: '惊雷引',     cost: 40,  mul: 1.75, kind: 'thunder', lvl: 'zhen', desc: '雷属，必中，破半甲' },
+    { id: 'baigu',     name: '白骨飞剑',   cost: 45,  mul: 1.80, kind: 'sword',   lvl: 'zhen', desc: '白骨凝剑，锋锐易折（命中偏难）' },
+    { id: 'xueLian',   name: '血炼神光',   cost: 0,   mul: 1.55, kind: 'blood',   lvl: 'zhen', desc: '魔门常法：倾气血以易伤' },
     { id: 'xuanZhu',   name: '玄珠坠月',   cost: 55,  mul: 1.90, kind: 'water',   lvl: 'zhen', desc: '玄珠压顶，水滴石穿' },
-    { id: 'shenying',  name: '神霄御剑',   cost: 60,  mul: 2.10, kind: 'thunder', lvl: 'zhen', desc: '雷剑相合，大威力但耗灵极巨' }
+    { id: 'shenying',  name: '神霄御剑',   cost: 60,  mul: 2.10, kind: 'thunder', lvl: 'zhen', desc: '雷剑相合，威巨而耗灵亦巨' }
   ];
 
   /* ====== 道基功法的境界上限（修炼功法 / 杀伐招式 分家后最重的一条） ======
      品阶不够，修到本境圆满就再也上不去了 —— 必须去换更高阶的道基功法
      依据《苟在初圣魔门当人材》：「七品以下无缘筑基，三品以下无缘金丹」 */
   const DAOGONG_CAP = {
-    huang: { cap: 1, to: '练气圆满', why: '散修烂大街的引气法，修到头就是练气' },
-    xuan:  { cap: 2, to: '筑基圆满', why: '小宗门外门水平' },
-    di:    { cap: 3, to: '紫府三关', why: '大宗门内门/真传' },
-    tian:  { cap: 4, to: '金丹',     why: '峰主级、世家嫡系' },
-    xian:  { cap: 5, to: '道胎',     why: '传说，只在秘境' }
+    huang: { cap: 1, to: '练气圆满', why: '散修通行之引气法，极于练气' },
+    xuan:  { cap: 2, to: '筑基圆满', why: '小宗外门之学' },
+    di:    { cap: 3, to: '紫府三关', why: '大宗内门、真传之学' },
+    tian:  { cap: 4, to: '金丹',     why: '峰主、世家嫡系所传' },
+    xian:  { cap: 5, to: '道胎',     why: '传闻之法，唯秘境得见' }
   };
 
   /* ====== 五行相生（同源共鸣用） ====== */
@@ -842,14 +842,14 @@
      其余六种的 eff 全是死文案——凡体与先天体质在数值上毫无差别。
      现在每种各给一个明确、可达的落点，字段含义见各自的键名。 */
   const BODIES = [
-    { id: 'dao',   name: '先天道体', eff: '修为/香火转化 +50%', mul: 1.5 },
+    { id: 'dao',   name: '先天道体', eff: '修为、香火之化 +50%', mul: 1.5 },
     { id: 'sword', name: '剑灵体',   eff: '斗法亲和：战力 +10%', mul: 1.0, pow: 1.10 },
-    { id: 'nine',  name: '九阳圣体', eff: '火系法术 +30%', mul: 1.0, fire: 1.3 },
+    { id: 'nine',  name: '九阳圣体', eff: '火属法术 +30%', mul: 1.0, fire: 1.3 },
     { id: 'ice',   name: '冰魄灵体', eff: '冰属水：主修水时招式 +15%', mul: 1.0, ice: 1.15 },
-    { id: 'xuan',  name: '玄阴体',   eff: '双修增益 +25%', mul: 1.0, both: 1.25 },
-    { id: 'chun',  name: '纯阳体',   eff: '双修增益；免疫首次反噬', mul: 1.0, both: 1.25 },
-    { id: 'chaos', name: '混沌体',   eff: '传说：五行皆通，不被反克', mul: 1.1, rare: true, keFloor: 1.15 },
-    { id: 'plain', name: '凡体',     eff: '无特殊：淬体花费三倍', mul: 1.0, quenchMul: 3 }
+    { id: 'xuan',  name: '玄阴体',   eff: '双修之益 +25%', mul: 1.0, both: 1.25 },
+    { id: 'chun',  name: '纯阳体',   eff: '双修有益；首度反噬可免', mul: 1.0, both: 1.25 },
+    { id: 'chaos', name: '混沌体',   eff: '世所罕有：五行皆通，不受反克', mul: 1.1, rare: true, keFloor: 1.15 },
+    { id: 'plain', name: '凡体',     eff: '无所长：淬体之费三倍', mul: 1.0, quenchMul: 3 }
   ];
 
   /* ====== 淬体九阶（v8.1 P0 M2） ======
@@ -912,31 +912,31 @@
 
   /* ====== 出身 ====== */
   const ORIGINS = [
-    { id: 'farm',    name: '农家子',       desc: '道心+2，无依无靠',             apply: { heart: 2 } },
-    { id: 'hunt',    name: '猎户之后',     desc: '气血上限+20，熟悉山林',        apply: { hpFlat: 20 } },
-    { id: 'merch',   name: '商贾之家',     desc: '灵石+300，仙缘+1',             apply: { stones: 300, fate: 1 } },
-    { id: 'office',  name: '官宦子弟',     desc: '声望+20，可走大夏祀部线',      apply: { fame: 20 } },
-    { id: 'army',    name: '将门之后',     desc: '道心+1、悟性+1',               apply: { heart: 1, insight: 1 } },
-    { id: 'fallen',  name: '没落世家',     desc: '携先祖残卷（随机玄阶功法）',    apply: { scroll: true } },
-    { id: 'orphan',  name: '市井孤儿',     desc: '遁速+2，三教九流皆识',          apply: { speed: 2 } },
-    { id: 'scholar', name: '书香门第',     desc: '悟性+3，过目不忘',             apply: { insight: 3 } },
-    { id: 'monk',    name: '方外遗孤',     desc: '资质+2，识科仪',               apply: { qualify: 2, ritual: true } },
-    { id: 'demon',   name: '妖族后裔',     desc: '稀有：半妖之身',               apply: { halfDemon: true }, rare: true }
+    { id: 'farm',    name: '农家子',       desc: '道心 +2，孑然无依',             apply: { heart: 2 } },
+    { id: 'hunt',    name: '猎户之后',     desc: '气血上限 +20，习于山林',        apply: { hpFlat: 20 } },
+    { id: 'merch',   name: '商贾之家',     desc: '灵石 +300，仙缘 +1',             apply: { stones: 300, fate: 1 } },
+    { id: 'office',  name: '官宦子弟',     desc: '声望 +20，可入大夏祀部',        apply: { fame: 20 } },
+    { id: 'army',    name: '将门之后',     desc: '道心 +1、悟性 +1',               apply: { heart: 1, insight: 1 } },
+    { id: 'fallen',  name: '没落世家',     desc: '怀先祖残卷（玄阶功法一，随机）', apply: { scroll: true } },
+    { id: 'orphan',  name: '市井孤儿',     desc: '遁速 +2，三教九流皆识',          apply: { speed: 2 } },
+    { id: 'scholar', name: '书香门第',     desc: '悟性 +3，过目成诵',             apply: { insight: 3 } },
+    { id: 'monk',    name: '方外遗孤',     desc: '资质 +2，通科仪',               apply: { qualify: 2, ritual: true } },
+    { id: 'demon',   name: '妖族后裔',     desc: '罕有：半妖之身',                apply: { halfDemon: true }, rare: true }
   ];
 
   /* ====== 法相（仅神道） ====== */
   const FAXIANG = [
-    { id: 'g1',  zodiac: '龙', name: '山河障市真君', kw: '君，帝王，尊贵，龙，江山，地域，空间', opening: '香火最易做大局，扩张快，慢热' },
-    { id: 'g2',  zodiac: '狗', name: '市井江湖真君', kw: '民，九流，烟火，人，饮食，风俗，时间', opening: '信众易得，精细处难' },
-    { id: 'g3',  zodiac: '鸡', name: '关外北马真君', kw: '乱，村野，苦难，贼，畜生，动荡，迷信', opening: '乱世起家，越乱越强' },
-    { id: 'g4',  zodiac: '马', name: '侠武乱禁真君', kw: '侠，武术，劳力，镖，功夫，宗师，乱禁', opening: '斗法最强，香火最薄' },
-    { id: 'g5',  zodiac: '猴', name: '生死岐黄真君', kw: '医，诊病，医官，药，手术，接骨，济世', opening: '显圣最灵验，救人即聚香' },
-    { id: 'g6',  zodiac: '蛇', name: '南洋邪灵真君', kw: '毒，诅咒，邪神，巫，蛊毒，灵媒，左道', opening: '灵验极快，业力极重' },
-    { id: 'g7',  zodiac: '虎', name: '西传密藏真君', kw: '佛，密宗，普渡，藏，皈依，因果，轮回', opening: '护身超度，抗邪祟' },
-    { id: 'g8',  zodiac: '羊', name: '天师法道真君', kw: '道，五行，长生，天，无为，出世，自然', opening: '最正统，符箓最强' },
-    { id: 'g9',  zodiac: '牛', name: '神工百匠真君', kw: '匠，工艺，美，行，工业，造物，科学', opening: '造物生财，庙宇营建最快' },
-    { id: 'g10', zodiac: '猪', name: '百无禁忌真君', kw: '脏，邪祟，尸体，死，葬，风水，忌讳', opening: '阴事专精，正祀不容' },
-    { id: 'g11', zodiac: '鼠', name: '福宝衰运真君', kw: '命，生辰，商贾，运，八字，命理，玄学', opening: '财运最旺' },
+    { id: 'g1',  zodiac: '龙', name: '山河障市真君', kw: '君，帝王，尊贵，龙，江山，地域，空间', opening: '香火易积，拓境速，然见效缓' },
+    { id: 'g2',  zodiac: '狗', name: '市井江湖真君', kw: '民，九流，烟火，人，饮食，风俗，时间', opening: '信众易集，精微处难工' },
+    { id: 'g3',  zodiac: '鸡', name: '关外北马真君', kw: '乱，村野，苦难，贼，畜生，动荡，迷信', opening: '起于乱世，世愈乱而势愈张' },
+    { id: 'g4',  zodiac: '马', name: '侠武乱禁真君', kw: '侠，武术，劳力，镖，功夫，宗师，乱禁', opening: '斗法称雄，香火独薄' },
+    { id: 'g5',  zodiac: '猴', name: '生死岐黄真君', kw: '医，诊病，医官，药，手术，接骨，济世', opening: '显圣最灵，济人即聚香火' },
+    { id: 'g6',  zodiac: '蛇', name: '南洋邪灵真君', kw: '毒，诅咒，邪神，巫，蛊毒，灵媒，左道', opening: '灵验甚速，业力亦甚' },
+    { id: 'g7',  zodiac: '虎', name: '西传密藏真君', kw: '佛，密宗，普渡，藏，皈依，因果，轮回', opening: '护身度亡，邪祟不侵' },
+    { id: 'g8',  zodiac: '羊', name: '天师法道真君', kw: '道，五行，长生，天，无为，出世，自然', opening: '法脉至正，符箓称尊' },
+    { id: 'g9',  zodiac: '牛', name: '神工百匠真君', kw: '匠，工艺，美，行，工业，造物，科学', opening: '造物生财，营庙最速' },
+    { id: 'g10', zodiac: '猪', name: '百无禁忌真君', kw: '脏，邪祟，尸体，死，葬，风水，忌讳', opening: '阴事专精，正祀所不容' },
+    { id: 'g11', zodiac: '鼠', name: '福宝衰运真君', kw: '命，生辰，商贾，运，八字，命理，玄学', opening: '财气独旺' },
     { id: 'g12', zodiac: '兔', name: '天外逐岁真君', kw: '妙，悖论，星宿，理，太空，哲学，神秘', opening: '权柄最奇' }
   ];
 
@@ -1272,7 +1272,7 @@
       likes: ['剑', '清茶', '山水'], approach: '切磋论剑、助他参悟剑意', taboo: '认死理，勿欺',
       realm: 2, inner: '守正到几近固执，认准的理绝不回头',
       meet: [
-        '他站在演武场边，青衫被风掀起来一角。你走近时，他没有回头，只把剑往鞘里送了半寸。',
+        '立演武场侧，青衫为风掀起一角。汝近前，不回首，惟将剑纳鞘半寸。',
         '「你的气不稳。」他说，「急着筑基的人，多半死在筑基前一夜。」'
       ],
       stages: [
@@ -1288,11 +1288,11 @@
         together: ['他与你并肩时话很少，但你的左后方始终有人。']
       },
       ask: {
-        q: '你说，剑是快的好，还是稳的好？',
+        q: '汝道，剑宜快乎，宜稳乎',
         opts: [
-          { t: '「快。慢了就来不及。」', reply: '他摇头：「来不及的，本就不该出手。」', fav: 2 },
-          { t: '「稳。稳到最后才出手。」', reply: '他看了你一眼：「这话，像我师父说的。」', fav: 5 },
-          { t: '「看你怕什么。」', reply: '他愣住，很久才笑：「……这倒没想过。」', fav: 8 }
+          { t: '「快。迟则不及」', reply: '摇头：「既来不及，本不该出手。」', fav: 2 },
+          { t: '「稳。俟其隙而后发」', reply: '视汝一眼：「此语类吾师所言。」', fav: 5 },
+          { t: '「视君所惧者何」', reply: '愕然，良久乃笑：「……此未尝思及。」', fav: 8 }
         ]
       }
     },
@@ -1302,8 +1302,8 @@
       likes: ['灵石', '奇闻', '算计'], approach: '陪她做局、共享情报', taboo: '别在她面前说谎',
       realm: 1, inner: '把人情算成一笔账，却总留一格给自己',
       meet: [
-        '她坐在账台后头，面前的算盘没响，手指在珠子上一颗一颗地按着玩。',
-        '「新来的？」她抬眼，「我这儿不问出处，只问你要买，还是要卖。」'
+        '坐账台后，算盘寂然，手指逐珠轻拨，若无所事。',
+        '「新至此？」抬眼，「此处不问来历，只问君欲买，抑或欲卖。」'
       ],
       stages: [
         { min: 0, lines: ['「明码标价，童叟无欺。」她笑得很好看。'] },
@@ -1318,11 +1318,11 @@
         together: ['她走在你侧边半步，一路上把遇见的每个人都在心里标了价。']
       },
       ask: {
-        q: '你说，这世上是人情重，还是灵石重？',
+        q: '汝道，人情重乎，灵石重乎',
         opts: [
-          { t: '「灵石。人情最不值钱。」', reply: '她笑出声：「痛快。我就喜欢跟痛快人做买卖。」', fav: 3 },
-          { t: '「人情。钱花完了还能再挣。」', reply: '她拨算珠的手停了一下：「……你这人，做不成大生意。」', fav: 4 },
-          { t: '「你问这个，是想听真话还是好话？」', reply: '她盯了你很久，忽然把账本合上：「真话。就这一次。」', fav: 8 }
+          { t: '「灵石。人情至贱」', reply: '失笑：「痛快。吾喜与痛快人交易。」', fav: 3 },
+          { t: '「人情。财散而复聚」', reply: '拨珠之手微顿：「……君非为巨贾之材。」', fav: 4 },
+          { t: '「问此，欲闻真言，抑或甘言」', reply: '注视良久，忽合账册：「真言。止此一回。」', fav: 8 }
         ]
       }
     },
@@ -1392,7 +1392,7 @@
       likes: ['灵果', '肉食', '自由'], approach: '护他妖身秘密、带他逛人间', taboo: '口嫌体正直',
       realm: 4, inner: '嘴上说人类无趣，却偷偷学会了煮茶',
       meet: [
-        '一个少年蹲在树杈上啃灵果，果核往你脚边丢。',
+        '一少年踞枝啖灵果，果核坠汝足侧。',
         '「人类。」他嗤了一声，「你们走路真慢。」'
       ],
       stages: [
@@ -1422,7 +1422,7 @@
       likes: ['甜食', '双修', '新鲜事'], approach: '认真待她，勿当玩物', taboo: '看似风流实则怕寂寞',
       realm: 2, inner: '把「不在意」练成了本能，怕一在意就输',
       meet: [
-        '她把一颗糖递到你嘴边，你没接，她就笑弯腰。',
+        '以一糖相递，汝未受，遂笑而折腰。',
         '「真有意思。」她说，「我还没见过你这样的人。」'
       ],
       stages: [
@@ -2998,7 +2998,7 @@
       hint: '剑柄上缠的布是新的，却没有落雪',
       known: true, due: { kind: 'kill', at: 3 },
       claim: { text: '剑忽然自己响了。你听见一个声音说：「该了的事了。」',
-        want: '替它杀一个人',
+        want: '代杀一人',
         effect: { karma: 25 },
         refuse: { karma: 20, hpPct: -0.4, debuff: 'borrowed_luck' } } },
 
@@ -3006,7 +3006,7 @@
       hint: '你跟着念的时候，听见自己的声音慢了半拍',
       known: false, due: { kind: 'realm', at: 5 },
       claim: { text: '你在镜子里看见自己的脸，正在笑——而你并没有笑。',
-        want: '你的身体',
+        want: '汝之身',
         effect: { die: '道化：那缕声音念完了最后一句，用的是你的嗓子。' },
         refuse: { karma: 0, hpPct: -0.7, debuff: 'soul_lien' } } },
 
@@ -3038,7 +3038,7 @@
       hint: '祠堂给你单开了一炉香',
       known: true, due: { kind: 'realm', at: 3 },
       claim: { text: '族老把族谱摊开，指着空着的那一页。',
-        want: '一个继承你道统的后代',
+        want: '承汝道统之后',
         effect: { lifePct: -0.1, merit: 20 },
         refuse: { karma: 10, hpPct: -0.2, debuff: 'debt_weight' } } },
 
@@ -3100,7 +3100,7 @@
      ============================================================ */
   const INTENTS = [
     /* ---------- 修行 ---------- */
-    { id: 'meditate', name: '打坐', keys: ['打坐', '采气', '吐纳', '入定', '静坐', '调息', '运功', '炼气', '行功'], soft: ['坐', '息'], outs: [ { w: 3, eff: { xiuweiMul: 1.0 }, text: '气自鼻端入，凉。过三寸便分不清，是血在行，抑或山气在行。睁眼时香已过半，窗外有鸟，不知其叫了几时。' }, { w: 2, eff: { xiuweiMul: 1.1, heart: 1 }, text: '坐至第二炷香，忽闻自己心跳。一下，一下，似有人在极远处叩门。数至第七下，声散矣。' }, { w: 1, eff: { xiuweiMul: 0.6, heart: -1 }, text: '今日心浮。数息至四十即断，从头再数，复断。第三次断时索性不数，只坐着，看香灰一寸寸长。' }, { minT: 4, w: 2, eff: { xiuweiMul: 1.35 }, text: '入定后身如空坛，天地之气自灌。你不敢动，恐一动即满。坛满何如，无人说过。' } ] },
+    { id: 'meditate', name: '打坐', keys: ['打坐', '采气', '吐纳', '入定', '静坐', '调息', '运功', '炼气', '行功'], soft: ['坐', '息'], outs: [ { w: 3, eff: { xiuweiMul: 1.0 }, text: '气自鼻端入，凉。过三寸便分不清，是血在行，抑或山气在行。睁眼时香已过半，窗外有鸟，不知其叫了几时。' }, { w: 2, eff: { xiuweiMul: 1.1, heart: 1 }, text: '坐至第二炷香，忽闻自己心跳。一下，一下，似有人在极远处叩门。数至第七下，声散矣。' }, { w: 1, eff: { xiuweiMul: 0.6, heart: -1 }, text: '今日心浮。数息至四十即断，从头再数，复断。三度断时遂不复数，但坐视香灰寸长。' }, { minT: 4, w: 2, eff: { xiuweiMul: 1.35 }, text: '入定后身如空坛，天地之气自灌。你不敢动，恐一动即满。坛满何如，无人说过。' } ] },
     { id: 'seclusion', name: '闭关', keys: ['闭关', '死关', '长闭关', '闭死关'], soft: ['闭'], outs: [ { w: 3, eff: { xiuweiMul: 3.2, hpPct: -0.15 }, text: '封洞口，只留一线通气。前三日最难，第七日以后便不知日子。出关那日剃须，刀钝三次。' }, { w: 2, eff: { xiuweiMul: 2.2, heart: -1, hpPct: -0.1 }, text: '闭至第二月，气走岔一回。黑暗里坐了整夜方捋顺，后背尽湿，天明才知自己一直在抖。' }, { w: 1, eff: { xiuweiMul: 0.8, heart: -2 }, text: '闭得太急，入了岔路。醒来时天已换两季，修为未动多少。石壁上尽是抓痕，深处嵌着指甲。' }, { w: 2, eff: { xiuweiMul: 2.6, insight: 1 }, text: '洞中无昼夜，只数呼吸。数至十万，忽分不清是你在呼吸，还是洞在呼吸。' } ] },
     { id: 'practice', name: '练功', keys: ['练剑', '试剑', '磨剑', '练功', '演练', '修习', '练刀', '打拳', '练拳', '演武'], soft: ['剑', '刀', '拳', '功'], outs: [ { w: 3, eff: { xiuweiMul: 0.7, sense: 1 }, text: '一招劈三百遍。前百遍尚问对否，后二百遍手自运。收势时臂酸难举，心中却静。' }, { w: 2, eff: { xiuweiMul: 0.5, insight: 1 }, text: '剑尖点石七下，七点连成一弧。你盯着看了许久，忽明师父当年为何只教这一招：他也只会这一招。' }, { w: 1, eff: { hpPct: -0.08, xiuweiMul: 0.4 }, text: '收势太急，气未归位，喉头一甜。扶树立了片刻，把血咽回去。地上那口血，用脚蹭进土里。' }, { minT: 2, w: 2, eff: { xiuweiMul: 0.9, sense: 1 }, text: '剑意出三丈即散。你知该到五丈，身却记不住那个分寸。练至天黑，散九次，第十次近了半尺。' } ] },
 
@@ -3111,13 +3111,13 @@
     { id: 'travel', name: '远行', keys: ['游历', '远行', '下山', '出门', '走走', '游山', '赶路', '云游'], soft: ['游', '走', '路'], outs: [ { w: 3, eff: { xiuweiMul: 0.4, insight: 1 }, text: '行四十里，见一条无名之河。河上有老者补网，网破三处，补了大半日。问他此河通向何处，他说不知。' }, { w: 2, eff: { stones: 30, fame: 2 }, text: '路过小集，替人看了一场病。人家硬塞一包干粮与几块碎灵石。干粮硬，硌牙，你还是吃完。' }, { w: 1, eff: { hpPct: -0.15, xiuweiMul: 0.3 }, text: '走错路，绕进一片沼地。鞋陷泥中拔不出，最后光着一只脚走了半日。脚底划破，不知被何物所划。' }, { w: 2, eff: { insight: 1 }, text: '路上遇一队赶车的，跟了两日。他们说话你听不懂，却学会他们歇脚时先喂牲口、后自己饮水。' } ] },
 
     /* ---------- 人 ---------- */
-    { id: 'visit', name: '探望', keys: ['拜访', '探望', '去看', '寻访', '求见', '登门'], soft: ['访', '找'], outs: [ { w: 3, eff: { fav: 5 }, text: '门未关。她正筛药，头也未抬，只说一个「坐」字。你坐了一下午，一句话未说。临走她才问：伤好了么。' }, { w: 2, eff: { fav: 3, stones: -20 }, text: '提两斤酒上门。他接了酒，却先问你身上之伤从何而来。你说不小心，他笑了一下，未再问。' }, { w: 1, eff: { fav: -2 }, text: '等了半日，人未见到。门房说主人出门了，可你分明看见窗里有灯，灯下人影动了一动。' }, { w: 2, eff: { fav: 4, insight: 1 }, text: '去时他正劈柴。你接过斧子劈了半垛，手上茧磨破了。他递一碗水，说：你从前不做这个。' } ] },
-    { id: 'discuss', name: '论道', keys: ['论道', '请教', '问道', '求教', '辩论', '辩法'], soft: ['论', '问'], outs: [ { w: 3, eff: { fav: 4, insight: 1 }, text: '你问筑基之后气当往何处走。他想许久，说：你先把筑基之前走完，再来问。此话听似推托，实是实话。' }, { w: 2, eff: { fav: 6, insight: 1 }, text: '说到第三炷香，两人皆不再言。有些话说到尽头便是如此，不是谁说服了谁，是说倦了。' }, { w: 1, eff: { fav: -3, heart: -1 }, text: '你话说得太满。他笑了一下，不再接话。归途上你才想起错在何处，想通也不打算回去说。' }, { w: 2, eff: { insight: 2 }, text: '他讲一个故事，讲完问你懂么。你说懂。他说：那我再讲一遍。第二遍讲完，你才知自己没懂。' } ] },
+    { id: 'visit', name: '探望', keys: ['拜访', '探望', '去看', '寻访', '求见', '登门'], soft: ['访', '找'], outs: [ { w: 3, eff: { fav: 5 }, text: '门未关。她正筛药，头也未抬，只说一个「坐」字。你坐了一下午，一句话未说。将行，始问：伤瘳否。' }, { w: 2, eff: { fav: 3, stones: -20 }, text: '提两斤酒上门。他接了酒，却先问你身上之伤从何而来。汝称不小心，彼微哂，不复问。' }, { w: 1, eff: { fav: -2 }, text: '等了半日，人未见到。门房说主人出门了，可你分明看见窗里有灯，灯下人影动了一动。' }, { w: 2, eff: { fav: 4, insight: 1 }, text: '去时他正劈柴。你接过斧子劈了半垛，手上茧磨破了。他递一碗水，说：你从前不做这个。' } ] },
+    { id: 'discuss', name: '论道', keys: ['论道', '请教', '问道', '求教', '辩论', '辩法'], soft: ['论', '问'], outs: [ { w: 3, eff: { fav: 4, insight: 1 }, text: '你问筑基之后气当往何处走。他想许久，说：你先把筑基之前走完，再来问。此话听似推托，实是实话。' }, { w: 2, eff: { fav: 6, insight: 1 }, text: '说到第三炷香，两人皆不再言。有些话说到尽头便是如此，不是谁说服了谁，是说倦了。' }, { w: 1, eff: { fav: -3, heart: -1 }, text: '言过其实。彼微哂，不复读。归途上始想起错在何处，想通亦不欲返而言。' }, { w: 2, eff: { insight: 2 }, text: '彼述一故事，讲竟问曰：解否。曰解。彼曰：吾再述一遍。第二遍既竟，始知己实未解。' } ] },
 
     /* ---------- 闲事 ---------- */
-    { id: 'drink', name: '饮酒', keys: ['喝酒', '饮酒', '买醉', '独酌', '小酌', '喝一杯'], soft: ['酒'], outs: [ { w: 3, eff: { heart: 1, stones: -10 }, text: '酒是酸的，不算好。你还是喝完，因为杯子是旁人留下的。杯沿有一道缺口，你喝时正好绕开。' }, { w: 2, eff: { heart: 2, xiuweiMul: 0.3, stones: -20 }, text: '饮至第三杯，忽想起许久以前一件小事。想完又觉没什么可想的，再倒一杯。' }, { w: 1, eff: { heart: -1, hp: -5, stones: -30 }, text: '醉了一场。醒来躺在门口，身上少了半袋灵石，谁拿的不知。头疼得厉害，疼得你笑了出来。' }, { w: 2, eff: { heart: 1 }, text: '独饮至半夜。店家要打烊，来问要不要收。你说再坐一会儿。他便把灯留了一半，自去睡了。' } ] },
-    { id: 'read', name: '读书', keys: ['读书', '看书', '翻阅', '研读', '读经', '温书'], soft: ['书', '卷'], outs: [ { w: 3, eff: { insight: 1 }, text: '纸上讲「气行如织」。你读二十遍，忽想起幼时看母亲织布的样子：线是断的，接起来才成布。' }, { w: 2, eff: { insight: 1, xiuweiMul: 0.4 }, text: '书里有一页被人撕去。你猜了许久撕去的是什么，猜不出，反把前面几页记住了。' }, { w: 1, eff: { insightXp: 6 }, text: '读到眼涩，抬头才知天黑。今日读了什么，一时竟想不起，只记得页边有一处批注，字很丑。' }, { minT: 3, w: 2, eff: { insight: 2 }, text: '书上的字你早认全了，今日这一句却忽然不同。不是字变了，是你站到了能读懂它的地方。' } ] },
-    { id: 'fish', name: '垂钓', keys: ['钓鱼', '垂钓', '溪边', '下钩'], soft: ['钓', '鱼'], outs: [ { w: 3, eff: { heart: 1 }, text: '一日无鱼咬钩。你也不急，收竿，把饵给了岸边的野狗。它闻了闻，没吃，趴在脚边睡了。' }, { w: 2, eff: { heart: 1, merit: 2 }, text: '钓上一条，太小，又放了。它在水里打了个转，没走。你看了一会儿，收竿归去。' }, { w: 1, eff: { heart: 2, insight: 1 }, text: '浮子动了一下便无动静。你忽明白，它不是来吃饵，是在看你的影子。影子落在水面，比人还长。' }, { w: 2, eff: { heart: 1, hp: -3 }, text: '钓得一条半斤的，鳞是青的。你不舍得放，也不舍得杀，用竹篓养着带回。第二日它死了，你还是煮了汤。' } ] },
+    { id: 'drink', name: '饮酒', keys: ['喝酒', '饮酒', '买醉', '独酌', '小酌', '喝一杯'], soft: ['酒'], outs: [ { w: 3, eff: { heart: 1, stones: -10 }, text: '酒是酸的，不算好。你还是喝完，因为杯子是旁人留下的。杯沿有一道缺口，你喝时正好绕开。' }, { w: 2, eff: { heart: 2, xiuweiMul: 0.3, stones: -20 }, text: '饮至第三杯，忽想起许久以前一件小事。想完又觉没什么可想的，再倒一杯。' }, { w: 1, eff: { heart: -1, hp: -5, stones: -30 }, text: '醉了一场。醒来躺在门口，身上少了半袋灵石，谁拿的不知。首痛甚，痛极反笑。' }, { w: 2, eff: { heart: 1 }, text: '独饮至半夜。店家要打烊，来问要不要收。你说再坐一会儿。他便把灯留了一半，自去睡了。' } ] },
+    { id: 'read', name: '读书', keys: ['读书', '看书', '翻阅', '研读', '读经', '温书'], soft: ['书', '卷'], outs: [ { w: 3, eff: { insight: 1 }, text: '纸上讲「气行如织」。你读二十遍，忽想起幼时看母亲织布的样子：线是断的，接起来才成布。' }, { w: 2, eff: { insight: 1, xiuweiMul: 0.4 }, text: '书里有一页被人撕去。你猜了许久撕去的是什么，猜不出，反把前面几页记住了。' }, { w: 1, eff: { insightXp: 6 }, text: '读到眼涩，抬头才知天黑。今日读了什么，一时竟想不起，只记得页边有一处批注，字拙。' }, { minT: 3, w: 2, eff: { insight: 2 }, text: '书上的字你早认全了，今日这一句却忽然不同。不是字变了，是你站到了能读懂它的地方。' } ] },
+    { id: 'fish', name: '垂钓', keys: ['钓鱼', '垂钓', '溪边', '下钩'], soft: ['钓', '鱼'], outs: [ { w: 3, eff: { heart: 1 }, text: '一日无鱼咬钩。你也不急，收竿，把饵给了岸边的野狗。嗅之，不食，伏足而寐。' }, { w: 2, eff: { heart: 1, merit: 2 }, text: '钓上一条，太小，又放了。它在水里打了个转，没走。你看了一会儿，收竿归去。' }, { w: 1, eff: { heart: 2, insight: 1 }, text: '浮子动了一下便无动静。你忽明白，它不是来吃饵，是在看你的影子。影子落在水面，比人还长。' }, { w: 2, eff: { heart: 1, hp: -3 }, text: '钓得一条半斤的，鳞是青的。你不舍得放，也不舍得杀，用竹篓养着带回。第二日它死了，你还是煮了汤。' } ] },
     { id: 'chess', name: '下棋', keys: ['下棋', '对弈', '棋'], soft: ['棋', '弈'], outs: [ { w: 3, eff: { insight: 1 }, text: '输七目。收官时他指着棋盘一处说：你早看见了，只是舍不得。' }, { w: 2, eff: { insight: 1, heart: 1 }, text: '至中盘，两人皆停。盘上那条大龙，谁也不敢先动。末了是他先伸手，把子收了。' }, { w: 1, eff: { heart: -1 }, text: '棋未下完。对局者被人叫走，棋留在石桌上，黑白子被山风吹乱两处。你未去摆正。' }, { w: 2, eff: { insight: 2, heart: -1 }, text: '让三子仍是输。他一边收子一边说：你下得太急。急不是坏事，急了便看不见旁人在等什么。' } ] },
     { id: 'scenery', name: '看景', keys: ['看雪', '观星', '赏月', '看云', '看海', '听雨', '赏花', '看日出', '听风'], soft: ['雪', '月', '星', '云', '雨', '花', '海'], outs: [ { w: 3, eff: { heart: 1 }, text: '云自西来，一层压一层。你一直站到它把整座山罩住，才想起该收衣裳。' }, { w: 2, eff: { heart: 2, insight: 1 }, text: '星子极密。数至一百七十余便不数了，总有新的在暗处亮起，数不完。' }, { w: 1, eff: { heart: 1, hp: -5 }, text: '看雪太久，脚冻僵了。回屋时鞋底粘一层冰，敲了半日才落，敲下的冰里夹着草屑。' }, { w: 2, eff: { heart: 1, insight: 1 }, text: '月自东边上来时是红的，后来才白。你不明白为何如此，也未去问。' } ] },
     { id: 'tea', name: '煮茶', keys: ['煮茶', '烹茶', '泡茶', '喝茶', '煎茶'], soft: ['茶'], outs: [ { w: 3, eff: { heart: 1 }, text: '水开三回。第二回最宜，头回太嫩，三回已老。这些是旁人教的，你记了许多年，教的人已不在了。' }, { w: 2, eff: { heart: 2, insight: 1 }, text: '茶里有一点松针气。你没放松针，是水自松林那边流过来。' }, { w: 1, eff: { stones: -5 }, text: '火太旺，壶裂了。你看着那道裂纹，把剩下的水倒进土里。水渗下去，土色深了一块。' }, { w: 2, eff: { heart: 2 }, text: '为自己倒一杯，又为对面倒一杯。对面的杯子一直无人端起，凉透了才收。' } ] },
@@ -3125,9 +3125,9 @@
     { id: 'vow', name: '问心', keys: ['立誓', '自省', '问心', '反省', '叩问', '静心'], soft: ['誓', '省'], outs: [ { w: 3, eff: { heart: 1 }, text: '你把这一路所做的事一件件想过。有几件不愿想，还是想完了。想完也没得出什么结论。' }, { w: 2, eff: { heart: 2, karma: -2 }, text: '对空山说了一句话，说完便悔。可话说出去，山已经听见。' }, { w: 1, eff: { heart: -1 }, text: '你想起许久以前一件事，越想越觉当时做得不对。这一夜没睡好，第二日眼是肿的。' }, { w: 2, eff: { heart: 2, xiuweiMul: 0.3 }, text: '在纸上写下三字，看了很久，烧了。灰飘起时，你觉得轻了一点。' } ] },
 
     /* ---------- 生计 ---------- */
-    { id: 'trade', name: '买卖', keys: ['摆摊', '做买卖', '卖东西', '开店', '跑商', '做生意', '贩'], soft: ['摊', '卖', '买'], outs: [ { w: 3, eff: { stones: 80 }, text: '在集口支一个摊。一日卖出三样，收八十块灵石，还被人顺走一把符纸。收摊时天已黑。' }, { w: 2, eff: { stones: 40, fame: 3 }, text: '货不好卖。倒有人看上你手上的剑穗，问能不能做一条一样的。你说不能，他有些失望，还是买了两瓶丹。' }, { w: 1, eff: { stones: -30, karma: 2 }, text: '收下三块假灵石，是灌了铅的。你捏碎一块，碎屑在指缝里发亮。捏完手上一股腥味。' }, { w: 2, eff: { stones: 20, merit: 3 }, text: '一日只来两拨人。第二拨是个孩子，看了半天，什么也没买，走时你塞给他一颗糖。' } ] },
-    { id: 'inquire', name: '打听', keys: ['打听', '询问', '探听', '消息', '问路', '了解'], soft: ['打听', '消息'], outs: [ { w: 3, eff: { insight: 1 }, text: '茶棚里坐半日，听三件事，两件是假的。第三件无人提，但有人听见时把手缩了一下。' }, { w: 2, eff: { stones: -20 }, text: '花几块灵石，问到一个地名。那人收了钱，又补一句：别一个人去。' }, { w: 1, eff: { fame: -2 }, text: '问得太直，被人当成探子。你走时，背后有两道目光一直跟着，跟过一条街才散。' }, { w: 2, eff: { insight: 1 }, text: '问了一圈，都说不知。最后一个扫地的老者抬头看你一眼，说了半句，又低头去扫。' } ] },
-    { id: 'craft', name: '炼丹制符', keys: ['炼丹', '炼药', '制符', '画符', '布阵', '配药', '开炉'], soft: ['丹', '符', '阵'], outs: [ { w: 3, eff: { xiuweiMul: 0.3, mat: ['lanyouCao', 1] }, text: '守一夜炉。丹未成，火候却摸熟了，炉底结一层薄薄的药霜，可以刮下来。' }, { w: 2, eff: { stones: 100 }, text: '成两枚下品丹。颜色不正，药效约莫七成，镇上药铺肯收，他们什么药都收。' }, { w: 1, eff: { hpPct: -0.1, stones: -40 }, text: '炸炉了。眉燎掉一截，炉子裂了，材料尽成焦渣。你坐在灰里笑了半日，笑完把灰扫了。' }, { w: 2, eff: { insight: 1, xiuweiMul: 0.3 }, text: '炼丹讲文武火。你今日才明白，文火不是火小，是火一直在。' } ] },
+    { id: 'trade', name: '买卖', keys: ['摆摊', '做买卖', '卖东西', '开店', '跑商', '做生意', '贩'], soft: ['摊', '卖', '买'], outs: [ { w: 3, eff: { stones: 80 }, text: '在集口支一个摊。一日卖出三样，收八十块灵石，还被人顺走一把符纸。收摊时天已黑。' }, { w: 2, eff: { stones: 40, fame: 3 }, text: '货不好卖。倒有人看上你手上的剑穗，问能不能做一条一样的。你说不能，意颇怏怏，终市丹二瓶。' }, { w: 1, eff: { stones: -30, karma: 2 }, text: '纳伪石三，中实以铅。捏碎一块，碎屑在指缝里发亮。捏毕，掌有余腥。' }, { w: 2, eff: { stones: 20, merit: 3 }, text: '一日只来两拨人。第二拨是个孩子，看了半天，什么也没买，走时你塞给他一颗糖。' } ] },
+    { id: 'inquire', name: '打听', keys: ['打听', '询问', '探听', '消息', '问路', '了解'], soft: ['打听', '消息'], outs: [ { w: 3, eff: { insight: 1 }, text: '茶棚里坐半日，听三件事，两件是假的。第三件无人提，但有人听见时把手缩了一下。' }, { w: 2, eff: { stones: -20 }, text: '花几块灵石，问到一个地名。那人收了钱，又补一句：毋独往。' }, { w: 1, eff: { fame: -2 }, text: '问得太直，被人当成探子。你走时，背后有两道目光一直跟着，跟过一条街才散。' }, { w: 2, eff: { insight: 1 }, text: '问了一圈，都说不知。最后一个扫地的老者抬头看你一眼，说了半句，又低头去扫。' } ] },
+    { id: 'craft', name: '炼丹制符', keys: ['炼丹', '炼药', '制符', '画符', '布阵', '配药', '开炉'], soft: ['丹', '符', '阵'], outs: [ { w: 3, eff: { xiuweiMul: 0.3, mat: ['lanyouCao', 1] }, text: '守一夜炉。丹未成，火候却摸熟了，炉底结一层薄薄的药霜，可以刮下来。' }, { w: 2, eff: { stones: 100 }, text: '成两枚下品丹。颜色不正，药效约莫七成，镇上药铺肯收，他们什么药都收。' }, { w: 1, eff: { hpPct: -0.1, stones: -40 }, text: '炉炸。眉燎其一截，炉坼，材料尽成焦渣。你坐在灰里笑了半日，笑完把灰扫了。' }, { w: 2, eff: { insight: 1, xiuweiMul: 0.3 }, text: '炼丹讲文武火。你今日才明白，文火不是火小，是火一直在。' } ] },
     { id: 'forge', name: '炼器', keys: ['炼器', '打铁', '铸剑', '锻造', '铸兵'], soft: ['铁', '铸', '锻'], outs: [ { w: 3, eff: { mat: ['tieMu', 1], sense: 1 }, text: '锤四百下。铁块从黑变红，从红变白，末了成一条。插入水桶，那声「嗤」听得人心里一松。' }, { w: 2, eff: { stones: 60 }, text: '替人修一把断刀。刀主是猎户，说这刀杀过熊。他没谢你，只把刀往腰上一别，去了。' }, { w: 1, eff: { hp: -10 }, text: '火候没看住，一块好铁烧成了渣。你把手伸进水里，水立刻红了，过了一会儿才开始疼。' }, { w: 2, eff: { sense: 1, stones: 30 }, text: '打三日，成一把无名短刀。不好看，但顺手。你把它收进鞘里，没打算卖。' } ] },
 
     /* ---------- 邪道 ---------- */
@@ -3135,15 +3135,15 @@
     { id: 'rob', name: '劫掠', keys: ['劫', '抢', '夺宝', '杀人', '打劫', '灭口'], soft: ['抢', '杀', '劫', '夺'], outs: [ { w: 3, eff: { stones: 300, karma: 15, fame: -5 }, text: '路边一个落单的行商。你出手极快，快到他没来得及喊。钱袋里有一张写了字的纸，你没看。' }, { w: 2, eff: { stones: 120, karma: 10, hpPct: -0.2 }, text: '对方有备。缠了三合，你在其腿上留一剑才脱身，自己肋下也见了血。走出半里便蹲下了。' }, { w: 1, eff: { karma: 20, hpPct: -0.45, fame: -15 }, text: '你看错了人。那不是什么行商，是扮作行商的执事。这一场几乎没能走掉，肋下衣裳被血浸透一片。' }, { w: 2, eff: { stones: 200, karma: 12, heart: -1 }, text: '得了手，走出很远才觉手在抖。你把手按在石头上，按下一个血印。' } ] },
 
     /* ---------- 德行 ---------- */
-    { id: 'charity', name: '行善', keys: ['救', '济', '施药', '施粥', '善事', '帮人', '扶'], soft: ['救', '济', '善'], outs: [ { w: 3, eff: { merit: 8, fame: 4, stones: -20 }, text: '你把那人救下，自己反倒先喘不上气。他家里人要把最后一只鸡塞给你，你没要，她追出半里才把鸡抱回去。' }, { w: 2, eff: { merit: 12, fame: 6 }, text: '背那人走了六里山路。他一路上都在说话，说到后来你不知他在说什么，只是应着。' }, { w: 1, eff: { merit: 5, stones: -50, karma: -3 }, text: '你救了一个不该救的人。事后才知他做过什么。你什么也没说，人已经救活。' }, { w: 2, eff: { merit: 10, hpPct: -0.08 }, text: '事情办完时天已黑。你浑身湿透，他们在后头喊你先歇一歇，你摆摆手去了。' } ] },
+    { id: 'charity', name: '行善', keys: ['救', '济', '施药', '施粥', '善事', '帮人', '扶'], soft: ['救', '济', '善'], outs: [ { w: 3, eff: { merit: 8, fame: 4, stones: -20 }, text: '你把那人救下，自己反倒先喘不上气。他家里人要把最后一只鸡塞给你，你没要，追半里，乃抱鸡返。' }, { w: 2, eff: { merit: 12, fame: 6 }, text: '背那人走了六里山路。他一路上都在说话，说到后来你不知他在说什么，只是应着。' }, { w: 1, eff: { merit: 5, stones: -50, karma: -3 }, text: '你救了一个不该救的人。事后才知他做过什么。你什么也没说，人已经救活。' }, { w: 2, eff: { merit: 10, hpPct: -0.08 }, text: '事情办完时天已黑。你浑身湿透，他们在后头喊你先歇一歇，你摆摆手去了。' } ] },
 
     /* ---------- 神道 ---------- */
     { id: 'divine', name: '显圣', keys: ['显圣', '显灵', '降妖', '求雨', '治病', '托梦', '赐福'], soft: ['显灵', '神迹'], outs: [ { w: 3, eff: { followers: 80, merit: 6 }, text: '村东那个孩子烧了三日。你在庙前立了半夜，第二日早晨他母亲来还愿，说能下地跑了。' }, { w: 2, eff: { followers: 40 }, text: '求雨求到第七日，云来又散。第八日下了半个时辰。这半个时辰，成了方圆十里的传话。' }, { w: 1, eff: { followers: -60, piety: -0.1 }, text: '有人来问一件不在你权柄内的事。你答得含糊，他回去便把香炉搬走了。' }, { w: 2, eff: { followers: 120, piety: 0.05 }, text: '为一个不肯跪的人显了一次灵。他没跪，但他记住了。这样的人，一个顶一百个。' } ] },
-    { id: 'preach', name: '传教', keys: ['传教', '收香客', '化缘', '劝善', '讲经', '布道'], soft: ['传', '布道'], outs: [ { w: 3, eff: { followers: 50, stones: -20 }, text: '讲了半日因果。散场时有人问：那我不做恶事，也不做善事，行不行。你答不上来。' }, { w: 2, eff: { followers: 90, piety: 0.05 }, text: '一个老妇把攒了半年的铜钱全倒进功德箱。你要还她，她不肯，说还了就不灵了。' }, { w: 1, eff: { followers: -30 }, text: '有人在人群里问庙里收的钱去了何处。你没有答，人群便散了。' }, { w: 2, eff: { followers: 60, heart: 1 }, text: '讲到最后，你自己也动了念头：这些话，你自己信几分。' } ] },
+    { id: 'preach', name: '传教', keys: ['传教', '收香客', '化缘', '劝善', '讲经', '布道'], soft: ['传', '布道'], outs: [ { w: 3, eff: { followers: 50, stones: -20 }, text: '讲了半日因果。散场时有人问：不为恶，亦不为善，可乎。汝不能答。' }, { w: 2, eff: { followers: 90, piety: 0.05 }, text: '一个老妇把攒了半年的铜钱全倒进功德箱。你要还她，她不肯，说还了就不灵了。' }, { w: 1, eff: { followers: -30 }, text: '有人在人群里问庙里收的钱去了何处。你没有答，人群便散了。' }, { w: 2, eff: { followers: 60, heart: 1 }, text: '讲到最后，你自己也动了念头：这些话，你自己信几分。' } ] },
 
     /* ---------- 什么都不干 ---------- */
-    { id: 'rest', name: '休息', keys: ['睡', '休息', '躺', '歇', '养伤', '静养'], soft: ['睡', '歇', '养'], outs: [ { w: 3, eff: { hpPct: 0.22 }, text: '睡了整整一日。醒来时天已黑，屋里有股潮气。身上伤没那么扯了，只是翻身还疼。' }, { w: 2, eff: { hpPct: 0.12, heart: 1 }, text: '半睡半醒之间，听见外面落雨。你没有起来关窗，雨丝飘进来一些，落在脸上。' }, { w: 1, eff: { hpPct: 0.05, heart: -1 }, text: '躺了一日也没睡着。脑中过了一遍又一遍不相干的事，天亮时比睡前还累。' }, { w: 2, eff: { hpPct: 0.18 }, text: '睡到半夜醒一次。屋外风把门吹得响，你起来拴好，回来时睡意没了，就坐着等天亮。' } ] },
-    { id: 'idle', name: '闲度', keys: ['发呆', '闲逛', '晃', '无所事事', '愣', '坐着', '走走'], soft: ['呆', '逛', '闲'], outs: [ { w: 3, eff: {}, text: '在门口坐一日。看蚂蚁搬一粒米，搬了三个时辰，中间掉下去两回。' }, { w: 2, eff: { heart: 1 }, text: '什么也没做。日头从东挪到西，你看影子转过去，忽然觉得这样也好。' }, { w: 1, eff: { heart: -1 }, text: '闲得发慌。翻三遍行囊，把东西摆出来又收回去，收了又摆出来。' }, { w: 2, eff: { heart: 1 }, text: '坐在树下想事情，想到一半忘了在想什么。回过神，树上掉下一只虫，落在膝头。' } ] },
+    { id: 'rest', name: '休息', keys: ['睡', '休息', '躺', '歇', '养伤', '静养'], soft: ['睡', '歇', '养'], outs: [ { w: 3, eff: { hpPct: 0.22 }, text: '酣眠竟日。醒来时天已黑，屋有潮气。伤势稍纾，然转侧犹痛。' }, { w: 2, eff: { hpPct: 0.12, heart: 1 }, text: '半睡半醒之间，听见外面落雨。你没有起来关窗，雨丝飘进来一些，落在脸上。' }, { w: 1, eff: { hpPct: 0.05, heart: -1 }, text: '躺了一日也没睡着。脑中过了一遍又一遍不相干的事，天亮时比睡前还累。' }, { w: 2, eff: { hpPct: 0.18 }, text: '睡到半夜醒一次。屋外风把门吹得响，你起来拴好，回来时睡意没了，就坐着等天亮。' } ] },
+    { id: 'idle', name: '闲度', keys: ['发呆', '闲逛', '晃', '无所事事', '愣', '坐着', '走走'], soft: ['呆', '逛', '闲'], outs: [ { w: 3, eff: {}, text: '在门口坐一日。看蚂蚁搬一粒米，搬了三个时辰，中间掉下去两回。' }, { w: 2, eff: { heart: 1 }, text: '什么也没做。日头从东挪到西，你看影子转过去，忽然觉得这样也好。' }, { w: 1, eff: { heart: -1 }, text: '闲甚。检行囊三过，陈物复收，收而复陈。' }, { w: 2, eff: { heart: 1 }, text: '坐在树下想事情，想到一半忘了在想什么。回过神，树上掉下一只虫，落在膝头。' } ] },
     { id: 'compose', name: '题诗', keys: ['写诗', '题字', '作诗', '题诗', '写字', '吟'], soft: ['诗', '题', '吟'], outs: [ { w: 3, eff: { heart: 1, insight: 1 }, text: '凑了两句，第三句怎么也接不上。你把它刻在洞口，第二日再看，觉得不好，也没去磨掉。' }, { w: 2, eff: { fame: 3, insight: 1 }, text: '写在客栈墙上。老板本要骂，读完，端一碗热汤过来，没收钱。' }, { w: 1, eff: { heart: -1 }, text: '写了半日，尽揉了。满地废纸，末了一张也没留下。' }, { w: 2, eff: { insight: 1, heart: -1 }, text: '只有一句是自己满意的。念一遍觉得好，再念一遍，就觉得一般了。' } ] },
     { id: 'mourn', name: '祭拜', keys: ['祭', '上坟', '烧纸', '祭拜', '扫墓', '磕头'], soft: ['祭', '坟', '纸'], outs: [ { w: 3, eff: { heart: 1, merit: 4 }, text: '坟头草长得比去年高。你拔了半日，手指磨破，才把碑上的字看清。' }, { w: 2, eff: { heart: 2, merit: 6 }, text: '烧了纸，火很小。你蹲着看它一张张卷起，直到最后一点火星灭掉。' }, { w: 1, eff: { heart: -2, karma: 3 }, text: '你去了，但没说话。立了一刻便走。走出很远才想起，忘了磕头。' }, { w: 2, eff: { heart: 1, merit: 5 }, text: '带一壶酒，倒在坟前。剩下的自己喝了，喝完把壶也留在那里。' } ] }
   ];
@@ -3171,7 +3171,7 @@
     ],
     fHit: [
       '他一掌拍在你胸口，气闷一瞬',
-      '你听见耳边风声，然后才是疼',
+      '先闻耳畔风声，痛乃至',
       '他指节擦过你额角，眼前白了一白',
       '你挡住兵器，未挡住他随后一膝',
       '他自侧面切入，你转得太慢',
@@ -3196,19 +3196,19 @@
     ],
     kill: [
       '他倒下去时还睁着眼',
-      '最后一下他没挡，许是挡不住了',
+      '末一击不御，殆不能御',
       '他松了手，兵器落地，声音比人还响',
       '你收手，他已不动',
-      '血从石缝渗下，渗得很慢'
+      '血自石罅徐渗'
     ],
     down: [
       '眼前一黑，最后看见的是天',
-      '你想抬手，手不听使唤',
+      '欲举手，手不从命',
       '声音先远，然后才是光'
     ],
     foeFlee: [
-      '他往林子里一钻，衣角一闪便不见了',
-      '他退三步，转身就跑，跑得很难看'
+      '窜入林中，衣角一闪遂杳',
+      '却步三舍，回身而遁，状甚狼狈'
     ]
   };
 
