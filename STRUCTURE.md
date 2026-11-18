@@ -10,7 +10,8 @@
 ├─ wxcs3-data.js            数据层：全部表 107 张（境界/功法/事件/NPC/插画键…）
 ├─ wxcs3-art.js             插画层：ART_DATA 优先，缺图回落 art/scenes/*.jpg
 ├─ wxcs3-rules.js           纯规则层：33 个不碰 DOM、不写 S 的函数（v9.0 第2步新增）
-├─ wxcs3-game.js            规则与 UI：372 函数 / 169 个 ACT 入口（M1 后只留薄缝）
+├─ wxcs3-game.js            规则与 UI：381 函数 / 170 个 ACT 入口（M1 后只留薄缝）
+├─ wxcs3-icons.js           图标层：内联 SVG（48 行 / 12KB）
 ├─ wxcs3-ext-10-fate.js        扩展：道痕命格（v9.0 M1）——六系命格、进阶、重悟
 ├─ wxcs3-ext-20-trib.js        扩展：五类天劫增强（v9.0 M1）——行为权重、劫类失败余波、破境预览
 ├─ wxcs3-ext-30-build.js       扩展：构筑面板（v9.0 M1）——命格/天劫/功法/开销一页汇总
@@ -128,10 +129,11 @@ M2 发现：单个函数槽位（`EXT.fightRows = ...`）会被后加载的扩�
 ## 常用命令
 
 ```bash
-# 断言与检查（全绿 = 531 条断言 + 三项检查）
+# 断言与检查（全绿 = 570 条断言 + 三项检查）
 node tools/test_v80.js && node tools/test_play.js && node tools/test_loops.js
 node tools/test_hooks.js && node tools/test_econ.js && node tools/test_text.js
 node tools/test_beast_disciple.js && node tools/smoke_econ.js
+node tools/test_m1.js && node tools/test_m2.js && node tools/test_reachability.js
 node tools/test_m1.js && node tools/test_m2.js
 python tools/check_actions.py && python tools/check_time.py && node tools/check_ach.js
 

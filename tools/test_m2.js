@@ -198,7 +198,10 @@ S.combat = { foe: { name: '散修', rank: 5, power: 20, hp: 200, hpMax: 200, el:
 EXT.combatDeploy(S.combat);
 ok(S.combat.beast && S.combat.beast.name === '石熊', '主战灵兽入场');
 ok(S.combat.beast.hpMax >= 30, '兽有独立气血（不进战力数字）', S.combat.beast.hpMax);
-ok(EXT.fightInfoHooks[0](S.combat).indexOf('灵兽') >= 0, '我方面板有兽血条');
+/* v10.1：状态钩子现在有多个提供者（本命法器也注册了一个），
+   不能再按下标取 [0]——按内容找才是对的。 */
+const _beastInfo = EXT.fightInfoHooks.map(function (fn) { return fn(S.combat) || ''; }).join('');
+ok(_beastInfo.indexOf('灵兽') >= 0, '我方面板有兽血条');
 /* 兽攻：亲密 40＝亲档 guard .5 → 听令 0.55+.25=.80 */
 const dmgBeast = EXT.combatActHooks[1]('beast_atk', S.combat);
 ok(dmgBeast && (dmgBeast.dmg > 0 || dmgBeast.note.indexOf('没动') >= 0), '令兽攻有结算', JSON.stringify(dmgBeast));

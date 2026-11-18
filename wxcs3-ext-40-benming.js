@@ -132,6 +132,23 @@
     return true;   // 这一击没了
   });
 
+  /* ---------- 我方面板：本命状态（v10.1 战斗可见性） ----------
+     此前玩家看不到器损，也看不出「出鞘」是否还挂着，只好靠猜。
+     与灵兽同一个钩子数组，渲染在状态行下方。 */
+  EXT.fightInfoHooks = EXT.fightInfoHooks || [];
+  EXT.fightInfoHooks.push(function (c) {
+    var b = bm();
+    if (!b) return '';
+    var S = cur();
+    var d = numOr(b.dmg, 0);
+    var tierName = TIER_NAMES[Math.min(3, Math.max(0, (b.tier || 1) - 1))];
+    var extra = '';
+    if (c && c.bmVeil) extra += '　<span class="stance on">出鞘 · 待挡一击</span>';
+    if (d >= DMG_BAD) extra += '　<span class="stance bad">裂纹过深 · 法技失效</span>';
+    return '<div class="frow"><span class="k">本命</span><span class="v">' + escHtml(b.name || '本命法器') +
+      '（' + escHtml(tierName) + '）　器损 ' + d + '/' + DMG_BAD + extra + '</span></div>';
+  });
+
   /* ---------- 战前：共命阶「本命出鞘」（注册数组，多扩展并存） ---------- */
   EXT.preFightRowsHooks = EXT.preFightRowsHooks || [];
   EXT.preFightRowsHooks.push(function () {

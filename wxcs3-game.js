@@ -6021,7 +6021,18 @@
 
   ACT.do_burn = () => {
     if (!pageCount()) { toast('没有页可烧'); return; }
-    let b = '<div class="small">烧掉一页，世界会记得你做过的事——但只记得一件。</div>';
+    /* v10.1 第一梯队：让 reinc（百世书）结局真正出现。
+       它此前零调用，因为 do_legacy 直接 newGame 从不展示结局。
+       语义上「烧一页重来」本身就是这一世的结尾，所以在这里把它念出来：
+       玩家点开烧页面板，先看到自己这一世以「百世书」收尾，再选择带什么走。 */
+    const _reinc = (D.ENDINGS || []).find(function (e) { return e.id === 'reinc'; });
+    let b = '';
+    if (_reinc) {
+      b += '<div class="endingname" style="font-size:15px">' + esc(_reinc.name) + '</div>';
+      b += '<div class="small" style="margin:2px 0 8px">' + esc(_reinc.text) + '</div>';
+      b += divider();
+    }
+    b += '<div class="small">烧掉一页，世界会记得你做过的事——但只记得一件。</div>';
     b += '<div class="muted small">现有页数：' + pageCount() + '</div>';
     b += divider() + '<ul class="opts">';
     b += optRow('A', '留一件宝物给来世', { name: '宝物', cls: 'chance' }, '灵石带过去', false, 'do;legacy:treasure');
@@ -6030,6 +6041,28 @@
     b += '</ul>';
     b += '<div class="hint danger">代价：血债 +10%、寿元上限 −5%、所有关系归零。世界记得你，但记得的是你杀过的人。</div>';
     openModal('百世书 · 烧页', b, true);
+  };
+
+  /* v10.1 第一梯队：百世书页数用尽后的唯一出口。
+     与 do_legacy 的区别只有两处：不扣页（本来就没有）、不带 legacy。
+     其余一律照旧——加血债、重建世界、清关系。这样「烧尽」是真的有代价，
+     而不是换了个名字继续拿好处。 */
+  ACT.do_rebor = () => {
+    if (pageCount() > 0) { toast('还有页可烧，先烧一页'); return; }
+    const pact = S.legacyPact || null;
+    const debt = (S.bloodDebt || 0) + 0.1;
+    S = newGame();
+    S.draft = draftInit();
+    S.pages = 0;
+    S.legacy = null;          // 关键：什么都不带
+    S.legacyPact = pact;      // 临终所托仍生效——那是别人的承诺，不是你的遗产
+    S.bloodDebt = debt;
+    S.reborCount = 1 + ((typeof S.reborCount === 'number') ? S.reborCount : 0);
+    closeModal();
+    bump('cheated');
+    render();
+    toast('空手投胎。来世什么都不记得，除了你自己。');
+    if (S.legacy || pageCount() < 3) { const _m = unlockedMemories(); if (_m.length) offerMemory(); }
   };
 
   ACT.do_legacy = (kind) => {
@@ -7783,6 +7816,18 @@
     let tags = '';
     if (c.defending) tags += '<span class="stance on">守势 · 减伤50%</span>';
     if (c.observed) tags += '<span class="stance on">看破 · 下一击无视卸力</span>';
+    /* v10.1 第一梯队 · 战斗状态可见性。
+       此前面板只显示「守势 / 看破」两条，而真正影响伤害的还有四五项，
+       玩家挨刀少掉一半血不知道是谁挡的，打出 ×1.25 也看不到标记。
+       这里把已有字段渲染出来，一行业务公式都不改——只让看不见的变得看得见。
+       剩余回合数直接读字段本身：foeMark/foeWeaken 都在 foeTurn 里递减，
+       所以数字就是「还剩几回合」，不是估算。 */
+    if (c.foeMark > 0) tags += '<span class="stance on">破绽 · 我方伤害 ×1.25（' + c.foeMark + ' 回合）</span>';
+    if (c.foeWeaken > 0) tags += '<span class="stance on">压制 · 敌方伤害 ×0.7（' + c.foeWeaken + ' 回合）</span>';
+    if (c.talBuff) tags += '<span class="stance on">神通加成 · 伤害 +' + Math.round(c.talBuff * 100) + '%</span>';
+    if (c.talShield) tags += '<span class="stance on">护体 · 本次减伤 ' + Math.round(c.talShield * 100) + '%</span>';
+    if (c.noFoeFlee) tags += '<span class="stance on">锁灵 · 敌方不能遁走</span>';
+    if (c.momentum > 0) tags += '<span class="stance bad">敌方气势 · 增伤 +' + Math.round((([1.0,1.10,1.20,1.35][c.momentum]||1) - 1) * 100) + '%</span>';
     if (!tags) tags = '<span class="stance">无</span>';
     mb += '<div class="frow"><span class="k">状态</span><div>' + tags + '</div></div>';
     /* v9.0 M2：第四位的血条（注册数组，多扩展并存） */
@@ -8494,6 +8539,21 @@
     }
     if (S.deathReason && /道化|锚/.test(S.deathReason)) return pickEnd('daohua');
     if (S.deathReason) return pickEnd('fall');
+    /* v10.1 第一梯队：补齐两个从未触发的结局。
+       —— ascend（登仙）——
+       原文案「补回断掉的四境」，此前代码里没有任何对应机制，故永远走不到。
+       这里不再新造"上古残卷收集"系统（那是另一批工作量），而是复用道胎之后
+       真实存在的进展：四锚全固。道胎无寿元，只靠四锚钉住自己；
+       四锚全固＝把自己一段一段接回来，与文案「一段一段接回来」正好同义。
+       条件：道胎(xRealm>=5) + 四锚各 >=1 + 功德>=100（一路守正而来）。
+       —— reinc（百世书）——
+       原文案「烧一页重来」。此前 do_legacy 直接 newGame，从不写 endingId，
+       所以这个结局永远不显示。现在由 do_legacy 在烧页那一刻标记 S.reincShown，
+       本函数在烧页后的「短暂结局展示」里认得它；具体见 do_legacy 注释。 */
+    if (isXian() && S.xRealm >= 5) {
+      const solid = Object.keys(S.anchors || {}).filter(function (k) { return (S.anchors[k] || 0) >= 1; }).length;
+      if (solid >= 4 && (S.merit || 0) >= 100 && (S.karma || 0) < 100) return pickEnd('ascend');
+    }
     if (S.xRealm >= 5) return pickEnd('daotai');
     if (S.pillar >= 7 && S.merit >= 300) return pickEnd('shizun');
     if (S.pillar >= 7) return pickEnd('zhenjun');
@@ -8571,7 +8631,22 @@
       if (S.legacyMemory) { const _m = D.ACH_MEMORY.find(function(x){return x.id===S.legacyMemory;}); if (_m) b += '<div class="small muted">带走了「' + esc(_m.name) + '」</div>'; }
     }
     b += `<div class="small muted">${isXian() ? '你走到今法的尽头了——或者没走到。' : '那尊像还在，只是不再应你。'}</div>`;
-    b += `<div style="margin-top:10px"><button class="btn gold" data-act="do;burn">百世书 · 烧一页重来</button></div>`;
+    /* v10.1 第一梯队 · 软死档修复。
+       旧版这里只有一个按钮「烧一页重来」，而 do_burn 在 pages===0 时直接
+       toast('没有页可烧') 返回 —— 第 4 次死亡后整屏无任何可用操作，
+       只能去系统菜单 do_reset，那会连跨世积累一起清空。
+       现在分两条路：
+         · 还有页 → 烧一页（原逻辑）
+         · 没有页 → 空手投胎（保留跨世成就与谱系，只丢本世传承与宝物）
+       空手投胎不是白送：它仍走 newGame、仍加血债、仍不继承任何 legacy，
+       对应成就「烧尽」的文案「末页亦焚，来世无物可带，包括所应之事」。 */
+    if (pageCount() > 0) {
+      b += `<div style="margin-top:10px"><button class="btn gold" data-act="do;burn">百世书 · 烧一页重来</button></div>`;
+    } else {
+      b += '<div class="hint danger">末页亦焚。你手里已经没有页了。</div>';
+      b += `<div style="margin-top:10px"><button class="btn" data-act="do;rebor">空手投胎 · 从零再走</button></div>`;
+      b += '<div class="small muted" style="margin-top:6px">不带宝物、不带修为、不带寿元；功过格与前世记忆仍在。</div>';
+    }
     return panel('道途终章', b, { cls: 'warn', sub: '坐化 / 道化 / 陨落' });
   }
 
@@ -10355,6 +10430,11 @@
       S.stones += 200;
       logLine('仇了了一段。你把他埋了，碑上没写名字。', 'good');
       S.enemyName = null;
+      /* v10.1 第一梯队：补上 oldGrudge 计数器。
+         这条成就此前被 check_ach 的归档白名单挡住（理由写作「S.enemy 只置位、
+         无击杀路径」），但击杀链其实早在 v8.0 就通了——玩法在，计数器没接，
+         于是检查器永远报绿。现在接上，白名单那一条同时删掉。 */
+      bump('oldGrudge');
     }
     const t = tly();
     t.warWin = (t.warWin || 0) + 1;
@@ -10541,6 +10621,12 @@
     tallyInit,
     /* v9.0 M0：随机源探针。测试要验「同 seed 可复现」，
        必须能自己设种子、读当前种子，而不是靠外部改 Math.random。 */
+    /* v10.1 第一梯队：可达性测试需要直接驱动结局判定与战斗记账，
+       否则只能靠"玩到那一步"来验，而结局恰恰最难玩到。 */
+    resolveEnding,
+    noteCombatWin,
+    renderCombat,
+    pageCount,
     setSeed,
     getSeed: currentSeed,
     rng,

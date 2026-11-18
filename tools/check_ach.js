@@ -66,7 +66,7 @@ const ARCHIVED = {
   quanbingLost: '需要「权柄被夺」事件（本命权柄可被外力剥夺）',
 
   nameBorrow: '需要「自定庙号」玩法（现庙号由系统随机生成，撞不上真君名）',
-  oldGrudge: '需要「旧仇寻仇与击杀」流程（S.enemy 只置位，无击杀路径）'
+
 };
 
 const problems = [], archived = [];

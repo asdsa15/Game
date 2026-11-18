@@ -86,7 +86,12 @@ const x0 = S.xiuwei, h0 = S.xianghuo;
 G.ACT.cultivate();
 ok(S.xiuwei === x0, '坐庙不动修为（' + x0 + ' → ' + S.xiuwei + '）');
 ok(S.xianghuo > h0, '坐庙涨香火（' + h0 + ' → ' + Math.round(S.xianghuo) + '）');
-ok(S.stones >= 500, '香火钱按月入账（灵石 ' + S.stones + '）');
+/* v10.1：这条断言原先写 `S.stones >= 500`，前提是「打坐不花钱」。
+   但 v8.1 落地固定开销后，打坐推到月末会结算庙宇修缮/洞府维护，
+   灵石必然低于初始值——断言的假设已经过期，会随机失败（约 1/6）。
+   改为断言「香火钱确实入账」这一件事本身：账本里要有这一笔收入。 */
+const _xiangIncome = (S.ledger.income || []).some(function (x) { return x.label === '香火钱'; });
+ok(_xiangIncome || S.stones >= 500, '香火钱按月入账（灵石 ' + Math.round(S.stones) + '）');
 
 /* 2. 庙市三页 */
 console.log('=== 2. 庙市 ===');
