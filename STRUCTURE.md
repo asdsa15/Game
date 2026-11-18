@@ -17,6 +17,8 @@
 ├─ wxcs3-ext-30-build.js       扩展：构筑面板（v9.0 M1）——命格/天劫/功法/开销一页汇总
 ├─ wxcs3-ext-40-benming.js     扩展：本命法器四阶（v9.0 M2）——认主/通灵/共命/合道、法技、器损反噬
 ├─ wxcs3-ext-50-beast.js       扩展：灵兽第四位（v9.0 M2）——亲密/妖力两轴、听令/护主/叛逃、封兽官
+├─ wxcs3-ext-60-gongfa.js      扩展：功法个体差异（v10.1 第二梯队）——eff 结构化、施法乘区、常驻修正
+├─ wxcs3-ext-70-root.js        扩展：灵根差异（v10.1 第二梯队）——战力出口、多系副属、香火五档
 ├─ wxcs3-ext-demo.js        扩展模板：新玩法照抄改名（v9.0 第1步新增）
 │
 ├─ README.md                项目总说明（玩法、版本、构建）
@@ -39,7 +41,7 @@
 │  └─ 99_归档/               过期文档
 │
 ├─ tools/                   测试与检查
-│  ├─ test_*.js             断言：v80 / play / econ / hooks / loops / text / m1 / m2 / beast_disciple / rank
+│  ├─ test_*.js             断言：v80 / play / econ / hooks / loops / text / m1 / m2 / beast_disciple / rank / tier2
 │  ├─ smoke_econ.js         DOM 桩真跑运行时（经济面）
 │  ├─ check_ach.js         成就可达性
 │  ├─ check_actions.py     动作分发覆盖

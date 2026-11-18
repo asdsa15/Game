@@ -1,0 +1,16 @@
+# 统一换行：仓库内一律 LF，工作区检出也保持 LF
+# 起因：v10.1 第二梯队提交时，编辑工具把 LF 写成 CRLF，
+# 导致 README/game.js 被识别为整文件重写（+12704/-11531），diff 失去可读性。
+* text=auto eol=lf
+
+# 二进制：不要做换行转换，也不要参与文本 diff
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.apk binary
+*.jar binary
+*.woff2 binary
+*.ttf binary

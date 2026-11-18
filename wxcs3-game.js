@@ -300,8 +300,15 @@
   }
 
   function maxXianghuo() {
-    const load = S.root ? D.ROOTS[S.root].load : 1;
-    const base = pillar().need * (load >= 1.5 ? 2.5 : 2);
+    /* v10.1 第二梯队·问题1：旧版 load>=1.5?2.5:2 把五种灵根压成两档，
+       天/地/变异挤一档、真/伪挤一档。改由扩展给五档，资质真正分层。 */
+    /* 用 typeof 保护：tools/test_econ.js 会把这个函数单独抽出来在沙箱里跑，
+       那里没有外层闭包的 G。缺扩展时退回旧的两档，行为不变。 */
+    const _X = (typeof G !== 'undefined') ? G.WXCS3_EXT : null;
+    const _xcap = (_X && _X.xianghuoCapMul) ? _X.xianghuoCapMul() : null;
+    const _xdef = S.root ? D.ROOTS[S.root].load : 1;
+    const _xmul = (_xcap != null) ? _xcap : (_xdef >= 1.5 ? 2.5 : 2);
+    const base = pillar().need * _xmul;
     /* 庙地契 +30%/张；牧土神印 +15%/级（v8.0） */
     return Math.round(base * (1 + 0.3 * miaoUpCount('di')) * dArtSealMul());
   }
@@ -885,7 +892,11 @@
     if (as.name === '虚') am = 0.85;
     if (as.name === '将散') am = 0.6;
     if (as.name === '失锚') am = 0.3;
-    return Math.round(base * stMul * sd * am * (bodyDef().pow || 1));
+    /* v10.1 第二梯队·问题1：灵根的战斗出口。
+       旧版战斗里完全没有灵根：天灵根与伪灵根打架一样重。
+       现在资质给一个乘区（天>地/变异>真>伪），经扩展缝口读取。 */
+    const _XR = (G.WXCS3_EXT && G.WXCS3_EXT.rootPowerMul) ? G.WXCS3_EXT.rootPowerMul() : 1;
+    return Math.round(base * stMul * sd * am * (bodyDef().pow || 1) * _XR);
   }
 
   /* 位格：仙道用境界档，神道用柱位 */
@@ -1092,9 +1103,17 @@
     }).join('') + '</div>';
 
     if (S.root) {
+      /* v10.1 第二梯队·问题1：多系从「彩色装饰」变成可读的主/副结构。
+         副系会真的参与五行克制（打不同对手时换最优），所以要标出来。 */
+      const _els = S.rootEls || [];
+      const _main = _els.length ? elemChip(_els[0]) : '';
+      const _subs = _els.slice(1).map(elemChip).join('');
       b += '<div class="row" style="margin-top:7px"><span class="lab">灵根</span>' +
-        (S.rootEls || []).map(elemChip).join('') + '</div>';
+        _main + (_subs ? '<span class="muted" style="margin:0 3px">副</span>' + _subs : '') + '</div>';
+      const _rd = (G.WXCS3_EXT && G.WXCS3_EXT.rootInfo) ? G.WXCS3_EXT.rootInfo() : null;
       b += '<div class="small muted" style="margin-top:-2px">' + esc(D.ROOTS[S.root].name) +
+        (_rd ? ' · 战力 ×' + _rd.powerMul.toFixed(2) : '') +
+        (_els.length > 1 ? ' · 副系按专精度 ' + (_rd ? _rd.concentration.toFixed(2) : '') + ' 折价' : '') +
         (S.body ? ' · ' + esc(D.BODIES.filter(function (x) { return x.id === S.body; })[0].name) : '') + '</div>';
     }
 
@@ -3437,6 +3456,13 @@
       '<span class="tier" style="background:' + D.GONGFA_TIERS[g.tier].color + '">' +
       esc(D.GONGFA_TIERS[g.tier].name) + ' ×' + D.GONGFA_TIERS[g.tier].mul + '</span></div>';
     b += '<div class="slotnote">' + esc(g.eff) + '　｜　境界上限 ' + esc(cap.to) + '</div>';
+    /* v10.1 第二梯队·问题2：把 effect 翻译成人话显示，
+       让「文案承诺」与「实际结算」能当面对上，玩家可自行核对。 */
+    if (G.WXCS3_EXT && G.WXCS3_EXT.gongfaEffectText) {
+      const _et = G.WXCS3_EXT.gongfaEffectText(g.id);
+      if (_et) b += '<div class="hint"><b>实际结算</b>：' + esc(_et) + '</div>';
+      else b += '<div class="hint muted">这本功法只有品阶与五行，没有额外承诺。</div>';
+    }
     /* v8.1 P0 第6项：悟性够了才看得出这门功法自身的毛病 */
     const _gc = clue('insight');
     if (_gc) b += '<div class="hint">' + esc(_gc) + '</div>';
@@ -3447,9 +3473,12 @@
       if (!S.ownedGongfa || !S.ownedGongfa.includes(x.id)) continue;
       const on = getDaogong().id === x.id;
       const c2 = D.DAOGONG_CAP[x.tier] || D.DAOGONG_CAP.huang;
+      /* 列表里就标出「这本有没有真东西」，换功法前一眼可辨 */
+      const _xet = (G.WXCS3_EXT && G.WXCS3_EXT.gongfaEffectText) ? G.WXCS3_EXT.gongfaEffectText(x.id) : '';
       b += '<span class="chip ' + (on ? 'on' : '') + '" data-act="do;setgf:' + x.id + '" style="justify-content:flex-start">' +
         '<b>' + esc(x.name) + '</b><span class="muted" style="font-weight:400">· ' +
-        esc(D.GONGFA_TIERS[x.tier].name) + ' · 至' + esc(c2.to) + '</span></span>';
+        esc(D.GONGFA_TIERS[x.tier].name) + ' · 至' + esc(c2.to) +
+        (_xet ? ' · <span class="good">' + esc(_xet) + '</span>' : '') + '</span></span>';
     }
     b += '</div>';
     b += divider();
@@ -6368,8 +6397,14 @@
     // 休息（闭关）额外加成
     if (S.meditate) v = Math.round(v * 1.8);
     // 长春功 / 续脉决：疗伤加成
-    if (S.gongfa && S.gongfa[0] === 'changchun') v = Math.round(v * 1.25);
-    if (S.ownedGongfa && S.ownedGongfa.indexOf('xumai') >= 0) v = Math.round(v * 1.3);
+    /* v10.1 第二梯队·问题2：疗伤加成改由功法 effect 统一结算，
+       不再对 id 做硬编码特判（长春功/续脉决/月湖映秋诀一视同仁）。
+       注意：旧版续脉决「只要拥有就生效」，现在改为按主修功法结算，
+       「装配改变体验」这句话第一次成立。 */
+    if (G.WXCS3_EXT && G.WXCS3_EXT.gongfaHeal) {
+      const _gh = G.WXCS3_EXT.gongfaHeal();
+      if (_gh > 0) v = Math.round(v * (1 + _gh));
+    }
     if (S.yuluHulu) v = Math.round(v * 1.4);            // 灵药葫芦
     if (S.body === 'dao') v = Math.round(v * 1.15);
     if (quenchBlock() > 0) v = Math.round(v * (1 + quenchBlock() * 2));  // 淬体：伤好得更快
@@ -8066,8 +8101,24 @@
       if (S.mp < 30) { toast('灵力不足（需 30）'); render(); return; }
       S.mp -= 30;
       const g = getGongfa();
-      dmg = Math.round(c.foe.hpMax * Math.max(0.08, 0.22 * ratio) * mult * keK * (1 + artBonus('atk')));
-      note = `施展《${g.name}》`;
+      /* v10.1 第二梯队·问题2：施法真的施「法」。
+         旧版 g 只用于 note 字符串，伤害公式里没有任何功法字段——
+         花 75000 灵石买的《百炼成仙道法》与入门《聚气诀》伤害完全相同。
+         现在功法经扩展给出乘区（品阶/五行/专属 effect），来源链写进日志。 */
+      const _gc = (G.WXCS3_EXT && G.WXCS3_EXT.gongfaCastInfo)
+        ? G.WXCS3_EXT.gongfaCastInfo(null) : null;
+      const _gm = _gc ? _gc.mul : 1;
+      dmg = Math.round(c.foe.hpMax * Math.max(0.08, 0.22 * ratio) * mult * keK * (1 + artBonus('atk')) * _gm);
+      note = `施展《${g.name}》` + (_gc && _gc.text ? '（' + _gc.text + '）' : '');
+      /* 功法附带的持续状态（灼烧/迟滞/破防）由扩展决定，写进战斗态 */
+      if (G.WXCS3_EXT && G.WXCS3_EXT.gongfaSpellStatus) {
+        const _gst = G.WXCS3_EXT.gongfaSpellStatus(null);
+        if (_gst) {
+          if (_gst.burn) { c.foeBurn = 2; c.foeBurnMul = _gst.burn; }
+          if (_gst.slow) { c.foeSlow = 2; }
+          if (_gst.pierce) { c.foeWeaken = Math.max(c.foeWeaken || 0, 2); }
+        }
+      }
     } else if (sub === 'quanbing') {
       if (!isShen()) { toast('仙道无权柄'); render(); return; }
       if (S.xianghuo < 50) { toast('香火不足'); render(); return; }
@@ -8109,7 +8160,9 @@
     else if (sub === 'flee') {
       if (S.preBuff && S.preBuff.escape) { S.preBuff.escape = false; 
         S.combat = null; S.phase = 'play'; logLine('破宝锥开路，你从容遁走。', 'good'); advanceXun(1); render(); return; }
-      if (rng() < clamp(0.4 + st('speed') * 0.035 + artBonus('move') - gap * 0.18 - diff * 0.02, 0.05, 0.95)) {
+      /* v10.1 第二梯队·问题2：御风术/凌波仙经/天遁剑诀的「遁速」从此兑现 */
+      const _gesc = (G.WXCS3_EXT && G.WXCS3_EXT.gongfaEscape) ? G.WXCS3_EXT.gongfaEscape() : 0;
+      if (rng() < clamp(0.4 + st('speed') * 0.035 + artBonus('move') + _gesc - gap * 0.18 - diff * 0.02, 0.05, 0.95)) {
         if (combatTierNow(c) === '绝境') bump('escapeDesperate');
         S.combat = null; S.phase = 'play';
         logLine('你遁走成功。', '');
