@@ -123,6 +123,10 @@ ok(!!S.ach.ren_tu, '「收徒」成就可解除', S.ach && Object.keys(S.ach));
 /* ==================== 2. 留山：岗位与供奉 ==================== */
 console.log('=== 2. 留山 · 岗位与供奉 ===');
 setup();
+/* v10.4 P2：这一节测的是「留山供奉口径」，不该被叛逃判定搅动。
+   此前没有钉种子，advanceXun 跨月时可能掷到叛逃、弟子被移出 S.disciples，
+   断言偶发失败（实测 1/5）。钉死种子让这一节只测它该测的东西。 */
+G.setSeed(20261119);
 let d = addDisciple('guqingxuan', 25);
 d.days = 45;
 ok(EXT.discipleRows(d).indexOf('留山任执事') >= 0, '面板有留山入口');

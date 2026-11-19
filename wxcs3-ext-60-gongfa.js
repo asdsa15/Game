@@ -308,6 +308,58 @@
     return { mul: mul, text: parts.join('、'), gateOk: true, name: g.name };
   };
 
+  /* v10.4 P2·联动一：功法五行 × 同属神通。
+     ------------------------------------------------------------
+     神通的五行由「所属道统的大类」推出（game.js 的 shenTongEl）。
+     这里只回答一个问题：这本功法对某个五行有没有专属加成。
+     与 castMul 的区别：不乘品阶、不乘 all —— 品阶是「法术强度」，
+     不该连带放大神通；只有 dims 里的专属五行才是「擅长」。
+     返回 1.0 表示无加成（不做惩罚），避免「功法与神通不同属就打折」这种
+     让玩家被迫配对的隐性惩罚。 */
+  EXT.gongfaShenTongMul = function (el) {
+    var g = curGongfa();
+    if (!g || !el) return { mul: 1, text: '' };
+    var ef = effectOf(g.id) || {};
+    var S2 = cur();
+    if (S2 && !elOk(S2, ef.needEl)) return { mul: 1, text: '', gateOk: false };
+    var d = ef.dims && ef.dims[el];
+    if (!d) return { mul: 1, text: '' };
+    return { mul: d, text: elName(el) + ' ×' + d.toFixed(2) };
+  };
+
+  /* v10.4 P2·12：熟练度放大「这本功法的主特征」。
+     ------------------------------------------------------------
+     刻意只乘主特征，不做全局乘区 —— 否则熟练度就退化成
+     「练得久伤害高」，而玩家感知不到自己练的到底是哪一路。
+     主特征的定义：有 heal 就乘 heal、有 craftArts 就乘该门手艺、
+     有 ward 就乘 ward；纯战力功法（all/dims）不参与。
+     gfProfMul 由 game.js 提供，这里读 G.WXCS3 的探针。
+     ------------------------------------------------------------ */
+  function profMul() {
+    var W = G.WXCS3;
+    if (!W || !W.gfProfPeek) return 1;
+    var p = W.gfProfPeek();
+    return p ? p.mul : 1;
+  }
+  /* 主特征是哪一类（展示用） */
+  EXT.gfProfFocus = function () {
+    var g = curGongfa();
+    if (!g) return '';
+    var ef = effectOf(g.id) || {};
+    if (ef.heal) return '疗伤';
+    if (ef.craftArts) return '技艺';
+    if (ef.ward) return '护体';
+    if (ef.fate) return '卜筮';
+    if (ef.mpCap) return '气海';
+    if (ef.life || ef.lifeStop) return '养寿';
+    if (ef.xianghuo) return '香火';
+    if (ef.gapUp) return '位格';
+    if (ef.escape) return '遁速';
+    if (ef.burn || ef.slow || ef.pierce) return '术势';
+    if (ef.all || ef.dims) return '杀伐';
+    return '内功';
+  };
+
   /* 内部探针：测试直接验数值，不靠 HTML 猜 */
   EXT.castMulProbe = function (skillName, gongfaId, rootEls) {
     var S = cur();
@@ -341,7 +393,10 @@
   EXT.gongfaWard = function () {
     var g = curGongfa();
     var ef = g ? (effectOf(g.id) || {}) : {};
-    return clamp(numOr(ef.ward, 0), 0, 0.5);
+    /* 熟练度只放大主特征：ward 类功法才吃，纯战力功法不吃 */
+    var w = numOr(ef.ward, 0);
+    if (w > 0 && !ef.heal) w *= profMul();
+    return clamp(w, 0, 0.5);
   };
   /* 遁走加成 */
   EXT.gongfaEscape = function () {
@@ -359,7 +414,8 @@
   EXT.gongfaHeal = function () {
     var g = curGongfa();
     var ef = g ? (effectOf(g.id) || {}) : {};
-    return numOr(ef.heal, 0);
+    /* v10.4 P2·12：熟练度放大主特征（heal 是疗伤类功法的主特征） */
+    return numOr(ef.heal, 0) * (ef.heal ? profMul() : 1);
   };
   /* 机缘加成 */
   EXT.gongfaFate = function () {
@@ -390,9 +446,12 @@
     var g = curGongfa();
     if (!g) return 0;
     var ef = effectOf(g.id) || {};
-    if (typeof ef.craft === 'number') return ef.craft;
-    if (ef.craftArts && typeof ef.craftArts[art] === 'number') return ef.craftArts[art];
-    return 0;
+    var base = 0;
+    if (typeof ef.craft === 'number') base = ef.craft;
+    else if (ef.craftArts && typeof ef.craftArts[art] === 'number') base = ef.craftArts[art];
+    if (base <= 0) return 0;
+    /* v10.4 P2·12：技艺类功法的熟练度就体现在「手更稳」上 */
+    return base * profMul();
   };
   /* 该功法擅长哪几门四艺（展示用） */
   EXT.gongfaCraftArts = function () {

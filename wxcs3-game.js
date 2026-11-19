@@ -591,6 +591,9 @@
          在这里统一对齐一次。与受箓、破境、读档三处同一口径。 */
       syncMpCap();
       syncLifeBonus();
+      /* v10.4 P2·12：以这本功法为道基在修，熟练度自然长。
+         每月 4 点，闭关翻倍 —— 闭关才是真下的功夫。 */
+      if (isXian() || S.cultivation === 'both') addGfProf(S.meditate ? 8 : 4, '于月下运转');
       // —— 灵力回复（原只在吃丹药与创角时变化，打几场就永久枯竭）
       if (S.mp < S.mpMax) {
         S.mp = Math.min(S.mpMax, S.mp + 5 + (S.xRealm || 0) * 3);
@@ -1041,7 +1044,7 @@
          结果：四道四类 ≈ 0.8+0.2=1.0 → ×1.2 = 1.20；
               五道同类 ≈ 0.8+0.25=1.05 → ×1.0 = 1.05。
          多样性第一次比堆数量更划算。 */
-      let sd = 0.8 + S.shenTong.length * 0.05;
+      let sd = 0.8 + stEquipList().length * 0.05;
       sd = clamp(sd, 0.8, 2.0);
       sd *= stanceKindMul();
       /* 牧土神印：权柄斗法 +12%/级 */
@@ -1062,14 +1065,14 @@
     if (r.idx === 2) {
       base = { '黄基': 80, '玄基': 90, '地基': 105, '天基': 125 }[S.xianji] || 80;
     }
-    if (r.idx === 3) base = 350 * Math.pow(1.15, S.shenTong.length);
+    if (r.idx === 3) base = 350 * Math.pow(1.15, stEquipList().length);
     if (r.idx === 4) base = S.guowei ? D.GUOWEI_RANK[S.guowei.rank].power : 450;
     if (r.idx >= 5) base = 6000;
     let stMul = 1.0;
     if (S.hp / S.hpMax < 0.33) stMul = 0.4;
     else if (S.hp / S.hpMax < 0.66) stMul = 0.7;
     else if (S.mp <= 0) stMul = 0.6;
-    let sd = 0.8 + S.shenTong.length * 0.05;
+    let sd = 0.8 + stEquipList().length * 0.05;
     sd = clamp(sd, 0.8, 2.0);
     /* v10.4 P1·S4：仙道同样按类别多样性聚合（口径同神道） */
     sd *= stanceKindMul();
@@ -2450,6 +2453,92 @@
     return 0;
   }
 
+  /* ============================================================
+     v10.4 P2·11：神通装配（S.stEquip 子集）
+     ------------------------------------------------------------
+     方案原意：把「全持有全可用」变成「选带 N 道」。
+     落地时有个前提必须说清：本项目已有 shenTongLimit（1~5 道）这道
+     持有上限，若再叠一层「装配上限」，等于双重限制 —— 玩家本来就只有
+     几道，再砍一刀，战斗会变得局促而不是有趣。
+     所以这里的口径是：
+       · 拥有即默认装配（旧存档零迁移，读档行为不变）
+       · 装配数 = 持有数（不新造上限）
+       · 玩家可以「主动卸下」某几道，用来让入场态势的类别构成更集中
+         （比如卸掉两道术，把「偏执」换成「四象归元」）
+     于是装配的意义不是「省着带」，而是「为了态势取舍」——这才与 S4 咬合。
+     ============================================================ */
+  function stEquipList() {
+    const all = S.shenTong || [];
+    if (!Array.isArray(S.stEquip)) return all.slice();   // 未做选择＝全装
+    return all.filter(function (n) { return S.stEquip.indexOf(n) >= 0; });
+  }
+  /* 「这一道是否已装配」——未设置时视为已装 */
+  function stEquipped(name) {
+    if (!Array.isArray(S.stEquip)) return true;
+    return S.stEquip.indexOf(name) >= 0;
+  }
+  function stEquipCost(name) {
+    const sp = shenTongSpec(name);
+    return sp.cost;
+  }
+
+  /* ============================================================
+     v10.4 P2·12：功法熟练度（方案标注「可选」）
+     ------------------------------------------------------------
+     加这一项的前提在方案里写得很清楚：只有玩家已经能感知功法差异，
+     成长维度才值得加。P0/P1 做完之后，这个前提成立。
+     ------------------------------------------------------------
+     设计上刻意避开「练得越久数字越大」这种纯循环：
+       · 熟练度只随「真正用这本功法做事」增长：以它为道基修炼、
+         闭关、以及它与神通/四艺咬合的那些时刻
+       · 熟练度不解锁新系统，只把「这本功法已经有的那个特点」放大
+         （有 heal 的更像 heal，有 craftArts 的更像那门手艺）
+       · 三阶封顶，每阶 +25% 该功法的主特征，不叠加新词条
+     于是它增长的是「这本功法的性格」，不是「又一个乘区」。
+     ============================================================ */
+  const GF_PROF_STEPS = [0, 60, 180, 400];   // 熟练度门槛：初习/小成/精熟/化境
+  const GF_PROF_NAME = ['初习', '小成', '精熟', '化境'];
+  const GF_PROF_MUL = [1, 1.25, 1.5, 1.75];  // 只乘「主特征」，不是全局乘区
+
+  function gfProfMap() { return (S.gfProf && typeof S.gfProf === 'object') ? S.gfProf : (S.gfProf = {}); }
+  function gfProfOf(id) { return Math.max(0, Math.round(numOr(gfProfMap()[id], 0))); }
+  function gfProfStep(id) {
+    const v = gfProfOf(id);
+    let i = 0;
+    for (let k = 0; k < GF_PROF_STEPS.length; k++) if (v >= GF_PROF_STEPS[k]) i = k;
+    return i;
+  }
+  function gfProfName(id) { return GF_PROF_NAME[gfProfStep(id)]; }
+  /* 熟练度乘区：只作用于「这本功法的主特征」，由扩展决定乘给谁 */
+  function gfProfMul(id) { return GF_PROF_MUL[gfProfStep(id || (S.gongfa && S.gongfa[0]))]; }
+  /* 供扩展读取（EXT 在 game.js 之后挂载，用探针拿实时值） */
+  function gfProfProbe() {
+    const id = S.gongfa && S.gongfa[0];
+    return id ? { id: id, prof: gfProfOf(id), step: gfProfStep(id), mul: gfProfMul(id), name: gfProfName(id) } : null;
+  }
+  /* 增长入口。为什么要「受用」才涨：
+     换着功法乱试不涨、把书买来不读也不涨 —— 熟练是「用过」的痕迹。 */
+  function addGfProf(n, why) {
+    const id = S.gongfa && S.gongfa[0];
+    if (!id) return 0;
+    const m = gfProfMap();
+    const before = gfProfOf(id);
+    const cap = GF_PROF_STEPS[GF_PROF_STEPS.length - 1];
+    if (before >= cap) return 0;
+    m[id] = Math.min(cap, before + Math.max(0, Math.round(n)));
+    const afterStep = gfProfStep(id), beforeStep = (function () {
+      let i = 0;
+      for (let k = 0; k < GF_PROF_STEPS.length; k++) if (before >= GF_PROF_STEPS[k]) i = k;
+      return i;
+    })();
+    if (afterStep > beforeStep) {
+      const g = getDaogong();
+      logLine('《' + (g ? g.name : id) + '》' + why + '，已至「' + GF_PROF_NAME[afterStep] + '」。', 'good');
+      toast('功法精进 · ' + GF_PROF_NAME[afterStep]);
+    }
+    return m[id] - before;
+  }
+
   function curPlace() {
     if (S.inDongtian) return '洞天·' + (S.shenwei || '未入品');
     return curPlaceObj().name;
@@ -3715,6 +3804,14 @@
       '<span class="tier" style="background:' + D.GONGFA_TIERS[g.tier].color + '">' +
       esc(D.GONGFA_TIERS[g.tier].name) + ' ×' + D.GONGFA_TIERS[g.tier].mul + '</span></div>';
     b += '<div class="slotnote">' + esc(g.eff) + '　｜　境界上限 ' + esc(cap.to) + '</div>';
+    /* v10.4 P2·12：熟练度 —— 练的是这本功法的哪一面，面板上要看得见 */
+    const _pf = (G.WXCS3_EXT && G.WXCS3_EXT.gfProfFocus) ? G.WXCS3_EXT.gfProfFocus() : '';
+    const _pv = gfProfOf(g.id), _ps = gfProfStep(g.id);
+    const _nxt = GF_PROF_STEPS[_ps + 1];
+    b += '<div class="slotnote">熟练 <b>' + esc(gfProfName(g.id)) + '</b>　' + _pv +
+      (_nxt ? ' / ' + _nxt : '（已至化境）') +
+      (_pf ? '　｜　所长：' + esc(_pf) : '') +
+      (_ps > 0 ? '　｜　该长已 ×' + GF_PROF_MUL[_ps].toFixed(2) : '') + '</div>';
     /* v10.1 第二梯队·问题2：把 effect 翻译成人话显示，
        让「文案承诺」与「实际结算」能当面对上，玩家可自行核对。 */
     if (G.WXCS3_EXT && G.WXCS3_EXT.gongfaEffectText) {
@@ -3737,7 +3834,8 @@
       b += '<span class="chip ' + (on ? 'on' : '') + '" data-act="do;setgf:' + x.id + '" style="justify-content:flex-start">' +
         '<b>' + esc(x.name) + '</b><span class="muted" style="font-weight:400">· ' +
         esc(D.GONGFA_TIERS[x.tier].name) + ' · 至' + esc(c2.to) +
-        (_xet ? ' · <span class="good">' + esc(_xet) + '</span>' : '') + '</span></span>';
+        (gfProfStep(x.id) > 0 ? ' · <span class="good">' + esc(GF_PROF_NAME[gfProfStep(x.id)]) + '</span>' : '') +
+        (_xet ? ' · ' + esc(_xet) : '') + '</span></span>';
     }
     b += '</div>';
     b += divider();
@@ -5853,6 +5951,13 @@
     if (out.clan && typeof out.clan !== 'object') out.clan = null;
     if (!Array.isArray(out.daoyin)) out.daoyin = [];
     if (!Array.isArray(out.shenTong)) out.shenTong = [];
+    /* v10.4 P2·11：stEquip 是后加字段。旧档没有它 → 保持「未设置」，
+       语义是「拥有即全装」，行为与加这个字段之前完全一致。
+       只在它存在时做一次清洗（剔除已不再持有的名字）。 */
+    if (Array.isArray(out.stEquip)) {
+      out.stEquip = out.stEquip.filter(function (n) { return out.shenTong.indexOf(n) >= 0; });
+      if (!out.stEquip.length) out.stEquip = out.shenTong.slice();
+    }
     if (!out.stKind || typeof out.stKind !== 'object') out.stKind = {};
     if (!Array.isArray(out.afterBreak)) out.afterBreak = [];
     if (!out.holdEvent) out.holdEvent = false;
@@ -6422,7 +6527,8 @@
   };
   /* 按持有神通的类别构成判定「已达成的态势」（可能多个） */
   function stanceList() {
-    const sts = S.shenTong || [];
+    /* v10.4 P2·11：态势只看「已装配」—— 卸一道就能改势，这是装配的意义 */
+    const sts = stEquipList();
     if (!sts.length) return [];
     const cnt = { '命': 0, '术': 0, '身': 0, '目': 0 };
     sts.forEach(function (nm) {
@@ -6438,16 +6544,53 @@
     if (cnt[top] >= 3 && kinds.length < 4) out.push('pianzhi');
     return out;
   }
-  /* 本场实际生效的态势：默认取第一个已达成的，玩家可在战前切换 */
+  /* 本场实际生效的态势。
+     ------------------------------------------------------------
+     v10.4 P2 修：`c.stance || stanceList()[0]` 会把「显式设为无态势」
+     误判成「还没设过」，于是自动回退到第一个已达成的态势 ——
+     测试里 `stance:null` 的场景实际一直在吃「四象归元」的归元乘区，
+     导致「百炼比聚气强 1.275」这个假象（那是归元×1.27 而不是功法品阶）。
+     现在用 hasOwnProperty 区分「没设过」与「设成 null」：
+       · 没设过（旧存档/旧战斗态）→ 回退到自动判定，保持兼容
+       · 设成 null → 明确表示「本场不要态势」，不再回退 */
   function curStance() {
     const c = S.combat;
     if (!c) return null;
-    const id = c.stance || (stanceList()[0] || null);
+    const id = Object.prototype.hasOwnProperty.call(c, 'stance')
+      ? c.stance
+      : (stanceList()[0] || null);
     return id ? Object.assign({ id: id }, STANCE_SPEC[id]) : null;
   }
+  /* ============================================================
+     v10.4 P2·联动：神通的「五行归属」
+     ------------------------------------------------------------
+     神通本身没有 el 字段（178 个裸字符串，不改表）。它的五行只能从
+     「这道神通出自哪个道统」推导：S.daotong 是玩家当前道统，
+     道统又归属某个五行大类。所以同一道神通在不同道统下，
+     吃到的功法加成不同——这正是「我修什么」与「我这一击」第一次相遇。
+     返回 fx 的键位（metal/wood/water/fire/earth/thunder/qi），
+     与 ext-60 的 dims 键位、KIND_TO_EL 保持同一套命名。
+     ============================================================ */
+  const CLASS_TO_EL = {
+    '金行': 'metal', '木行': 'wood', '水行': 'water', '火行': 'fire', '土行': 'earth',
+    '雷': 'thunder', '十二炁': 'qi', '六阳六阴': 'qi', '孤独': 'qi'
+  };
+  function shenTongEl() {
+    const cls = daotongClassOf(S.daotong);
+    return CLASS_TO_EL[cls] || null;
+  }
+  /* 联动一：功法 dims 对同属神通的乘区。
+     复用 ext-60 的 gongfaCastInfo 缝：它在 sk=null 时按「功法自身五行」
+     给出乘区，正好就是「这道功法擅长什么」。 */
+  function gongfaShenTongMul() {
+    const X = G.WXCS3_EXT;
+    if (!X || !X.gongfaShenTongMul) return { mul: 1, text: '' };
+    return X.gongfaShenTongMul(shenTongEl());
+  }
+
   /* 类别多样性系数：四类 1.20 / 三类 1.12 / 两类 1.05 / 一类 1.00 */
   function stanceKindMul() {
-    const sts = S.shenTong || [];
+    const sts = stEquipList();
     if (!sts.length) return 1;
     const kinds = {};
     sts.forEach(function (nm) {
@@ -6462,7 +6605,7 @@
 
   /* 偏执专精的是哪一类（计数最高者） */
   function stanceFocusKind() {
-    const sts = S.shenTong || [];
+    const sts = stEquipList();
     const cnt = { '命': 0, '术': 0, '身': 0, '目': 0 };
     sts.forEach(function (nm) {
       stParts(shenTongKind(nm)).forEach(function (p) { if (cnt[p] !== undefined) cnt[p]++; });
@@ -8180,6 +8323,53 @@
 
   ACT.openPreFight = () => { if (S.combat) S.combat.prepared = true; openPreFight(); };
 
+  /* v10.4 P2·11：神通取舍面板。
+     一张表看清「带哪几道、凑出什么势」，卸装即时影响态势与战力。 */
+  function openStEquipPanel() {
+    const all = S.shenTong || [];
+    if (!all.length) { toast('尚无神通'); return; }
+    const on = stEquipList();
+    let b = '<div class="small">持有 <b>' + all.length + '</b> 道 · 本场装配 <b>' + on.length + '</b> 道</div>';
+    b += '<div class="muted small" style="margin:4px 0">卸下的神通本场不可用，但会改变入场态势——想要「四象归元」就凑四类，想要「偏执」就集中一类。</div>';
+    b += divider() + '<ul class="opts">';
+    all.forEach(function (nm) {
+      const sp = shenTongSpec(nm);
+      const isOn = stEquipped(nm);
+      const note = isOn
+        ? ('−' + sp.cost + ' 灵 · ×' + stMulText(sp.mul) + ' · ' + sp.parts.join('') + '类')
+        : ('已卸 · ' + sp.parts.join('') + '类 · ' + sp.desc);
+      b += optRow(isOn ? '卸' : '装', stShort(nm),
+        { name: sp.kindName, cls: isOn ? 'peace' : 'chance' }, note, false,
+        'do;steq:' + encodeURIComponent(nm));
+    });
+    b += '</ul>';
+    /* 当前态势预览：让「卸一道会变成什么势」在点之前就能看见 */
+    const sl = stanceList();
+    b += divider() + '<div class="small">当前态势：';
+    if (!sl.length) b += '<span class="muted">无（需至少一道装配）</span>';
+    else b += sl.map(function (sid) { return '<b>' + STANCE_SPEC[sid].name + '</b>'; }).join(' / ');
+    b += '</div>';
+    b += '<div class="hint">装配不设额外上限：拥有即默认可带。卸装只为一件事——把态势调成你想要的那种。</div>';
+    openModal('神通 · 取舍', b);
+  };
+
+  function doStEquip(enc) {
+    const nm = decodeURIComponent(enc);
+    if ((S.shenTong || []).indexOf(nm) < 0) return;
+    /* 首次操作时把「全装」落成显式数组，之后才谈得上卸 */
+    if (!Array.isArray(S.stEquip)) S.stEquip = (S.shenTong || []).slice();
+    const at = S.stEquip.indexOf(nm);
+    if (at >= 0) {
+      if (S.stEquip.length <= 1) { toast('至少留一道神通在手'); return; }
+      S.stEquip.splice(at, 1);
+      logLine('收起「' + stShort(nm) + '」，本场不带。', '');
+    } else {
+      S.stEquip.push(nm);
+      logLine('取出「' + stShort(nm) + '」，本场带上。', 'good');
+    }
+    render(); openStEquipPanel();
+  };
+
   ACT.do_cbtpre = (id) => {
     /* v10.4 P1·S4：切换入场态势。只允许切到「已达成」的那几个，
        不给出未达成的选项——否则态势就变成了可以随便挑的免费增益。 */
@@ -8212,6 +8402,9 @@
     logLine('战前用了「' + a.name + '」。', 'good');
     closeModal(); render();
   };
+
+  ACT.openStEquip = () => openStEquipPanel();
+  ACT.do_steq = (enc) => doStEquip(enc);
 
   ACT.do_cbtpill = (id) => {
     const p = D.PILL_EXT.find(function (x) { return x.id === id; });
@@ -8266,7 +8459,9 @@
     if (!c) return;
     const list = equippedSkills();
     const g = getDaogong();
-    const sts = S.shenTong || [];
+    /* v10.4 P2·11：只列已装配的神通。卸下的仍在「神通 · 取舍」里，
+       只是这一场不带。 */
+    const sts = stEquipList();
     c.stUsed = c.stUsed || {};
     let b = '<div class="small">灵力 <b>' + Math.round(S.mp) + '</b>/' + Math.round(S.mpMax) +
       '　道基《' + esc(g.name) + '》（' + esc(g.el ? D.ELEMENTS[g.el].name : '无属') + '）</div>' + divider();
@@ -8286,7 +8481,10 @@
     b += '</ul>';
 
     if (sts.length) {
-      b += '<div class="sechead">神通　' + sts.length + ' 道　不占装配格 · 每道本场仅一次</div>';
+      const _allN = (S.shenTong || []).length;
+      b += '<div class="sechead">神通　' + sts.length + '/' + _allN + ' 道' +
+        (sts.length < _allN ? '（已卸 ' + (_allN - sts.length) + ' 道）' : '') +
+        '　每道本场仅一次</div>';
       b += '<ul class="opts">';
       /* v10.4 P1·S4：偏执之势会禁掉非专精类；freeFirst 会让第一道免灵。
          两件事都必须在菜单上写清，否则玩家点了没反应，会以为界面坏了。 */
@@ -8310,6 +8508,10 @@
       b += '<div class="small muted" style="margin-top:8px">尚无神通。紫府开一关时，可从道统池中取一道——那是你自己的道。</div>';
     }
     b += '<div class="hint">招式吃同源共鸣（同系 +20%、相生 +10%、相克 −15%）；神通不吃共鸣，但必中，且带破防／自愈／破绽。</div>';
+    if ((S.shenTong || []).length) {
+      b += '<div style="margin-top:8px"><button class="btn ghost" data-act="act:openStEquip">神通 · 取舍（本场带 ' +
+        stEquipList().length + '/' + S.shenTong.length + ' 道）</button></div>';
+    }
     openModal('交手 · 招式与神通', b);
   };
 
@@ -8810,6 +9012,7 @@
          它是大招，不是第二个普攻——所以必中，但消耗高、有次数。 */
       const snm = decodeURIComponent(arg || '');
       if ((S.shenTong || []).indexOf(snm) < 0) { toast('没有这道神通'); render(); return; }
+      if (!stEquipped(snm)) { toast('此神通本场未装配（去「神通 · 取舍」装上）'); render(); return; }
       c.stUsed = c.stUsed || {};
       if (c.stUsed[snm]) { toast('此神通本场已出（一道一场只一次）'); render(); return; }
       const sp = shenTongSpec(snm);
@@ -8844,13 +9047,27 @@
           c.foeWeaken = Math.max(c.foeWeaken || 0, 2);
           stTags.push('压势');
         } else if (k1 === '身') {
-          const heal = Math.round(S.hpMax * 0.12);
+          /* v10.4 P2·联动三：身类功法（疗伤）放大身神通的自愈。
+             长春 0.25 / 续脉 0.30 / 月湖 0.10 —— 疗伤本钱第一次
+             直接变成「护身神通更耐打」。 */
+          let heal = Math.round(S.hpMax * 0.12);
+          const _gh = (G.WXCS3_EXT && G.WXCS3_EXT.gongfaHeal) ? G.WXCS3_EXT.gongfaHeal() : 0;
+          if (_gh > 0) {
+            heal = Math.round(heal * (1 + _gh));
+            stTags.push('自愈 ' + heal + '+功法');
+          } else {
+            stTags.push('自愈 ' + heal);
+          }
           S.hp = Math.min(S.hpMax, S.hp + heal);
           c.defending = true;
-          stTags.push('自愈 ' + heal);
         } else {
-          c.foeMark = Math.max(c.foeMark || 0, 2);
-          stTags.push('破绽');
+          /* v10.4 P2·联动四：目类功法（卜筮）延长破绽。
+             梅花易 fate +6：破绽 2 → 3 回合。卜筮不只是加机缘，
+             它也让你「看得更久」。 */
+          const _gf = (G.WXCS3_EXT && G.WXCS3_EXT.gongfaFate) ? G.WXCS3_EXT.gongfaFate() : 0;
+          const _md = _gf > 0 ? 3 : 2;
+          c.foeMark = Math.max(c.foeMark || 0, _md);
+          stTags.push('破绽 ' + _md + '合');
         }
       });
       /* v10.4 P1·S2：道统气质的附加效果。
@@ -8871,10 +9088,18 @@
         c.momentum = Math.max(0, (c.momentum || 0) - 1);
         stTags.push('夺势');
       } else if (sp.temper === '炎上') {
+        /* v10.4 P2·联动二：炎上气质 × 带 burn 的功法。
+           功法自己有「灼烧」时（烈火掌 0.5 / 流火剑诀 0.5），
+           神通的余焰烧得更旺——从 0.5 提到 0.75，但封顶 0.9，
+           避免「两本火功法叠加成秒杀」。 */
+        let _bm = 0.5;
+        const _gst = (G.WXCS3_EXT && G.WXCS3_EXT.gongfaSpellStatus)
+          ? G.WXCS3_EXT.gongfaSpellStatus(null) : null;
+        if (_gst && _gst.burn) _bm = Math.min(0.9, _bm + _gst.burn * 0.5);
         c.foeBurn = Math.max(c.foeBurn || 0, 2);
-        c.foeBurnMul = Math.max(c.foeBurnMul || 0, 0.5);
+        c.foeBurnMul = Math.max(c.foeBurnMul || 0, _bm);
         c.burnFresh = true;
-        stTags.push('余焰');
+        stTags.push(_bm > 0.5 ? '余焰·焚身' : '余焰');
       } else if (sp.temper === '虚空') {
         c.temperPierce = 1;      // 本场后续出手位格压制减轻一档
         stTags.push('凌位');
@@ -8889,10 +9114,28 @@
         stTags.push('先声');
       }
       if (_freeFirst) stTags.push('免灵');
+      /* v10.4 P2·联动一：功法五行 × 同属神通。
+         这是五条联动里唯一作用于伤害本体的，必须封顶 ——
+         否则「天阶剑经 + 剑属神通 + 四象归元」三项叠满会打穿战斗系统。
+         封顶 1.5：功法 dims 最高 1.40（玄元剑经），留一点余量给 P2 的
+         「四象归元 × 功法品阶」但不超过 1.5。 */
+      const _gsm = gongfaShenTongMul();
+      const _fMul = clamp(_gsm.mul, 1, 1.5);
+      if (_fMul > 1.001) stTags.push('功法×' + _fMul.toFixed(2));
+      /* v10.4 P2·联动五：四象归元 × 主修功法品阶。
+         集齐四类时，功法的品阶乘区额外生效一次（只取品阶的一半，
+         与招式侧的 0.5 权重同一口径）。 */
+      let _sixMul = 1;
+      if (_stance && _stance.id === 'sixiang') {
+        const _g = getDaogong();
+        const _T = { huang: 1.00, xuan: 1.10, di: 1.22, tian: 1.36, xian: 1.55 };
+        const _tm = _T[_g && _g.tier] || 1;
+        _sixMul = 1 + (_tm - 1) * 0.5;
+        if (_sixMul > 1.001) stTags.push('归元×' + _sixMul.toFixed(2));
+      }
       if (stTags.length) sextra = '（' + stTags.join('·') + '）';
-      /* 注：神通暂不吃功法五行乘区。「功法放大神通」是方案第四节（P2 联动）
-         的设计，P1 只做气质与态势，不加跨系统叠乘——否则 P2 的验收口径会失真。 */
-      dmg = Math.round(c.foe.hpMax * Math.max(0.13, 0.26 * ratio) * sp.mul * _pzMul * mult * keK * (1 + artBonus('atk')) * fateMul('dmg'));
+      dmg = Math.round(c.foe.hpMax * Math.max(0.13, 0.26 * ratio) * sp.mul * _pzMul *
+        _fMul * _sixMul * mult * keK * (1 + artBonus('atk')) * fateMul('dmg'));
       c.observed = false;
       note = '神通「' + stShort(snm) + '」' + sextra;
 
@@ -11703,6 +11946,9 @@
     esc, clamp, fmtNum, optRow, divider,
     openModal, closeModal,
     buildInfo,
+    /* v10.4 P2·12：功法熟练度探针（扩展读取，避免扩展闭包里再算一遍） */
+    gfProfPeek: gfProfProbe,
+    addGfProf,
     get EXT_ACT() { return EXT_ACT; } };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
