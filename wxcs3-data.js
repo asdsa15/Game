@@ -1119,15 +1119,15 @@
     halls: ['炼宝殿', '炼丹殿', '御兽殿', '合欢殿'],
     peaks: ['补天峰', '赤霄峰', '藏锋峰', '丹霞峰'],
     ranks: [
-      { id: 0, name: '记名弟子', need: 0,     pay: 0,   lvl: ['wai'],              equip: 2,
+      { id: 0, name: '记名弟子', need: 0,     pay: 0,   due: 10,  lvl: ['wai'],              equip: 2,
         desc: '外门一殿的杂役，无月俸，任务繁重' },
-      { id: 1, name: '外门弟子', need: 500,   pay: 20,  lvl: ['wai', 'nei'],       equip: 3,
+      { id: 1, name: '外门弟子', need: 500,   pay: 20,  due: 10,  lvl: ['wai', 'nei'],       equip: 3,
         desc: '得上供，可入藏经阁外门层与内门层' },
-      { id: 2, name: '内门弟子', need: 2000,  pay: 60,  lvl: ['wai', 'nei'],       equip: 4,
+      { id: 2, name: '内门弟子', need: 2000,  pay: 60,  due: 12,  lvl: ['wai', 'nei'],       equip: 4,
         desc: '独立洞府，听调于本峰' },
-      { id: 3, name: '真传',     need: 8000,  pay: 200, lvl: ['wai', 'nei', 'zhen'], equip: 5,
+      { id: 3, name: '真传',     need: 8000,  pay: 200, due: 40,  lvl: ['wai', 'nei', 'zhen'], equip: 5,
         desc: '藏经阁全开——真正厉害的神通都在这一层' },
-      { id: 4, name: '长老',     need: 30000, pay: 600, lvl: ['wai', 'nei', 'zhen'], equip: 5,
+      { id: 4, name: '长老',     need: 30000, pay: 600, due: 120, lvl: ['wai', 'nei', 'zhen'], equip: 5,
         desc: '一峰之主，可收徒、可分配资源' }
     ],
     tasks: [

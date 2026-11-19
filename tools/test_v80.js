@@ -517,7 +517,13 @@ fixRandom(0.999);
 const ySt = S.stones;
 G.advanceXun(3);
 restoreRandom();
-ok(S.sect.contrib === 50, '宗门月课扣贡献 50（100 → ' + S.sect.contrib + '）');
+/* v10.3 P1：月课改按「本阶边际门槛」，内门从 50 降到 12 贡献。
+   旧式按累计门槛（2000/40=50）收，长老要 750，而三旬宗门任务约 144 贡献——
+   升阶反而变成惩罚。现在每个位阶写死 due，与 pay 同量纲。 */
+ok(S.sect.contrib === 88, '宗门月课扣贡献 12（内门 100 → ' + S.sect.contrib + '）');
+const _dues = G.D.SECT.ranks.map(function (r) { return r.due; });
+ok(_dues.join('/') === '10/10/12/40/120', '各位阶月课 ' + _dues.join('/') + '，均不超过两旬任务收入');
+ok(_dues.every(function (d, i) { return i < 3 || d <= 150; }), '真传/长老月课在两旬任务（约 120~180）之内');
 ok(ySt - S.stones === 35, '洞府维护 = 灵脉 15 + 作坊 20 = 35（实扣 ' + (ySt - S.stones) + '）');
 
 setup('xian', { stones: 1000 });

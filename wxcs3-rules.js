@@ -65,11 +65,6 @@
   }
 
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
-  function fmtTime(ms) {
-    const d = new Date(ms || Date.now());
-    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) +
-      ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
-  }
 
   function stampName() {
     const d = new Date();
@@ -182,12 +177,6 @@
     return row ? row.text : '';
   }
 
-  function unlockRow(line, stage) {
-    const t = unlockTable(line);
-    for (const r of t) if (r.stage === stage) return r;
-    return null;
-  }
-
   function unlockTable(line) { return line === 'shen' ? D.UNLOCK_SHEN : D.UNLOCK_XIAN; }
   function unlockRow(line, stage) {
     const t = unlockTable(line);
@@ -218,10 +207,6 @@
   }
 
   function stShort(n) { return String(n || '').replace(/（[^）]*）/g, ''); }
-  function shenTongKindMarked(name) {
-    const m = /（([命术身目]+)）/.exec(name || '');
-    return m ? m[1] : '';
-  }
 
   function artName(id) {
     const a = D.CRAFT_ARTS.find(function (x) { return x.id === id; });

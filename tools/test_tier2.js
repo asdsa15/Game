@@ -302,11 +302,89 @@ ok(EXT.gongfaFate() === 6, '梅花易机缘 +6 已接线');
 setup({ gongfa: ['xianghuo'] });
 ok(Math.abs(EXT.gongfaXianghuo() - 0.15) < 1e-9, '香火成神法香火 +15% 已接线');
 
-/* 疗伤端到端：换功法必须换回血速度 */
-setup({ gongfa: ['juqi'] });
-S.hp = 1; S.hpMax = 1000;
+/* ============================================================
+   v10.4 P0：探针自检 → 真实路径断言
+   ------------------------------------------------------------
+   上面那一组只证明「数据表编译对了」，不证明「游戏读了它」——
+   14 本功法空转多年没被发现，正是因为断言停在 EXT.gongfaXxx() === n。
+   下面每条都走玩家真会走的那条路：换功法后的上限、受伤后的减伤、
+   月初的香火、奇遇的掷骰。
+   ============================================================ */
+console.log('=== 4b. 死钩子端到端（v10.4 P0）===');
+
+/* —— gongfaMpCap：换吞海功，灵力上限必须真的变大 —— */
+setup({ gongfa: ['juqi'], ownedGongfa: ['juqi', 'tunhai'] });
+S.mpMax = 100; S.mp = 100; S.mpGfMul = 1;
+const mpBefore = S.mpMax;
+G.dispatch('do;setgf:tunhai');
+ok(S.mpMax > mpBefore, '端到端：换吞海功灵力上限真变大（' + mpBefore + ' → ' + S.mpMax + '）');
+ok(Math.abs(S.mpMax - 115) <= 1, '吞海功上限恰为 +15%（实际 ' + S.mpMax + '）');
+/* 换回聚气必须掉回来，否则「换功法」只是一次性白送 */
+G.dispatch('do;setgf:juqi');
+ok(S.mpMax <= mpBefore + 1, '换回聚气上限回落（' + S.mpMax + '），加成不是一次性的');
+
+/* —— gongfaLifeBonus：换补天真经，寿元上限必须真的变大 —— */
+setup({ gongfa: ['juqi'], ownedGongfa: ['juqi', 'butian'] });
+S.lifeMax = 200; S.lifeGfBonus = 0;
+G.dispatch('do;setgf:butian');
+ok(S.lifeMax > 200, '端到端：换补天真经寿元上限真变大（200 → ' + S.lifeMax + '）');
+ok(S.lifeMax === 280, '补天真经 +80 精确落账（实际 ' + S.lifeMax + '）');
+G.dispatch('do;setgf:juqi');
+ok(S.lifeMax === 200, '换回聚气寿元回落（' + S.lifeMax + '）');
+
+/* —— gongfaWard：同一敌人同一随机种子，金光咒必须挨得更少 —— */
+function hurtWith(id) {
+  setup({ gongfa: [id], ownedGongfa: [id] });
+  S.hp = 1e9; S.hpMax = 1e9;
+  S.combat = { foe: { name: '石傀', hp: 9e9, hpMax: 9e9, power: 300, rank: 12, el: 'tu', trait: 'brute' },
+    round: 1, log: [], stUsed: {} };
+  G.setSeed(12345);
+  const h = S.hp;
+  G.ACT.do_cbt('defend', '');
+  return h - S.hp;
+}
+const hurtPlain = hurtWith('juqi');
+const hurtWard = hurtWith('jinguang');
+ok(hurtWard < hurtPlain, '端到端：金光咒真的少挨打（' + hurtPlain + ' → ' + hurtWard + '）');
+ok(hurtWard / hurtPlain < 0.95, '减伤幅度可见（' + (100 - hurtWard / hurtPlain * 100).toFixed(1) + '%）');
+
+/* —— gongfaGapUp：越阶时乾天一元统摄诸天神法必须打得动 —— */
+function gapHit(id, rank) {
+  setup({ gongfa: [id], ownedGongfa: [id] });
+  S.xRealm = 1; S.xStage = 8; S.hp = 1e9; S.hpMax = 1e9;
+  S.combat = { foe: { name: '石傀', hp: 9e9, hpMax: 9e9, power: 600, rank: rank, el: 'tu', trait: 'brute' },
+    round: 1, log: [], stUsed: {} };
+  G.setSeed(999);
+  G.ACT.do_cbt('attack', '');
+  const line = (S.log.find(function (x) { return /造成/.test(x.txt || ''); }) || {}).txt || '';
+  return parseInt((line.match(/造成 (\d+)/) || [0, 0])[1], 10);
+}
+const hitPlain = gapHit('juqi', 16);
+const hitGapUp = gapHit('xuanrong', 16);
+ok(hitGapUp > hitPlain, '端到端：乾天一元统摄诸天神法越阶伤害更高（' + hitPlain + ' → ' + hitGapUp + '）');
+ok(hitGapUp / hitPlain > 1.4, '位格压制抵消 1 档的效果量级（×' + (hitGapUp / Math.max(1, hitPlain)).toFixed(2) + '）');
+
+/* —— gongfaFate：梅花易必须真的提高奇遇概率 —— */
+/* 奇遇掷骰没有对外探针，退回源码口径：判定式里必须出现 gongfaFateAdd */
+const gsrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'wxcs3-game.js'), 'utf8');
+ok(/encRate = 18[\s\S]{0,160}gongfaFateAdd\(\)/.test(gsrc), '梅花易机缘已进入奇遇掷骰（源码口径）');
+ok(/st\('fate'\) \+ gongfaFateAdd\(\)/.test(gsrc), '梅花易机缘已进入交涉判定（源码口径）');
+
+/* —— gongfaXianghuo：香火成神法必须真的提高月香火 —— */
+const gsrc2 = require('fs').readFileSync(require('path').join(__dirname, '..', 'wxcs3-game.js'), 'utf8');
+ok(/_XH2\.gongfaXianghuo\(\)/.test(gsrc2) && /if \(_xhv > 0\) v \*=/.test(gsrc2),
+   '香火成神法已进入 monthXianghuo（源码口径）');
+
+/* —— gongfaLifeStop：寿元到限时必须真的挡一次 —— */
+/* 寿元判定只在「跨年」那一拍（advanceMonth 把 month 推到 1）执行，
+   所以要把月份设在 12，让这次推进正好落在年初。 */
+setup({ gongfa: ['taiyin'], ownedGongfa: ['taiyin'] });
+S.age = 200; S.lifeMax = 200; S.lifeStopUsed = false; S.month = 12;
+const ageBefore = S.age;
 G.advanceMonth();
-const healJuqi = 0;
+ok(S.phase === 'play', '端到端：太阴蜕形尸解真法在寿元到限时保住性命');
+ok(S.lifeMax > ageBefore, '尸解后续命（寿元上限 ' + S.lifeMax + ' > 年龄 ' + S.age + '）');
+ok(S.lifeStopUsed === true, '尸解只挡一次（不写成永久免死）');
 
 /* ============================================================
    五、可达性：扩展被正确加载与挂载

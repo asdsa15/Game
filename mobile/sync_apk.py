@@ -32,9 +32,21 @@ def sync_one(target: Path, html_src: Path, code: int) -> None:
     mf_path.write_text(json.dumps(mf, ensure_ascii=False, indent=4) + '\n', encoding='utf-8')
 
 
-SRC_FILES = [ROOT.parent / 'wxcs3-game.js',
-             ROOT.parent / 'wxcs3-data.js',
-             ROOT.parent / '问道长生v6.html']
+def source_files() -> list:
+    """参与「新鲜度」判定的全部输入。
+
+    v10.3 P1：原来只盯 game/data/html 三个文件，漏了 rules、14 个 ext-*.js、
+    移动端样式与素材——于是「改了扩展却没重建 dist」这种分叉永远查不出来。
+    现在一律按实际输入全量收：根目录所有 wxcs3-*.js、入口 HTML、mobile.css、
+    art/scenes 交付图、icons。
+    """
+    root = ROOT.parent
+    files = sorted(root.glob('wxcs3-*.js'))
+    files.append(root / '问道长生v6.html')
+    files.append(ROOT / 'mobile.css')
+    files += sorted((root / 'art' / 'scenes').glob('*.jpg'))
+    files += sorted((ROOT / 'icons').glob('*.png'))
+    return [f for f in files if f.exists()]
 
 
 def check_fresh() -> None:
@@ -45,10 +57,10 @@ def check_fresh() -> None:
     静默分叉比报错难查一百倍，所以这里宁可拦下来。
     """
     dist_m = DIST_HTML.stat().st_mtime
-    stale = [f.name for f in SRC_FILES if f.exists() and f.stat().st_mtime > dist_m]
+    stale = [f for f in source_files() if f.stat().st_mtime > dist_m]
     if stale:
         sys.exit('✗ 产物已过期，源码比 dist/index.html 新：\n    '
-                 + '\n    '.join(stale)
+                 + '\n    '.join(str(f.relative_to(ROOT.parent)) for f in stale)
                  + '\n  先跑：python build.py')
 
 

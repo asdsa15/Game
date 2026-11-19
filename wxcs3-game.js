@@ -311,6 +311,13 @@
     const _arr2 = Math.max(0, S.arrears || 0);
     if (_arr2) v *= Math.max(D.FIXED_COST.arrearsFloor, 1 - D.FIXED_COST.arrearsStep * _arr2);
     const cap = pillar().need / 12;
+    /* v10.4 P0·3.1：香火成神法「以香火铸神 +15%」。
+       功法加成只乘在回报上，不动 cap —— 上限属于柱位，不该被一本书改写。
+       用内联读取而不是调 gongfaXianghuoMul()：tools/test_econ.js 会把本函数
+       整段抽到裸沙箱里跑（那里没有外层闭包与 EXT），与 maxXianghuo 同一个坑。 */
+    const _XH2 = (typeof G !== 'undefined') ? G.WXCS3_EXT : null;
+    const _xhv = (_XH2 && _XH2.gongfaXianghuo) ? _XH2.gongfaXianghuo() : 0;
+    if (_xhv > 0) v *= (1 + clamp(_xhv, 0, 0.5));
     return { raw: v, capped: Math.min(v, cap), cap };
   }
 
@@ -472,9 +479,6 @@
     }
   }
 
-  /* 本旬还能做几次事（界面显示用） */
-  function xunLeft() { return Math.max(1, XUN_PER_MONTH - (S.xun || 0)); }
-
   function advanceMonth(n) {
     n = n || 1;
     for (let i = 0; i < n; i++) {
@@ -518,7 +522,21 @@
         if (S.month === 1) S.age++;   // 香火续命：年龄只增不减
       } else if (S.month === 1) {
         S.age++;
-        if (S.age >= S.lifeMax) { die('寿元耗尽。你在蒲团上坐着，直到风把道袍吹干。'); return; }
+        /* v10.4 P0·3.1：太阴蜕形尸解真法「死生不复为形所囿」。
+           此前 lifeStop 只是数据表里的一个字，game.js 从不读它。
+           兑现方式：寿元到限时不立刻死，改成「这一篇替你挡一次」——
+           挡过之后修为折损，但人还在。不写成永久免死，否则寿元这条线就废了。 */
+        if (S.age >= S.lifeMax) {
+          if (gongfaLifeStop() && !S.lifeStopUsed) {
+            S.lifeStopUsed = true;
+            S.lifeMax = Math.max(S.age + 30, S.lifeMax);
+            S.xiuwei = Math.max(0, Math.round((S.xiuwei || 0) * 0.5));
+            logLine('寿元已尽。尸解之法自行运转，形蜕而神存 —— 寿元上限续至 ' + S.lifeMax + '，修为折半。', 'danger');
+            toast('尸解 · 死生不复为形所囿');
+          } else {
+            die('寿元耗尽。你在蒲团上坐着，直到风把道袍吹干。'); return;
+          }
+        }
       }
 
       // 人情压身：一年老一分道心
@@ -537,6 +555,10 @@
       if (S.hp < S.hpMax && S.hp > 0) {
         S.hp = Math.min(S.hpMax, S.hp + monthlyHeal());
       }
+      /* v10.4 P0·3.1：吞海功/补天真经/太阴吐纳这类「改上限」的功法，
+         在这里统一对齐一次。与受箓、破境、读档三处同一口径。 */
+      syncMpCap();
+      syncLifeBonus();
       // —— 灵力回复（原只在吃丹药与创角时变化，打几场就永久枯竭）
       if (S.mp < S.mpMax) {
         S.mp = Math.min(S.mpMax, S.mp + 5 + (S.xRealm || 0) * 3);
@@ -889,6 +911,62 @@
   function favorTier(f) { for (const t of D.FAVOR_TIERS) if (f >= t.min && f <= t.max) return t.name; return '陌生'; }
 
   function getGongfa() { return D.GONGFA.find(g => g.id === S.gongfa[0]) || D.GONGFA[0]; }
+  /* v10.4 P0·3.1：吞海功「气海 +15%」此前只编译没接线。
+     灵力上限是缓存字段（受箓/丹药/丹药天赋都会改它），
+     所以不能每次重算，只能记住「上次应用的功法乘区」，
+     乘区一变就按差额换算——这样受箓的 ×1.5 不会被功法重算抹掉。 */
+  function gongfaMpCapMul() {
+    const X = G.WXCS3_EXT;
+    const v = (X && X.gongfaMpCap) ? X.gongfaMpCap() : 0;
+    return 1 + clamp(numOr(v, 0), 0, 0.5);
+  }
+  function syncMpCap() {
+    const m = gongfaMpCapMul();
+    const old = S.mpGfMul || 1;
+    if (Math.abs(m - old) < 1e-9) return false;
+    S.mpMax = Math.max(10, Math.round(S.mpMax / old * m));
+    S.mpGfMul = m;
+    if (S.mp > S.mpMax) S.mp = S.mpMax;
+    return true;
+  }
+  /* 遁速：御风/凌波/天遁的「遁走 +X%」由扩展给，这里只做口径统一 */
+  function gongfaEscapeAdd() {
+    const X = G.WXCS3_EXT;
+    return (X && X.gongfaEscape) ? numOr(X.gongfaEscape(), 0) : 0;
+  }
+  /* 寿元加成：龟息(+10)/补天(+80)/太阴吐纳(+60)。寿元上限同样是缓存字段，
+     用同一套「记住已应用值」的办法，避免破境重设 lifeMax 时重复叠加。 */
+  function syncLifeBonus() {
+    const X = G.WXCS3_EXT;
+    const want = (X && X.gongfaLifeBonus) ? numOr(X.gongfaLifeBonus(), 0) : 0;
+    const old = S.lifeGfBonus || 0;
+    if (want === old) return false;
+    if (S.lifeMax > 0) S.lifeMax = Math.max(20, S.lifeMax - old + want);
+    S.lifeGfBonus = want;
+    return true;
+  }
+  /* 机缘：梅花易「机缘 +6」。读的是真数值而不是展示文本，
+     接在奇遇/逃遁/交涉这些已经吃 st('fate') 的判定上。 */
+  function gongfaFateAdd() {
+    const X = G.WXCS3_EXT;
+    return (X && X.gongfaFate) ? numOr(X.gongfaFate(), 0) : 0;
+  }
+  /* 位格压制抵消档数：乾天一元统摄诸天神法 */
+  function gongfaGapUp() {
+    const X = G.WXCS3_EXT;
+    return (X && X.gongfaGapUp) ? numOr(X.gongfaGapUp(), 0) : 0;
+  }
+  /* 香火产出：香火成神法 */
+  function gongfaXianghuoMul() {
+    const X = G.WXCS3_EXT;
+    const v = (X && X.gongfaXianghuo) ? numOr(X.gongfaXianghuo(), 0) : 0;
+    return 1 + clamp(v, 0, 0.5);
+  }
+  /* 寿元死豁免：太阴蜕形尸解真法「死生不复为形所囿」 */
+  function gongfaLifeStop() {
+    const X = G.WXCS3_EXT;
+    return !!(X && X.gongfaLifeStop && X.gongfaLifeStop());
+  }
   /* 道基功法：与 getGongfa 同源，另立名字是为了让「功法分家」这件事在代码里看得见 */
   function getDaogong() {
     return D.GONGFA.find(function (g) { return g.id === S.daogong; }) || getGongfa();
@@ -1029,12 +1107,11 @@
       stage.className = 'stage-create';
       stage.innerHTML = renderSceneArt('create', 'create') + renderCreate();
       enhanceA11y(stage);
-      renderDial(true);
       return;
     }
     stage.className = 'stage';
-    if (S.phase === 'over') { stage.innerHTML = renderOverArt() + renderOver(); enhanceA11y(stage); renderDial(true); scheduleAutoSave(); return; }
-    if (S.phase === 'dying') { stage.innerHTML = renderSceneArt('dying', 'backdrop') + renderDying(); enhanceA11y(stage); renderDial(true); scheduleAutoSave(); return; }
+    if (S.phase === 'over') { stage.innerHTML = renderOverArt() + renderOver(); enhanceA11y(stage); scheduleAutoSave(); return; }
+    if (S.phase === 'dying') { stage.innerHTML = renderSceneArt('dying', 'backdrop') + renderDying(); enhanceA11y(stage); scheduleAutoSave(); return; }
     if (S.phase === 'combat') {
       if (!S.combat) { S.phase = 'play'; }        // 脏状态直接降级，走下面的正常渲染
       else {
@@ -1052,7 +1129,6 @@
       '<div class="col">' + renderStateCol() + '</div>' +
       '<div class="dockrow">' + renderDock() + '</div>';
     enhanceA11y(stage);
-    renderDial(true);
     scheduleAutoSave();
   }
 
@@ -1724,18 +1800,24 @@
   }
   /* ACT.do_dockGrp 与其它 ACT 一起登记在下方（ACT 表在 1727 行才建，提前赋值会撞 TDZ） */
 
-  /* ---------- 环形指令盘 ---------- */
-  /* 旧的环形指令盘已弃用（指挥由底部常驻区与右上角「系统」承担） */
-  function renderDial() { }
-
   /* ---------- 固定开销（v8.1 收尾项 2） ----------
      时间预算只解决「做事有成本」，「不做事零成本」还留着——于是最省的打法是不出门。
      这里补四笔月度固定开销：宗门月课、家族口粮、庙宇修缮、洞府维护。
      四笔都「能付就付、付不起只降效率不删档」，避免把老档逼死。 */
+  /* v10.3 P1：月课按「本阶边际门槛」收，不再按累计门槛。
+     旧式 need/40 用的是累计升阶门槛（500/2000/8000/30000），
+     长老月课 750 贡献，而三旬宗门任务满打满算约 144 贡献 ——
+     升阶即成惩罚，连欠三月还要降阶。
+     现在每个位阶写死 due，与 pay 同量纲（1 贡献 ≈ 5 石）：
+     真传 40、长老 120，两旬任务即可兜住。 */
   function sectDue() {
     if (!S.sect || !(S.sect.rank > 0)) return 0;
     const r = D.SECT.ranks[S.sect.rank] || {};
-    return Math.max(10, Math.round((r.need || 0) / D.FIXED_COST.sectDueNeedDiv));
+    if (typeof r.due === 'number') return Math.max(10, r.due);
+    /* 兜底：旧数据没有 due 时仍按边际门槛推算 */
+    const prev = D.SECT.ranks[S.sect.rank - 1] || {};
+    const step = Math.max(0, (r.need || 0) - (prev.need || 0));
+    return Math.max(10, Math.round(step / D.FIXED_COST.sectDueNeedDiv));
   }
   function clanFoodCost() {
     if (!S.clan) return 0;
@@ -1828,11 +1910,6 @@
     }
   }
 
-  /* 欠费惩罚：每欠一月，修行效率 -10%，最低七成。还清即清零。 */
-  function arrearsMul() {
-    const a = Math.max(0, S.arrears || 0);
-    return a ? Math.max(D.FIXED_COST.arrearsFloor, 1 - D.FIXED_COST.arrearsStep * a) : 1;
-  }
 
   /* ---------- v9.0 M1 扩展缝 ----------
      新玩法的数值逻辑都在 wxcs3-ext-*.js 里，本文件只留这几个薄口：
@@ -1987,12 +2064,6 @@
     return D.BEAST_BARN[q] || 1;
   }
   function barnList() { return Array.isArray(S.barn) ? S.barn : (S.barn = []); }
-  function beastGated(b) {
-    const pack = D.BEAST_STOCK.find(function (x) { return x.id === b.id; });
-    if (!pack) return 1;
-    /* gated 是「需要的最低灵脉档」，灵脉不够时收得住但养不熟 */
-    return (S.lingqi || 0) >= (pack.gated || 0);
-  }
   function beastBondTier(bond) {
     const b = numOr(bond == null ? S.beastBond : bond, 0);
     let t = D.BEAST_BOND[0];
@@ -2046,13 +2117,6 @@
     S.beastPower = clampNum(numOr(S.beastPower, 1) * (1 + c.trainPower), 0.5, c.powerCap, 1);
     S.beastBond = clampNum(numOr(S.beastBond, 0) + c.trainBond, -99, 100, 0);
     return { ok: true };
-  }
-  function beastRelease(idx) {
-    const list = barnList();
-    if (idx < 0 || idx >= list.length) return false;
-    const b = list.splice(idx, 1)[0];
-    S.yaoshou = list.length > 0;
-    return b;
   }
 
   /* ---------- 师徒（v8.1 P0 批次 4） ----------
@@ -2162,7 +2226,6 @@
     D.STAT_TIER.forEach(function (x) { if (v >= x.min) t = x; });
     return t;
   }
-  function tierLabel(k) { return statTier(k).label; }
   /* 某属性在门槛之上才返回线索，否则空串。渲染处直接拼，空串等于没这行。 */
   function clue(statKey) {
     const rows = D.INSIGHT_LINES.filter(function (x) { return x.stat === statKey; });
@@ -2439,27 +2502,6 @@
   }
   /* 地名题咏 */
 
-  function renderLog() {
-    if (!S.log.length) return '';
-    const items = S.log.slice(0, 12).map(l => `<div><span class="t">${esc(l.t)}</span>${l.txt}</div>`).join('');
-    return panel('近期纪事', `<div class="log">${items}</div>`);
-  }
-
-  /* ---------- 指令行 ---------- */
-  function renderCmds(locked) {
-    const inner = document.getElementById('cmdinner');
-    if (!inner) return;  // 已由环形指令盘取代
-    if (true) return;
-    if (locked) { inner.innerHTML = ''; return; }
-    const list = [['面板','act:screen'], ['修炼','act:cultivate'], ['破境','act:openBreak'],
-      ['功法','act:openGongfa'], ['洞府','act:openCave'], ['地图','act:openMap'],
-      ['背包','act:openBag'], ['坊市','act:openShop'], ['情缘','act:openLove'], ['帮助','act:openHelp']];
-    if (needsAnchor()) list.splice(4, 0, ['锚','act:openAnchor']);
-    if (isShen()) list.splice(4, 0, ['庙宇','act:openTemple']);
-    if (S.unlockStage >= 4 && (isShen() || S.xRealm >= 3)) list.splice(5, 0, ['洞天','act:openDongtian']);
-    inner.innerHTML = list.map(([n, a]) => `<button class="cmd" data-act="${a}">${n}</button>`).join('')
-      + `<button class="cmd" data-act="act:save">存档</button>`;
-  }
 
   /* ============ 行动 ============ */
   const ACT = {};
@@ -2993,6 +3035,9 @@
         S.xRealm++; S.xStage = 0; S.xiuwei = 0;
         const nr = xrealm() || D.XIAN_REALMS[D.XIAN_REALMS.length - 1];
         S.lifeMax = nr.life || 0;
+        /* v10.4 P0：破境会把 lifeMax 重设成境界基准值，
+           补天/龟息/太阴吐纳的加成必须重新落一次，否则一破境就丢。 */
+        S.lifeGfBonus = 0; syncLifeBonus();
         healOnMajorBreak();   // 只有破大境界才回满
         /* v8.1：补 idx === 1（练气）——旧版从 0 直接跳到 3，
            「胎息」「练气」两档的境界词因此永不可达。 */
@@ -3676,6 +3721,10 @@
       toast('境界上限降至 ' + (D.DAOGONG_CAP[g.tier] || D.DAOGONG_CAP.huang).to);
     }
     S.topGongfaTier = ['huang', 'xuan', 'di', 'tian', 'xian'].indexOf(g.tier);
+    /* v10.4 P0·3.1：换功法就是换气海与寿元。若不在这里对齐，
+       吞海功要等到下个月月初才生效——玩家会以为「装了没用」。 */
+    syncMpCap();
+    syncLifeBonus();
     /* 改换道基不是翻页——要重新坐过。占一旬。 */
     advanceXun(1); if (S.phase !== 'play') return render();
     closeModal(); render();
@@ -5788,6 +5837,12 @@
     if (typeof out.pillar !== 'number') out.pillar = 0;
     if (!out.started) { toast('这份存档还没有开局'); return false; }
     S = out;
+    /* v10.4 P0·3.1：读档后把功法上限奖励对齐一次。
+       旧档没有 mpGfMul/lifeGfBonus 字段，先补基准再同步。 */
+    if (typeof S.mpGfMul !== 'number') S.mpGfMul = 1;
+    if (typeof S.lifeGfBonus !== 'number') S.lifeGfBonus = 0;
+    syncMpCap();
+    syncLifeBonus();
     /* v9.0 M0：读档即恢复随机序列。放在 S = out 之后，
        保证注入的是「这份存档的种子」，而不是上一份的。 */
     setSeed(S.seed);
@@ -6119,7 +6174,9 @@
     S.lu = { rank: x.rank, name: x.name, eff: x.eff };
     S.luHistory = (S.luHistory || []).concat([{ name: x.name, rank: x.rank }]);
     if (x.name === '力贯千钧') S.hpMax = Math.round(S.hpMax * 1.3);
-    if (x.name === '重海长鲸') S.mpMax = Math.round(S.mpMax * 1.5);
+    /* 受箓的 ×1.5 乘在「已含功法乘区」的上限上，随后重设基准记录，
+       这样下个月月初 syncMpCap 不会把它再乘一遍。 */
+    if (x.name === '重海长鲸') { S.mpMax = Math.round(S.mpMax * 1.5); S.mpGfMul = gongfaMpCapMul(); }
     if (x.name === '延年长命' && S.lifeMax) S.lifeMax += 40;
     if (x.name === '彩彻云衢') for (const k in S.stats) S.stats[k] = clamp(S.stats[k] + 1, 1, 20);
     if (x.name === '明霜松岭') S.stats.sense = clamp(S.stats.sense + 3, 1, 20);
@@ -6220,11 +6277,47 @@
     for (let i = 0; i < (name || '').length; i++) h = (h * 31 + name.charCodeAt(i)) % 9973;
     return ['命', '术', '身', '目'][h % 4];
   }
+  /* v10.4 P0·S1：双属不再降级取首字。
+     `data.js` 里 26 个名字带括号标注，其中 命中6种组合（命身×5、命术×1）。
+     旧版 `k.charAt(0)` 让「（命身）」的第二属性完全失效——玩家拿到一道
+     写着「命身」的神通，实际只是一道命神通，名与实对不上。
+     ------------------------------------------------------------
+     护栏：复合不能把 1.85 与 1.15 相加（那是 ×3.0，一道神通顶半场）。
+     取「强者 ×1.1」封顶，代价按两类之和的七成——双属是多一个效果，
+     不是多一倍伤害。 */
+  function stParts(k) {
+    const out = [];
+    for (let i = 0; i < (k || '').length; i++) {
+      const p = k.charAt(i);
+      if (SHENTONG_SPEC[p] && out.indexOf(p) < 0) out.push(p);
+    }
+    return out.length ? out : ['术'];
+  }
   function shenTongSpec(name) {
     const k = shenTongKind(name);
-    const base = SHENTONG_SPEC[k.charAt(0)] || SHENTONG_SPEC['术'];
-    return { mul: base.mul, cost: base.cost, desc: base.desc,
-      kind: k, kindName: base.kindName + (k.length > 1 ? '（双属）' : '') };
+    const parts = stParts(k);
+    if (parts.length === 1) {
+      const b = SHENTONG_SPEC[parts[0]];
+      return { mul: b.mul, cost: b.cost, desc: b.desc,
+        kind: parts[0], kindName: b.kindName, parts: parts };
+    }
+    let mul = 0, cost = 0;
+    const names = [], descs = [];
+    parts.forEach(function (p) {
+      const b = SHENTONG_SPEC[p];
+      mul = Math.max(mul, b.mul);
+      cost += b.cost;
+      names.push(p);
+      descs.push(b.desc);
+    });
+    return {
+      mul: Math.round(mul * 1.1 * 100) / 100,
+      cost: Math.round(cost * 0.7),
+      desc: descs.join('；'),
+      kind: parts.join(''),
+      kindName: names.join('') + '双属',
+      parts: parts
+    };
   }
 
   function daotongPool() {
@@ -6449,12 +6542,22 @@
     S.dying = null;
 
     if (a === 'stand') {
+      /* v10.3 P1：寿元死不能只「减寿元上限」。
+         寿元死的条件是 age >= lifeMax 已经成立，若生还后 lifeMax 再 −10，
+         下个月 1 号 age++ 必然再触发一次，而 dyingUsed 已置 true，直接终局——
+         玩家的 35% 生还其实只买到最多 11 个月。所以寿元死改成「续命一年」。 */
+      const byAge = /寿元/.test(reason);
       if (rng() < 0.35) {
         S.phase = 'play';
         S.hp = 1;
-        S.lifeMax = Math.max(20, (S.lifeMax || 60) - 10);
         S.stats.heart = Math.max(1, st('heart') - 2);
-        logLine('强撑得返。气血仅余一线，寿元上限损十年，道心微动。', 'danger');
+        if (byAge) {
+          S.lifeMax = Math.max(20, (S.lifeMax || 60)) + 12;
+          logLine('强撑得返。于蒲团上又坐起来，寿元续得一年，道心微动。', 'danger');
+        } else {
+          S.lifeMax = Math.max(20, (S.lifeMax || 60) - 10);
+          logLine('强撑得返。气血仅余一线，寿元上限损十年，道心微动。', 'danger');
+        }
         toast('此关得渡');
         render();
         return;
@@ -6770,9 +6873,10 @@
     S.xun = 0;              // 静养按整月算，余下的旬一并吞掉
     for (let i = 0; i < n; i++) {
       if (S.phase !== 'play') break;
-      S.meditate = true;
-      /* 静养也是修行：按月给足额，否则「打坐疗伤」就只剩回血，
-         与面板上「把时间换成气血与修为」那句话对不上。 */
+      /* v10.3 P1：这里原本留着 S.meditate = true（从 do_med 复制过来的副作用），
+         而 monthXiuwei() 见到 meditate 就把月修为 ×2 ——
+         于是「静养」等于「闭关 ×2 + 回血 + 滚事件」，打坐按钮永久作废。
+         静养的语义是「与打坐同额，只是额外养伤」，所以乘数必须是 1。 */
       if (isXian() || S.cultivation === 'both') gainXiuwei(monthXiuwei());
       if (isShen() || S.cultivation === 'both') gainXianghuo(monthXianghuo().capped);
       advanceMonth(1);
@@ -6934,7 +7038,9 @@
     const box = document.getElementById('modals');
     // 仙基/果位/受箓这类主线必答弹窗优先，传法让位
     if (box && box.innerHTML && !box.innerHTML.includes('机缘 · ')) return false;
-    if (box && box.innerHTML.includes('机缘 · ')) box.innerHTML = '';   // 普通奇遇让位给传法
+    /* v10.3 P1：普通奇遇让位给传法时，必须走 clearModalBody ——
+       以前只清 innerHTML，modal-open 留在 body 上，玩家整页滚不动。 */
+    if (box && box.innerHTML.includes('机缘 · ')) clearModalBody();
     return tryTransmission();
   }
 
@@ -7158,21 +7264,12 @@
     if (v) logLine('· ' + v, 'good');
   }
 
-  /* 破境失败也给她一句 */
-  function reciteFail() {
-    const line = pick(D.LITURGY.fail);
-    S.lastLiturgy = line;
-    logLine('· ' + line, 'danger');
-  }
-
-
   /* ---------- 法宝 ---------- */
   function hasUsablePill() {
     return D.PILL_EXT.some(function (p) { return (S.bag[p.id] || 0) > 0 && ['hp','hpPct','hpFull','cure','mp','mpPct','mpFull'].includes(p.type); });
   }
 
   function ownedArts() { return S.arts || []; }
-  function hasArt(id) { return ownedArts().indexOf(id) >= 0; }
   function equipArt(id) {
     const a = D.ARTIFACT_EXT.find(function (x) { return x.id === id; });
     if (!a) return;
@@ -7269,7 +7366,10 @@
   function tryEncounter(force) {
     if (S.phase !== 'play') return false;
     // 因果缠身：来人更多（有人在放线）
-    const encRate = 18 + (hasDebuff('karma_tangle') ? 6 : 0) + (hasDebuff('marked_rich') ? 4 : 0);
+    /* v10.4 P0·3.1：梅花易「机缘 +6」终于参与机缘判定。
+       旧版 gongfaFate 只在探针里被读，奇遇掷骰完全没接。 */
+    const encRate = 18 + (hasDebuff('karma_tangle') ? 6 : 0) + (hasDebuff('marked_rich') ? 4 : 0)
+      + gongfaFateAdd();
     if (!force && rnd100() > encRate) return false;
     const pool = D.ENCOUNTERS.filter(function (e) {
       if (e.kind === 'xian') return isXian() || S.cultivation === 'both';
@@ -8066,6 +8166,13 @@
   function combatGap(c) {
     return c ? realmIdxRank(c.foe.rank) - realmIdxRank(combatRank(c)) : 0;
   }
+  /* v10.4 P0·S3：灼烧每回合伤害的唯一定义。
+     面板与结算必须读同一个函数——两处各写一遍公式，
+     玩家就会看到「标签写 18 万、实际掉 20 万」这种对不上的账。 */
+  function burnTickOf(c) {
+    if (!c || !(c.foeBurn > 0)) return 0;
+    return Math.max(1, Math.round(c.foe.hpMax * 0.045 * (c.foeBurnMul || 1)));
+  }
 
   /* ============================================================
      v8.1 卸力：把「未中 / 命中」的二值赌博换成连续减伤
@@ -8092,6 +8199,11 @@
       d += artBonus('body');                        // 护身法器常驻减伤
       d += clamp(-gap * 0.05, -0.10, 0.15);         // 你位格越高，越扛得住
       d += quenchBlock();                            // 淬体：皮肉筋骨换来的硬
+      /* v10.4 P0·3.1：护体类功法（金光咒/金殿煌元诀/九变化龙诀/
+         明华煌元经/白首叩庭经）承诺的「减伤」此前无出口。
+         这里是防守侧唯一的公共闸口，挂一次就全战斗生效。 */
+      const _gw = (G.WXCS3_EXT && G.WXCS3_EXT.gongfaWard) ? G.WXCS3_EXT.gongfaWard() : 0;
+      if (_gw > 0) d += _gw;
     }
     return clamp(d, 0.05, 0.55);
   }
@@ -8190,8 +8302,17 @@
        这里把已有字段渲染出来，一行业务公式都不改——只让看不见的变得看得见。
        剩余回合数直接读字段本身：foeMark/foeWeaken 都在 foeTurn 里递减，
        所以数字就是「还剩几回合」，不是估算。 */
-    if (c.foeMark > 0) tags += '<span class="stance on">破绽 · 我方伤害 ×1.25（' + c.foeMark + ' 回合）</span>';
-    if (c.foeWeaken > 0) tags += '<span class="stance on">压制 · 敌方伤害 ×0.7（' + c.foeWeaken + ' 回合）</span>';
+    /* v10.4 P0：括号里的「N 回合」不能断行。
+       标签是 inline-block，容器窄时中文会在任意字间断开——
+       实测「（1 回合）」被拆成「（1 回」+「合）」，读起来像两个数。
+       用一个 nowrap 片段把括号与数字绑在一起。 */
+    const nw = function (s) { return '<span style="white-space:nowrap">' + s + '</span>'; };
+    if (c.foeMark > 0) tags += '<span class="stance on">破绽 · 我方伤害 ×1.25' + nw('（' + c.foeMark + ' 回合）') + '</span>';
+    if (c.foeWeaken > 0) tags += '<span class="stance on">压制 · 敌方伤害 ×0.7' + nw('（' + c.foeWeaken + ' 回合）') + '</span>';
+    /* v10.4 P0·S3：灼烧/迟滞两条状态此前只写不读，玩家看不见，也就算不动 */
+    if (c.foeBurn > 0) tags += '<span class="stance bad">灼烧 · 每回合 ' +
+      burnTickOf(c) + ' 伤' + nw('（' + c.foeBurn + ' 回合）') + '</span>';
+    if (c.foeSlow > 0) tags += '<span class="stance bad">迟滞 · 敌方伤害 ×0.85' + nw('（' + c.foeSlow + ' 回合）') + '</span>';
     if (c.talBuff) tags += '<span class="stance on">神通加成 · 伤害 +' + Math.round(c.talBuff * 100) + '%</span>';
     if (c.talShield) tags += '<span class="stance on">护体 · 本次减伤 ' + Math.round(c.talShield * 100) + '%</span>';
     if (c.noFoeFlee) tags += '<span class="stance on">锁灵 · 敌方不能遁走</span>';
@@ -8223,7 +8344,7 @@
       '符 ' + (tals.length ? tals.reduce(function (a, k) { return a + (S.talismans[k] || 0); }, 0) + ' 张' : '无') +
       (qbN ? ' · 权柄' : '') + ' · 丹', !tals.length && !hasUsablePill() && !qbN, 'act:openGear'));
     o.push(optRow('5', '遁', { name: '风险', cls: 'risk' },
-      '遁速 ' + Math.round((0.4 + st('speed') * 0.035 + artBonus('move') + fateAdd('flee')) * 100) + '%', false, 'do;cbt:flee'));
+      '遁速 ' + Math.round((0.4 + st('speed') * 0.035 + artBonus('move') + fateAdd('flee') + gongfaEscapeAdd()) * 100) + '%', false, 'do;cbt:flee'));
     o.push(optRow('6', '谋', { name: '平和', cls: 'peace' }, '观察 / 交涉', false, 'act:openWits'));
     /* v9.0 M2：兽令三式与本命法技从扩展里追加（注册数组；do;cbt:ext:* 走同一结算尾巴） */
     if (_XF && _XF.fightRowsHooks) {
@@ -8257,6 +8378,24 @@
     const c = S.combat;
     if (!c) return false;
     const gap = combatGap(c), diff = c.foe.rank - combatRank(c);
+    /* v10.4 P0·S3：灼烧在敌方回合开头结算。
+       旧版 foeBurn/foeBurnMul 只在 cast 分支写入，全项目 0 处读取——
+       烈火掌、流火剑诀承诺的「灼烧」一直是空头支票。
+       位置选在「敌方将要出手之前」，两个后果都是刻意的：
+         · 一次 2 回合的灼烧恰好烧两次（本回合敌动前 + 下回合敌动前）
+         · 烧死的敌人来不及还手——点火值钱，就在这一下 */
+    if (c.foeBurn > 0 && c.burnFresh) {
+      /* 点火那一回合：焰刚起，先不落伤，让「2 回合」= 之后烧 2 次 */
+      c.burnFresh = false;
+    } else if (c.foeBurn > 0) {
+      const bd = burnTickOf(c);
+      c.foe.hp = Math.max(0, c.foe.hp - bd);
+      c.foeBurn--;
+      c.burnTick = bd;
+      logLine(c.foe.name + '身上火势未熄，灼伤 ' + bd +
+        (c.foeBurn > 0 ? '（余 ' + c.foeBurn + ' 回合）' : '（火熄）'), 'good');
+      if (c.foe.hp <= 0) { settleCombatWin(c); return false; }
+    }
     // 气势：每三回合涨一档，逼玩家在「稳」和「险」之间选，而不是无限拖
     if (!c.momentum) c.momentum = 0;
     if (c.round > 0 && c.round % 3 === 0) c.momentum = Math.min(3, c.momentum + 1);
@@ -8269,6 +8408,10 @@
     if (gap >= 1) dmg *= 1.6;
     if (gap <= -1) dmg *= 0.35;
     if (c.foeWeaken > 0) dmg *= 0.7;   // 术神通压住了他的势
+    if (c.foeSlow > 0) {
+      dmg *= 0.85;                     // v10.4 P0·S3：迟滞，身法被冻住
+      c.foeSlow--;
+    }
     if (c.foe.trait === 'brute') dmg *= 1.25;       // 莽夫：出手更重
     if (c.foe.trait === 'veteran') dmg *= 0.90;     // 老练：不拼命，求稳耗
     /* v8.1：玩家同样有卸力——护体法器与位格优势在这里兑现，
@@ -8334,10 +8477,49 @@
     return true;
   }
 
+  /* v10.4 P0·S3：胜利结算收成一处。
+     灼烧是「回合结束的额外伤害」，它可能把敌人烧死——
+     若各写一份，战利品/明悟/杀师判定迟早会漏掉某一条路径。
+     原第 8703 行那段整段搬运，行为一字未改。 */
+  function settleCombatWin(c) {
+    noteCombatWin(c);
+    /* v8.1 P0 M4：如果倒下的正是你的授业者，「杀师」在这里成立。
+       判定放在结算最前，因为它要改的是「谁还活着」这件事。 */
+    const _slayMaster = masterCheckOnKill(c.foe.name);
+    S.combat = null; S.phase = 'play';
+    const loot = Math.round((100 + c.foe.rank * 200) * fateMul('loot'));   // v9.0 M1：血债偿心
+    S.stones += loot; S.fame += 5;
+    logLine(combatLine('kill') + '。', 'danger');
+    if (_slayMaster) logLine('仆者，授业之人也。不呼汝名。', 'danger');
+    logLine(isShen() ? `散去对方的香火，得灵石 ${loot}。` : `一剑毕${c.foe.name}，得灵石 ${loot}。`, 'danger');
+    // 生死之间有一线明悟：打赢同一境的对手，不该只值几块灵石
+    const insight = Math.max(1, Math.round(c.foe.power * 0.35));
+    if (isShen()) {
+      const room = maxXianghuo() - S.xianghuo;
+      if (room > 0) {
+        const g2 = Math.min(room, insight);
+        S.xianghuo += g2;
+        logLine('香客把这场斗法传成了神迹，香火 +' + Math.round(g2) + '。', 'good');
+      }
+    } else {
+      const need = xrealm().need || 0;
+      const g2 = Math.max(0, Math.min(need - S.xiuwei, insight));
+      if (g2 > 0) {
+        S.xiuwei += g2;
+        logLine('生死之间有一线明悟，修为 +' + Math.round(g2) + '。', 'good');
+      }
+    }
+    advanceXun(1); render();
+  }
+
   ACT.do_cbt = (sub, arg) => {
     const c = S.combat;
     if (!c) return;
-    const gap = combatGap(c);
+    /* v10.4 P0·3.1：乾天一元统摄诸天神法「位格压制 +1 档」。
+       只在此处把 gap 压低——卦位表、敌方生成、胜负判定都不动，
+       保证「越阶能打」不等于「越阶变简单」。 */
+    const gapRaw = combatGap(c);
+    const gap = Math.max(0, gapRaw - gongfaGapUp());
     const diff = c.foe.rank - combatRank(c);
     let mult = 1;
     /* v8.1：位格压制不再把伤害压成 1 点。
@@ -8390,11 +8572,19 @@
       hit = true;                                   // v8.1：招式同样必中
       const defl2 = (sure || c.observed) ? 0 : clamp(deflectOf(c, 'foe') - hitBonus * 0.5, 0, 0.55);
       const r2 = ratio;
-      let raw2 = c.foe.hpMax * Math.max(0.11, 0.21 * r2) * mul2 * mult * keK * (1 + artBonus('atk') + beastBonus) * fateMul('dmg');
+      /* v10.4 P0·3.4：招式从此也吃主修功法。
+         旧版只有「施法」分支接功法，而玩家 90% 的输出走「招式」——
+         玄元剑经的「剑系威力 +40%」在剑气纵横上一点作用都没有。
+         这里把扩展的 gongfaSkillMul(sk) 乘进去，来源写进日志。 */
+      const _gk = (G.WXCS3_EXT && G.WXCS3_EXT.gongfaSkillMul)
+        ? G.WXCS3_EXT.gongfaSkillMul(sk) : null;
+      const _gkm = (_gk && _gk.mul) ? _gk.mul : 1;
+      let raw2 = c.foe.hpMax * Math.max(0.11, 0.21 * r2) * mul2 * _gkm * mult * keK * (1 + artBonus('atk') + beastBonus) * fateMul('dmg');
       raw2 *= (1 - defl2);
       if (c.observed) raw2 *= 1.6;
       dmg = Math.round(raw2 * (0.94 + rng() * 0.12));
       c.observed = false;
+      if (_gk && _gk.text) extra += '（功法 ' + _gk.text + '）';
       note = '「' + nm + '」' + (defl2 >= 0.20 ? '（卸去 ' + Math.round(defl2 * 100) + '%）' : '') + extra;
     } else if (sub === 'shentong') {
       /* 神通不占装配格、可穿透位格压制的一部分，代价是「一道一场只能出一次」。
@@ -8407,28 +8597,34 @@
       if (S.mp < sp.cost) { toast('灵力不足（需 ' + sp.cost + '）'); render(); return; }
       S.mp -= sp.cost;
       c.stUsed[snm] = true;
-      const k0 = sp.kind.charAt(0);
-      let sextra = '';
-      if (k0 === '命') {
-        hit = true;                                   // 命神通必中，直接砸在本体上
-      } else if (k0 === '术') {
-        hit = true;                                   // v8.1：术神通不再掷命中
-        c.foeWeaken = 2;
-        sextra = '（敌势一滞）';
-      } else if (k0 === '身') {
-        hit = true;
-        const heal = Math.round(S.hpMax * 0.12);
-        S.hp = Math.min(S.hpMax, S.hp + heal);
-        c.defending = true;
-        sextra = '（自愈 ' + heal + '）';
-      } else {
-        hit = true;
-        c.foeMark = 2;
-        sextra = '（破绽）';
-      }
+      /* v10.4 P0·S1：按 parts 逐个叠加，双属两道效果同时生效。
+         旧版 `k0 = sp.kind.charAt(0)` 只认首字，与上面的 4 类模板一起
+         把 26 个双属名压成了单属。 */
+      let sextra = '', stTags = [];
+      hit = true;
+      sp.parts.forEach(function (k1) {
+        if (k1 === '命') {
+          stTags.push('必中');
+        } else if (k1 === '术') {
+          c.foeWeaken = Math.max(c.foeWeaken || 0, 2);
+          stTags.push('压势');
+        } else if (k1 === '身') {
+          const heal = Math.round(S.hpMax * 0.12);
+          S.hp = Math.min(S.hpMax, S.hp + heal);
+          c.defending = true;
+          stTags.push('自愈 ' + heal);
+        } else {
+          c.foeMark = Math.max(c.foeMark || 0, 2);
+          stTags.push('破绽');
+        }
+      });
+      if (stTags.length) sextra = '（' + stTags.join('·') + '）';
+      /* 注：神通暂不吃功法五行乘区。「功法放大神通」是方案第四节（P2 联动）
+         的设计，P0 只兑现已有承诺、不加新设计——否则 P1/P2 的验收口径会失真。 */
       dmg = Math.round(c.foe.hpMax * Math.max(0.13, 0.26 * ratio) * sp.mul * mult * keK * (1 + artBonus('atk')) * fateMul('dmg'));
       c.observed = false;
       note = '神通「' + stShort(snm) + '」' + sextra;
+
     } else if (sub === 'cast') {
       // 旧代码判 <25 却扣 30，灵力会被打成负数
       if (S.mp < 30) { toast('灵力不足（需 30）'); render(); return; }
@@ -8438,6 +8634,11 @@
          旧版 g 只用于 note 字符串，伤害公式里没有任何功法字段——
          花 75000 灵石买的《百炼成仙道法》与入门《聚气诀》伤害完全相同。
          现在功法经扩展给出乘区（品阶/五行/专属 effect），来源链写进日志。 */
+      /* v10.4 P0·3.4：施法没有「招式对象」，但主修功法自己就是一个五行源。
+         旧版传 null，扩展里 skillElOf(null) 回的正是功法 el，
+         于是同源 ×1.10 恒真（相当于人人白拿 10%）。
+         这里显式传 null 表示「按功法自身的路子施法」，
+         恒真那一条已在扩展里按 sk 是否存在判掉。 */
       const _gc = (G.WXCS3_EXT && G.WXCS3_EXT.gongfaCastInfo)
         ? G.WXCS3_EXT.gongfaCastInfo(null) : null;
       const _gm = _gc ? _gc.mul : 1;
@@ -8447,7 +8648,10 @@
       if (G.WXCS3_EXT && G.WXCS3_EXT.gongfaSpellStatus) {
         const _gst = G.WXCS3_EXT.gongfaSpellStatus(null);
         if (_gst) {
-          if (_gst.burn) { c.foeBurn = 2; c.foeBurnMul = _gst.burn; }
+          /* v10.4 P0·S3：点火当回合不结算，从下一回合起烧。
+             否则「灼烧 2 回合」实际只在点火后烧 1 次——名与实对不上。
+             用 burnFresh 记住「这一道是刚点的」，在 foeTurn 里消费一次。 */
+          if (_gst.burn) { c.foeBurn = 2; c.foeBurnMul = _gst.burn; c.burnFresh = true; }
           if (_gst.slow) { c.foeSlow = 2; }
           if (_gst.pierce) { c.foeWeaken = Math.max(c.foeWeaken || 0, 2); }
         }
@@ -8495,7 +8699,7 @@
         S.combat = null; S.phase = 'play'; logLine('破宝锥开路，你从容遁走。', 'good'); advanceXun(1); render(); return; }
       /* v10.1 第二梯队·问题2：御风术/凌波仙经/天遁剑诀的「遁速」从此兑现 */
       const _gesc = (G.WXCS3_EXT && G.WXCS3_EXT.gongfaEscape) ? G.WXCS3_EXT.gongfaEscape() : 0;
-      if (rng() < clamp(0.4 + st('speed') * 0.035 + artBonus('move') + _gesc - gap * 0.18 - diff * 0.02, 0.05, 0.95)) {
+      if (rng() < clamp(0.4 + st('speed') * 0.035 + artBonus('move') + _gesc + gongfaFateAdd() * 0.005 - gap * 0.18 - diff * 0.02, 0.05, 0.95)) {
         if (combatTierNow(c) === '绝境') bump('escapeDesperate');
         S.combat = null; S.phase = 'play';
         logLine('遁去得脱。', '');
@@ -8511,7 +8715,7 @@
       bump('pillUsed'); S.pillThisMonth = true; c.usedPill = true;
       note = '服 ' + p.name + '：' + applyPill(p);
     } else if (sub === 'talk') {
-      if (rng() < clamp(0.2 + st('fate') * 0.02 - gap * 0.1 - diff * 0.01, 0.05, 0.6)) {
+      if (rng() < clamp(0.2 + (st('fate') + gongfaFateAdd()) * 0.02 - gap * 0.1 - diff * 0.01, 0.05, 0.6)) {
         S.combat = null; S.phase = 'play';
         logLine(`以言周旋，${c.foe.name}杀意遂敛。`, 'good');
         advanceXun(1); render(); return;
@@ -8545,36 +8749,7 @@
       note = (note ? note + '；' : '') + '造成 ' + dmg;
     }
     if (note) logLine(note, '');
-    if (c.foe.hp <= 0) {
-      noteCombatWin(c);
-      /* v8.1 P0 M4：如果倒下的正是你的授业者，「杀师」在这里成立。
-         判定放在结算最前，因为它要改的是「谁还活着」这件事。 */
-      const _slayMaster = masterCheckOnKill(c.foe.name);
-      S.combat = null; S.phase = 'play';
-      const loot = Math.round((100 + c.foe.rank * 200) * fateMul('loot'));   // v9.0 M1：血债偿心
-      S.stones += loot; S.fame += 5;
-      logLine(combatLine('kill') + '。', 'danger');
-      if (_slayMaster) logLine('仆者，授业之人也。不呼汝名。', 'danger');
-      logLine(isShen() ? `散去对方的香火，得灵石 ${loot}。` : `一剑毕${c.foe.name}，得灵石 ${loot}。`, 'danger');
-      // 生死之间有一线明悟：打赢同一境的对手，不该只值几块灵石
-      const insight = Math.max(1, Math.round(c.foe.power * 0.35));
-      if (isShen()) {
-        const room = maxXianghuo() - S.xianghuo;
-        if (room > 0) {
-          const g2 = Math.min(room, insight);
-          S.xianghuo += g2;
-          logLine('香客把这场斗法传成了神迹，香火 +' + Math.round(g2) + '。', 'good');
-        }
-      } else {
-        const need = xrealm().need || 0;
-        const g2 = Math.max(0, Math.min(need - S.xiuwei, insight));
-        if (g2 > 0) {
-          S.xiuwei += g2;
-          logLine('生死之间有一线明悟，修为 +' + Math.round(g2) + '。', 'good');
-        }
-      }
-      advanceXun(1); render(); return;
-    }
+    if (c.foe.hp <= 0) { settleCombatWin(c); return; }
     // 修卡死：foeTurn 返回 false 的两条出口（战死/昏迷）也必须刷新界面
     if (!foeTurn()) { render(); return; }
     render();
@@ -8715,9 +8890,17 @@
       first.focus();
     }
   }
-  function closeModal() {
-    document.getElementById('modals').innerHTML = '';
+  /* 关弹窗的唯一出口。
+     v10.3 P1：以前「清内容」这件事有两处写法（closeModal 与 maybeTransmitNow），
+     后者只写 box.innerHTML='' 不解 modal-open —— 移动端整页从此滚不动。
+     现在内容与滚动锁统一由 clearModalBody 负责，谁要清弹窗都调它。 */
+  function clearModalBody() {
+    const box = document.getElementById('modals');
+    if (box) box.innerHTML = '';
     document.body.classList.remove('modal-open');
+  }
+  function closeModal() {
+    clearModalBody();
     /* 焦点还给触发元素；重绘后元素可能已经不在，需确认仍在文档里 */
     const back = modalFocusReturn;
     modalFocusReturn = null;
@@ -8735,9 +8918,36 @@
   }
 
   /* ---------- 分发 ---------- */
+  /* v10.3 P1：死后只放行「结局屏与系统」自己的动作。
+     旧版 dispatch 只 syncInputs 不看 phase，而键盘映射把 B 绑到 openBreak ——
+     结算屏开着时按 B 还能破境加阶（do_xbreak → S.xRealm++），
+     结局成因、年谱、成就都会被死后的操作污染。
+     白名单只收：系统面板/存档/年谱/功过格/烧页/投胎/临终四选。 */
+  const PHASE_FREE_ACT = {
+    'do;save': 1, 'do;load': 1, 'do;auto': 1, 'do;del': 1, 'do;exp': 1,
+    'do;expall': 1, 'do;imp': 1, 'do;reset': 1,
+    'do;burn': 1, 'do;legacy': 1, 'do;rebor': 1, 'do;die': 1,
+    'do;chron': 1, 'do;chronmore': 1, 'do;acht': 1, 'do;mem': 1,
+    'act:openSys': 1, 'act:openSave': 1, 'act:openHelp': 1,
+    'act:openAch': 1, 'act:openChronicle': 1, 'act:screen': 1,
+    'modal:close': 1
+  };
+  function phaseAllows(act, phase) {
+    if (phase !== 'over' && phase !== 'dying') return true;
+    const key = String(act)
+      .replace(/^(do;[^:]+):.*$/, '$1')
+      .replace(/^(act:[^:]+):.*$/, '$1');
+    return !!PHASE_FREE_ACT[key];
+  }
+
   function dispatch(act) {
     if (!act) return;
     syncInputs();
+    if (S && !phaseAllows(act, S.phase)) {
+      /* 不弹 toast：玩家不该在死后破境，但开发者排查时需要痕迹 */
+      console.warn('[phase] ' + S.phase + ' 阶段忽略动作：' + act);
+      return;
+    }
     // 奇遇／机缘：data.js 里写作 enc:<事件id>:<选项>，没有 do; 前缀
     if (act.startsWith('tx:')) {
       const parts = act.slice(3).split(':');
@@ -9022,8 +9232,10 @@
     b += divider();
     b += '<div class="small muted">尚有一事未了，止可为一件。</div>';
     b += '<ul class="opts">';
+    const byAge = /寿元/.test(String(d.reason || ''));
     b += optRow('A', '最后一搏', { name: '搏', cls: 'risk' },
-      '生还三成五 · 寿元上限 −10 · 道心 −2', false, 'do;die:stand');
+      byAge ? '生还三成五 · 续命一年 · 道心 −2' : '生还三成五 · 寿元上限 −10 · 道心 −2',
+      false, 'do;die:stand');
     b += optRow('B', '传功后人', { name: '传', cls: 'peace' },
       heir ? ('尽传于' + heir.name + '，来世起手悟性 +1') : '侧无人可传',
       !heir, 'do;die:pass');
@@ -9697,11 +9909,8 @@
     if (nextLayer) b += '<div class="small muted" style="margin-top:8px">再读下去需要：' + esc(nextLayer.needText) + '</div>';
     b += '<div style="margin-top:10px"><button class="btn" data-act="modal:close">合上书</button></div>';
     openModal('道书 · ' + bk.name, b);
-    closeModalSoon();
     render();
   };
-  function closeModalSoon() { }
-
   ACT.openBagMat = () => {
     const keys = Object.keys(S.bagMat || {}).filter(function (k) { return (S.bagMat[k] || 0) > 0; });
     let b = '';
@@ -10337,6 +10546,12 @@
     }
     closeModal(); ACT.openSell(); render();
   };
+
+  /* v10.4 P0：v10.3 P1 瘦身时把这两个别名当成死代码删了，
+     但 tools/smoke_econ.js 第 8 节仍走它们——删掉的是「调用便捷入口」，
+     断的是测试基线（README 记 913 全绿，实际 904）。
+     它们本身是 do_sellitem 的一行转发，保留成本为零，
+     留着还能让「卖丹药/卖符」在脚本与扩展里有稳定名字。 */
   ACT.do_selldan = (id) => ACT.do_sellitem('dan', id);
   ACT.do_selltal = (id) => ACT.do_sellitem('tal', id);
 
@@ -10352,11 +10567,8 @@
     if (ch.id === 'black') S.karma += 3;
     ledgerAdd('in', '卖 ' + it.name, price);
     sellTally(price, ch.id);
-    logInfo();
     closeModal(); ACT.openBagMat(); render();
   };
-  function logInfo() { }
-
   /* ---------- 月度收支 ---------- */
   function ledgerReset() {
     S.ledger = { income: [], expense: [] };
@@ -10815,9 +11027,6 @@
     } catch (e) { return {}; }          // 隐私模式 / 坏数据：退化成「没有前世」
   }
   function achDiskSave(d) { try { localStorage.setItem(ACH_KEY, JSON.stringify(d || {})); } catch (e) { } }
-  /* 面板用（一次 parse 无所谓）；判定循环里必须用缓存，否则 108 次 parse 会卡 */
-  function achHas(id) { return !!(S.ach && S.ach[id]) || !!achDisk()[id]; }
-
   function achTierOf(id) { return D.ACH_TIERS.find(function (t) { return t.id === id; }) || D.ACH_TIERS[0]; }
 
   function unlockedMemories() {

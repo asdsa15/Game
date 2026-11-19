@@ -108,7 +108,9 @@
     butian:    { life: 80 },
     xuanrong:  { gapUp: 1 },
     xianghuo:  { xianghuo: 0.15 },
-    datie:     { dims: { all: 1.06 }, pressure: 1 },
+    /* v10.4 P0·3.4：旧写 dims:{all:1.06}，把顶层字段塞进了五行键位，
+       dims['all'] 永远查不到 —— 天语焜烨龙章的威压从未生效。 */
+    datie:     { all: 1.06, pressure: 1 },
 
     jianghe:   { dims: { water: 1.10 } },
     zilei:     { dims: { thunder: 1.15 }, breakGuard: 1 },
@@ -179,6 +181,31 @@
     return g && g.el ? g.el : null;
   }
 
+  /* v10.4 P0·3.4：dims 键位归一。
+     ------------------------------------------------------------
+     数据表里 dims 混用两套键：五行（metal/fire/water…）与招式类别（sword）。
+     而 skillElOf 解析出的是五行（sword → metal），
+     于是 { sword: 1.40 } 这类条目永远命中不了——
+     玄元剑经/太虚剑典/月阙剑典/天河剑诀/天遁剑诀的剑系加成全部空转，
+     花 2600 灵石买的地阶剑经与入门《聚气诀》伤害相同。
+     修法：编译期给类别键补一份五行别名，只补「原本没有」的键，
+     不覆盖数据里已分别写明的两条（如执金秘章 sword 1.25 与 metal 1.15 各自保留）。 */
+  function aliasDims(ef) {
+    if (!ef || !ef.dims) return ef;
+    var out = {}, k;
+    for (k in ef.dims) if (ef.dims.hasOwnProperty(k)) out[k] = ef.dims[k];
+    for (k in ef.dims) {
+      if (!ef.dims.hasOwnProperty(k)) continue;
+      var e = kindAsEl(k);
+      if (e && out[e] === undefined) out[e] = ef.dims[k];
+    }
+    ef.dims = out;
+    return ef;
+  }
+  (function () {
+    for (var id in EFFECT) if (EFFECT.hasOwnProperty(id)) aliasDims(EFFECT[id]);
+  })();
+
   /* ============================================================
      ② 施法乘区：sub==='cast' 的功法伤害
      ------------------------------------------------------------
@@ -213,8 +240,11 @@
         if (dm) { mul *= dm; parts.push('同属 ×' + dm.toFixed(2)); }
       }
       /* 功法 el 与招式五行同源：借 resonResult 的同一套相生关系，
-         但只在这里补「功法 vs 招式」，不改 resonResult 的原语义 */
-      if (g.el && sel) {
+         但只在这里补「功法 vs 招式」，不改 resonResult 的原语义。
+         v10.4 P0·3.4：旧条件 `g.el === sel` 在施法（sk=null）时恒真——
+         skillElOf(null) 返回的正是 g.el，于是每次施法无条件 ×1.10。
+         同源判定只该在「招式自己有五行」时成立。 */
+      if (g.el && sel && sk) {
         if (g.el === sel) { mul *= 1.10; parts.push('功法同源 ×1.10'); }
         else if (D_().SHENG[g.el] === sel) { mul *= 1.05; parts.push('功法相生 ×1.05'); }
       }
@@ -241,6 +271,36 @@
       desc: r.gongfa ? r.gongfa.name + '（' + tierName(r.gongfa.tier) + '）' + (r.parts.length ? '　' + r.parts.join('、') : '') : ''
     };
   };
+  /* v10.4 P0·3.4：招式侧的功法乘区。
+     ------------------------------------------------------------
+     旧版只有「施法」（sub==='cast'）吃功法，「招式」（sub==='skill'）
+     完全不吃——于是玄元剑经的「剑系威力 +40%」在玩家真正常用的
+     招式上毫无作用，只在那记 30 灵力的普攻式施法里有感。
+     这里给出同一套乘区的纯函数版：只算 effect（品阶 + 五行 + 专属），
+     不重复乘 resonResult 的共鸣（招式侧已有那道）。 */
+  EXT.gongfaSkillMul = function (sk) {
+    var S = cur();
+    if (!S) return { mul: 1, text: '' };
+    var g = curGongfa();
+    if (!g) return { mul: 1, text: '' };
+    var ef = effectOf(g.id) || {};
+    var gateOk = elOk(S, ef.needEl);
+    if (!gateOk) return { mul: 1, text: '灵根不合未生效', gateOk: false };
+    var mul = 1, parts = [];
+    var tm = TIER_CAST[g.tier] || 1;
+    /* 品阶只给一半权重：招式本身已有 mul 与共鸣，
+       再叠满品阶会让「换一本天阶」直接盖掉招式之间的取舍。 */
+    var th = 1 + (tm - 1) * 0.5;
+    if (th !== 1) { mul *= th; parts.push(tierName(g.tier) + ' ×' + th.toFixed(2)); }
+    if (ef.all) { mul *= ef.all; parts.push('功法 ×' + ef.all.toFixed(2)); }
+    var sel = skillElOf(sk);
+    if (sel && ef.dims) {
+      var dm = ef.dims[sel];
+      if (dm) { mul *= dm; parts.push('同属 ×' + dm.toFixed(2)); }
+    }
+    return { mul: mul, text: parts.join('、'), gateOk: true, name: g.name };
+  };
+
   /* 内部探针：测试直接验数值，不靠 HTML 猜 */
   EXT.castMulProbe = function (skillName, gongfaId, rootEls) {
     var S = cur();
