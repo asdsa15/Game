@@ -48,7 +48,7 @@
 │  └─ 99_归档/               过期文档
 │
 ├─ tools/                   测试与检查
-│  ├─ test_*.js             断言：v80 / play / econ / hooks / loops / text / m1 / m2 / m3 / m4 / beast_disciple / rank / tier2 / tier3 / gate_e2e / reachability / save / p1 / p0_v104
+│  ├─ test_*.js             断言：v80 / play / econ / hooks / loops / text / m1 / m2 / m3 / m4 / beast_disciple / rank / tier2 / tier3 / gate_e2e / reachability / save / p1 / p0_v104 / p1_v104
 │  ├─ smoke_econ.js         DOM 桩真跑运行时（经济面 32 项，含四渠道无套利）
 │  ├─ check_ach.js         成就可达性
 │  ├─ check_actions.py     动作分发覆盖
@@ -185,7 +185,7 @@ node tools/test_beast_disciple.js && node tools/smoke_econ.js
 node tools/test_m1.js && node tools/test_m2.js && node tools/test_m3.js && node tools/test_m4.js
 node tools/test_reachability.js && node tools/test_tier2.js && node tools/test_tier3.js
 node tools/test_gate_e2e.js && node tools/test_save.js && node tools/test_p1.js
-node tools/test_p0_v104.js
+node tools/test_p0_v104.js && node tools/test_p1_v104.js
 python tools/check_actions.py && python tools/check_time.py && node tools/check_ach.js
 
 # 网页单文件

@@ -73,6 +73,7 @@
      lifeStop: 寿元无上限（尸解）
      needEl : 需要该灵根（rootEls 或主修五行）才能生效
      burn/slow/pierce : 附带状态
+     craftArts: 四艺成功率按门类分派（v10.4 P1）；旧数字 craft 视为四艺全生效
      ============================================================ */
   var EFFECT = {
     /* —— 仙道主修 —— */
@@ -91,20 +92,26 @@
     bihai:     { dims: { water: 1.12 } },
     zhenlei:   { dims: { thunder: 1.20 }, pierce: 0.15 },
     lingbo:    { escape: 0.12 },
-    meihua:    { fate: 6 },
+    meihua:    { fate: 6, craftArts: { fu: 0.18 } },
     xumai:     { heal: 0.30 },
 
     zixiao:    { dims: { thunder: 1.45 }, needEl: 'thunder' },
-    xuanyuan:  { dims: { sword: 1.40 } },
+    xuanyuan:  { dims: { sword: 1.40 }, craftArts: { qi: 0.12 } },
     tianhe:    { all: 1.50, dims: { sword: 1.10 } },
     tianli:    { escape: 0.15, dims: { sword: 1.10 } },
     jiuhuan:   { all: 1.05 },
     jujing:    { all: 1.10, ward: 0.08 },
-    jixing:    { dims: { sword: 1.25, metal: 1.15 } },
+    jixing:    { dims: { sword: 1.25, metal: 1.15 }, craftArts: { qi: 0.20 } },
     wuling:    { all: 1.08 },
 
     taixu:     { dims: { sword: 1.30 } },
-    zaohua:    { note: '炼丹大宗师之路', craft: 0.25 },
+    /* v10.4 P1·3.3：四艺按门类分派。
+       旧版 craft 只是一个数字，且只在 ext-60 里被 effectText 读出来——
+       game.js 的 craftRateOf 完全不看功法。玩家花大价钱买《造化丹经》，
+       炼丹成功率与《聚气诀》一模一样。
+       新字段 craftArts: { dan/qi/fu/zhen: 加成 }；
+       旧的数字 craft 仍视为「对四艺全生效」，不破坏已有数据。 */
+    zaohua:    { note: '炼丹大宗师之路', craftArts: { dan: 0.25 } },
     butian:    { life: 80 },
     xuanrong:  { gapUp: 1 },
     xianghuo:  { xianghuo: 0.15 },
@@ -122,8 +129,8 @@
     yueHu:     { heal: 0.10 },
     taixuDou:  { escape: 0.10 },
     taiyinTuna:{ life: 60 },
-    baishou:   { ward: 0.05 },
-    xuanguang: { dims: { earth: 1.20 } },
+    baishou:   { ward: 0.05, craftArts: { zhen: 0.10 } },
+    xuanguang: { dims: { earth: 1.20 }, craftArts: { zhen: 0.18 } },
 
     hongmeng:  { all: 1.35 },
     taiyin:    { lifeStop: 1 },
@@ -373,6 +380,35 @@
     return numOr(ef.gapUp, 0);
   };
 
+  /* v10.4 P1·3.3：四艺成功率加成（按门类）。
+     ------------------------------------------------------------
+     抽到「炼丹」这件本事，靠的是《造化丹经》而不是《聚气诀》。
+     旧的数字 craft 视为对四艺全生效，保持向后兼容。
+     不返回乘区而是返回「加在成功率上的百分点」，因为 craftRateOf
+     本来就在做加法（境界/属性/设施都在加），乘上去会与既有口径打架。 */
+  EXT.gongfaCraftBonus = function (art) {
+    var g = curGongfa();
+    if (!g) return 0;
+    var ef = effectOf(g.id) || {};
+    if (typeof ef.craft === 'number') return ef.craft;
+    if (ef.craftArts && typeof ef.craftArts[art] === 'number') return ef.craftArts[art];
+    return 0;
+  };
+  /* 该功法擅长哪几门四艺（展示用） */
+  EXT.gongfaCraftArts = function () {
+    var g = curGongfa();
+    if (!g) return [];
+    var ef = effectOf(g.id) || {};
+    var out = [];
+    if (typeof ef.craft === 'number') {
+      out = [{ art: 'dan', bonus: ef.craft }, { art: 'qi', bonus: ef.craft },
+        { art: 'fu', bonus: ef.craft }, { art: 'zhen', bonus: ef.craft }];
+    } else if (ef.craftArts) {
+      for (var k in ef.craftArts) if (ef.craftArts.hasOwnProperty(k)) out.push({ art: k, bonus: ef.craftArts[k] });
+    }
+    return out;
+  };
+
   /* 招式附带的持续状态：灼烧/迟滞/破防
      返回 { burn, slow, pierce }，由 game.js 在命中时写入战斗态 */
   EXT.gongfaSpellStatus = function (sk) {
@@ -413,7 +449,13 @@
     if (ef.mpCap) out.push('灵力上限 +' + Math.round(ef.mpCap * 100) + '%');
     if (ef.xianghuo) out.push('香火 +' + Math.round(ef.xianghuo * 100) + '%');
     if (ef.gapUp) out.push('位格压制抵消 ' + ef.gapUp + ' 档');
-    if (ef.craft) out.push('炼丹 +' + Math.round(ef.craft * 100) + '%');
+    if (typeof ef.craft === 'number') out.push('四艺 +' + Math.round(ef.craft * 100) + '%');
+    if (ef.craftArts) {
+      var ARTS = { dan: '炼丹', qi: '炼器', fu: '制符', zhen: '阵法' };
+      for (var ka in ef.craftArts) {
+        if (ef.craftArts.hasOwnProperty(ka)) out.push((ARTS[ka] || ka) + ' +' + Math.round(ef.craftArts[ka] * 100) + '%');
+      }
+    }
     if (ef.needEl) out.push('需' + elName(ef.needEl) + '灵根');
     return out.join('、');
   }
@@ -428,7 +470,7 @@
     return {
       id: id, name: g.name, tier: g.tier, el: g.el,
       eff: g.eff, effect: ef, hasEffect: !!(ef.dims || ef.all || ef.ward || ef.escape ||
-        ef.life || ef.lifeStop || ef.heal || ef.fate || ef.mpCap || ef.xianghuo || ef.gapUp || ef.craft || ef.needEl),
+        ef.life || ef.lifeStop || ef.heal || ef.fate || ef.mpCap || ef.xianghuo || ef.gapUp || ef.craft || ef.craftArts || ef.needEl),
       text: effectText(id)
     };
   };
@@ -443,7 +485,7 @@
         id: g.id, name: g.name, tier: g.tier,
         eff: g.eff,
         hasEffect: !!(ef.dims || ef.all || ef.ward || ef.escape || ef.life ||
-          ef.lifeStop || ef.heal || ef.fate || ef.mpCap || ef.xianghuo || ef.gapUp || ef.craft || ef.needEl),
+          ef.lifeStop || ef.heal || ef.fate || ef.mpCap || ef.xianghuo || ef.gapUp || ef.craft || ef.craftArts || ef.needEl),
         text: effectText(g.id)
       });
     }

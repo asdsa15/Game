@@ -280,7 +280,39 @@
     const _arr1 = Math.max(0, S.arrears || 0);
     if (_arr1) v *= Math.max(D.FIXED_COST.arrearsFloor, 1 - D.FIXED_COST.arrearsStep * _arr1);
     if (hasDebuff('borrowed_luck')) v *= 1.2;  // 借来的运：快，但会走火
+    v *= xiuweiGongfaMul(zt);
     return v;
+  }
+
+  /* v10.4 P1·3.2：功法倾向进修炼公式。
+     ------------------------------------------------------------
+     病了十几年的老问题：45 本功法同品阶修炼收益完全一样——
+     因为 `gf` 只读品阶（黄 1.0 → 仙 3.0），功法自己的 effect 零参与。
+     这里不新造字段，只从已有 EFFECT 派生一个乘区：
+       heal  → 疗伤本钱：伤势惩罚减免（zt 从 0.4 抬到 0.4+0.12 这种）
+       ward  → 守成：闭关时稳一点（现无走火判定，落到闭关收获上，见下）
+       fate  → 卜筮：不加修为，改在奇遇侧生效（见 gongfaFateAdd）
+     关键取舍：**不是所有功法都该加快修炼**。`all`/`dims` 这类纯战力功法
+     一律不加，否则「换功法」就退化成「换一个更大的数字」。 */
+  function xiuweiGongfaMul(zt) {
+    const X = G.WXCS3_EXT;
+    if (!X) return 1;
+    let m = 1;
+    /* heal：长春功 0.25 / 续脉决 0.30 / 月湖映秋诀 0.10
+       伤势越重，减免越明显——这正是「带伤修炼」最疼的地方。 */
+    const heal = X.gongfaHeal ? numOr(X.gongfaHeal(), 0) : 0;
+    if (heal > 0 && zt < 1) {
+      m *= 1 + heal * (1 - zt) * 1.6;
+    }
+    /* ward：闭关时守得住，收获更实。
+       方案原意是「降低闭关走火概率」，但本项目闭关没有走火判定
+       （走火只挂在「借来的运」这条 debuff 上）。与其新造一个风险，
+       不如兑现成「闭关收获 +ward 的一半」——同一句「稳」，不新增系统。 */
+    const ward = X.gongfaWard ? numOr(X.gongfaWard(), 0) : 0;
+    if (ward > 0 && S.meditate) m *= 1 + ward * 0.5;
+    /* 功法磨得越久越显差异：品阶低的功法在本项上不吃亏，
+       因为乘区只由 effect 决定，与 tier 无关。 */
+    return clamp(m, 1, 1.6);
   }
 
   /* 庙产计数 */
@@ -1001,8 +1033,17 @@
       if (S.hp / S.hpMax < 0.33) stMul = 0.4;
       else if (S.hp / S.hpMax < 0.66) stMul = 0.7;
       if (S.templeBroken) stMul *= 0.8;
+      /* v10.4 P1·S4：战力按「类别多样性」聚合，不再只数数量。
+         旧版每道 +5% 封顶 2.0 —— 五道同类与四类各一道收益完全相同，
+         玩家没有理由凑多样性。新口径：
+           基础 0.8 + 0.05×道数（保留「带得多略强」），
+           再乘「类别数」系数：四类 1.20 / 三类 1.12 / 两类 1.05 / 一类 1.00。
+         结果：四道四类 ≈ 0.8+0.2=1.0 → ×1.2 = 1.20；
+              五道同类 ≈ 0.8+0.25=1.05 → ×1.0 = 1.05。
+         多样性第一次比堆数量更划算。 */
       let sd = 0.8 + S.shenTong.length * 0.05;
       sd = clamp(sd, 0.8, 2.0);
+      sd *= stanceKindMul();
       /* 牧土神印：权柄斗法 +12%/级 */
       const base = p.power * posMul * stMul * sd * dArtSealPower();
       // 锚定影响
@@ -1030,6 +1071,8 @@
     else if (S.mp <= 0) stMul = 0.6;
     let sd = 0.8 + S.shenTong.length * 0.05;
     sd = clamp(sd, 0.8, 2.0);
+    /* v10.4 P1·S4：仙道同样按类别多样性聚合（口径同神道） */
+    sd *= stanceKindMul();
     const as = anchorStatus();
     let am = 1;
     if (as.name === '虚') am = 0.85;
@@ -6293,32 +6336,144 @@
     }
     return out.length ? out : ['术'];
   }
+  /* v10.4 P1·S2：道统气质。
+     ------------------------------------------------------------
+     道统此前只决定「道统池里抽哪些神通名」——抽到之后，所有术类神通
+     长得一模一样，名字不同、用起来相同。这里按 S.daotong 派生一支气质，
+     对同一类神通做 mul±0.10 / cost±5 的微调，并附一个附加效果。
+     幅度刻意压小：气质的作用是「手感不同」，不是「强弱碾压」。
+     旧存档零迁移——S.daotong 缺省时返回 null，行为与本轮之前完全一致。 */
+  function daotongTemper(name) {
+    const dt = name || S.daotong;
+    const T = D.DAOTONG_TEMPER || {};
+    for (const k in T) {
+      if (!T.hasOwnProperty(k)) continue;
+      if ((T[k].daotong || []).indexOf(dt) >= 0) {
+        return { id: k, name: k, mul: T[k].mul || 0, cost: T[k].cost || 0,
+          desc: T[k].desc || '', text: T[k].text || '' };
+      }
+    }
+    return null;
+  }
+
   function shenTongSpec(name) {
     const k = shenTongKind(name);
     const parts = stParts(k);
+    const tp = daotongTemper();
+    /* 气质的乘区与耗损：加法微调后取整，避免 1.85×1.10 这种隐性叠乘 */
+    const tm = tp ? tp.mul : 0;
+    const tc = tp ? tp.cost : 0;
+    let base;
     if (parts.length === 1) {
       const b = SHENTONG_SPEC[parts[0]];
-      return { mul: b.mul, cost: b.cost, desc: b.desc,
+      base = { mul: b.mul, cost: b.cost, desc: b.desc,
         kind: parts[0], kindName: b.kindName, parts: parts };
+    } else {
+      let mul = 0, cost = 0;
+      const names = [], descs = [];
+      parts.forEach(function (p) {
+        const b = SHENTONG_SPEC[p];
+        mul = Math.max(mul, b.mul);
+        cost += b.cost;
+        names.push(p);
+        descs.push(b.desc);
+      });
+      /* 不在中间步骤取整：1.85×1.1=2.035 若先舍成 2.04，
+         比值就变成 1.103；再叠气质取整会偏到 1.076/1.106，
+         两边的舍入方向还不一致，最终比值飘到 1.13。
+         倍率保持全精度，只在展示时舍（见 stMulText）。 */
+      base = {
+        mul: mul * 1.1,
+        cost: Math.round(cost * 0.7),
+        desc: descs.join('；'),
+        kind: parts.join(''),
+        kindName: names.join('') + '双属',
+        parts: parts
+      };
     }
-    let mul = 0, cost = 0;
-    const names = [], descs = [];
-    parts.forEach(function (p) {
-      const b = SHENTONG_SPEC[p];
-      mul = Math.max(mul, b.mul);
-      cost += b.cost;
-      names.push(p);
-      descs.push(b.desc);
-    });
-    return {
-      mul: Math.round(mul * 1.1 * 100) / 100,
-      cost: Math.round(cost * 0.7),
-      desc: descs.join('；'),
-      kind: parts.join(''),
-      kindName: names.join('') + '双属',
-      parts: parts
-    };
+    if (tp) {
+      /* 同样不取整：气质是加法微调，舍入留到最后一步 */
+      base.mul = base.mul + tm;
+      base.cost = Math.max(5, base.cost + tc);
+      base.temper = tp.id;
+      base.temperText = tp.text;
+      base.desc = base.desc + '；' + tp.desc;
+      base.kindName = base.kindName + '·' + tp.name;
+    }
+    return base;
   }
+
+  /* ============================================================
+     v10.4 P1·S4：神通入场态势
+     ------------------------------------------------------------
+     旧版 computePower 只读 S.shenTong.length —— 五道同类神通与
+     四类各一道的收益完全一样，玩家没有理由去凑多样性。
+     态势把「你带的是什么样的四道」变成开局就能感知的规则改写。
+     它不改普攻/招式的任何算法，只在战斗开局动三个开关：
+     灵力、首回合、减伤。这正是方案说的「独立框架」在文字游戏里的等价物。
+     护栏：单类 ≥3 的「偏执」必须带真实代价（其他类本场禁用），
+     否则堆同类就变成了纯收益。
+     ============================================================ */
+  const STANCE_SPEC = {
+    sixiang: { name: '四象归元', desc: '四类俱全 · 本场首次神通不耗灵力', boon: '神通免灵' },
+    xiansheng: { name: '先声夺人', desc: '命目并举 · 首回合必中且破绽可见', boon: '首合破绽' },
+    shouzhong: { name: '守中带攻', desc: '术身相济 · 本场首次受击减伤三成', boon: '首击减伤' },
+    pianzhi: { name: '偏执', desc: '单类独盛 · 该类 +20%，其他类本场禁用', boon: '单类专精' }
+  };
+  /* 按持有神通的类别构成判定「已达成的态势」（可能多个） */
+  function stanceList() {
+    const sts = S.shenTong || [];
+    if (!sts.length) return [];
+    const cnt = { '命': 0, '术': 0, '身': 0, '目': 0 };
+    sts.forEach(function (nm) {
+      stParts(shenTongKind(nm)).forEach(function (p) { if (cnt[p] !== undefined) cnt[p]++; });
+    });
+    const kinds = Object.keys(cnt).filter(function (k) { return cnt[k] > 0; });
+    const out = [];
+    if (kinds.length >= 4) out.push('sixiang');
+    if (cnt['命'] + cnt['目'] >= 2) out.push('xiansheng');
+    if (cnt['术'] + cnt['身'] >= 2) out.push('shouzhong');
+    /* 偏执：单类 ≥3 且并非四类齐全（四象是更好的选择，不该同时算偏执） */
+    const top = kinds.sort(function (a, b) { return cnt[b] - cnt[a]; })[0];
+    if (cnt[top] >= 3 && kinds.length < 4) out.push('pianzhi');
+    return out;
+  }
+  /* 本场实际生效的态势：默认取第一个已达成的，玩家可在战前切换 */
+  function curStance() {
+    const c = S.combat;
+    if (!c) return null;
+    const id = c.stance || (stanceList()[0] || null);
+    return id ? Object.assign({ id: id }, STANCE_SPEC[id]) : null;
+  }
+  /* 类别多样性系数：四类 1.20 / 三类 1.12 / 两类 1.05 / 一类 1.00 */
+  function stanceKindMul() {
+    const sts = S.shenTong || [];
+    if (!sts.length) return 1;
+    const kinds = {};
+    sts.forEach(function (nm) {
+      stParts(shenTongKind(nm)).forEach(function (p) { kinds[p] = true; });
+    });
+    const n = Object.keys(kinds).length;
+    if (n >= 4) return 1.20;
+    if (n === 3) return 1.12;
+    if (n === 2) return 1.05;
+    return 1.00;
+  }
+
+  /* 偏执专精的是哪一类（计数最高者） */
+  function stanceFocusKind() {
+    const sts = S.shenTong || [];
+    const cnt = { '命': 0, '术': 0, '身': 0, '目': 0 };
+    sts.forEach(function (nm) {
+      stParts(shenTongKind(nm)).forEach(function (p) { if (cnt[p] !== undefined) cnt[p]++; });
+    });
+    let best = null, n = 0;
+    Object.keys(cnt).forEach(function (k) { if (cnt[k] > n) { n = cnt[k]; best = k; } });
+    return best;
+  }
+
+  /* 倍率展示：只在需要显示字符串时舍到两位 */
+  function stMulText(m) { return (Math.round(m * 100) / 100).toFixed(2); }
 
   function daotongPool() {
     if (S.daotong && D.SHENTONG[S.daotong]) return D.SHENTONG[S.daotong].slice();
@@ -7950,6 +8105,9 @@
     };
     S.combat.rankUp = !!(S.preBuff && S.preBuff.rankUp);
     if (S.preBuff) S.preBuff.rankUp = false;
+    /* v10.4 P1·S4：入场态势在本场开局定下，之后可用 cbtpre:stance:* 切换 */
+    S.combat.stance = stanceList()[0] || null;
+    S.combat.stanceUsed = {};
     /* v9.0 M2：第四位入场——主战灵兽带独立气血进场（ext-beast） */
     const _X0 = G.WXCS3_EXT;
     if (_X0 && _X0.combatDeploy) _X0.combatDeploy(S.combat);
@@ -7966,7 +8124,11 @@
   function openPreFight() {
     const c = S.combat;
     if (!c) return;
-    let b = '<div class="small">开打之前，还能做一件事。</div>' + divider() + '<ul class="opts">';
+    /* v10.4 P1：加了「入场态势」之后，战前能做的事不止一件，
+       旧文案「还能做一件事」会与下面的态势区块自相矛盾。 */
+    const _hasStance = stanceList().length > 0;
+    let b = '<div class="small">开打之前，' + (_hasStance ? '还有两件事：用物、定势。' : '还能做一件事。') + '</div>'
+      + divider() + '<ul class="opts">';
     const ones = (S.arts || []).filter(function (id) {
       const a = D.ARTIFACT_EXT.find(function (x) { return x.id === id; });
       return a && a.slot === 'once';
@@ -7982,8 +8144,28 @@
     pills.slice(0, 4).forEach(function (p) {
       b += optRow('·', '服 ' + p.name + '（' + (S.bag[p.id]) + '）', { name: '丹药', cls: 'peace' }, p.desc, false, 'do;cbtpill:' + p.id);
     });
-    if (!ones.length && !pills.length) b += '<div class="small muted">身上没有任何可用之物——那就这么上吧。</div>';
+    /* 「无可用之物」只针对符/丹，不能连带否掉下面的态势 */
+    if (!ones.length && !pills.length) {
+      b += '<div class="small muted">身上没有可用的符与丹。' +
+        (_hasStance ? '好在势还在——下面可定。' : '那就这么上吧。') + '</div>';
+    }
     b += '</ul>';
+    /* v10.4 P1·S4：入场态势（可切换） */
+    const _stAll = stanceList();
+    if (_stAll.length) {
+      const _cur = c.stance || _stAll[0];
+      b += divider() + '<div class="sechead">入场态势　' + esc((STANCE_SPEC[_cur] || {}).name || '') + '</div>';
+      b += '<div class="small muted" style="margin:2px 0 6px">' + esc((STANCE_SPEC[_cur] || {}).desc || '') + '</div>';
+      if (_stAll.length > 1) {
+        b += '<ul class="opts">';
+        _stAll.forEach(function (sid) {
+          if (sid === _cur) return;
+          const sp2 = STANCE_SPEC[sid];
+          b += optRow('换', sp2.name, { name: '态势', cls: 'chance' }, sp2.desc, false, 'do;cbtpre:stance_' + sid);
+        });
+        b += '</ul>';
+      }
+    }
     /* v9.0 M2：本命出鞘（共命阶）从扩展里追加战前选项（注册数组，多扩展并存） */
     const _XP = G.WXCS3_EXT;
     if (_XP && _XP.preFightRowsHooks) {
@@ -7992,13 +8174,23 @@
     /* v8.1 P0 第6项：遁速够快，才看得见他身上的旧伤 */
     const _pc = clue('speed');
     if (_pc) b += '<div class="hint">' + esc(_pc) + '</div>';
-    b += '<div class="hint">战前只会耗一次，进入战斗后无法再补。</div>';
+    b += '<div class="hint">符与丹每场只耗一次，进入战斗后无法再补；态势可免费改，改了当场面生效。</div>';
     openModal('战前准备', b);
   }
 
   ACT.openPreFight = () => { if (S.combat) S.combat.prepared = true; openPreFight(); };
 
   ACT.do_cbtpre = (id) => {
+    /* v10.4 P1·S4：切换入场态势。只允许切到「已达成」的那几个，
+       不给出未达成的选项——否则态势就变成了可以随便挑的免费增益。 */
+    if (id.indexOf('stance_') === 0) {
+      const sid = id.slice(7);
+      if (!S.combat) return;
+      if (stanceList().indexOf(sid) < 0) { toast('此势未成'); closeModal(); return; }
+      S.combat.stance = sid;
+      logLine('改以「' + STANCE_SPEC[sid].name + '」之势入场。', 'good');
+      closeModal(); render(); return;
+    }
     if (id === 'disk_zhenSuoLing') {
       if (!(S.disks || []).some(function (d) { return d.id === 'zhenSuoLing'; })) return;
       S.combat.noFoeFlee = true;
@@ -8096,12 +8288,22 @@
     if (sts.length) {
       b += '<div class="sechead">神通　' + sts.length + ' 道　不占装配格 · 每道本场仅一次</div>';
       b += '<ul class="opts">';
+      /* v10.4 P1·S4：偏执之势会禁掉非专精类；freeFirst 会让第一道免灵。
+         两件事都必须在菜单上写清，否则玩家点了没反应，会以为界面坏了。 */
+      const _mst = curStance();
+      const _focus = _mst && _mst.id === 'pianzhi' ? stanceFocusKind() : null;
+      const _free = _mst && _mst.id === 'sixiang' && !(c.stanceUsed && c.stanceUsed.stFree);
       sts.forEach(function (nm) {
         const sp = shenTongSpec(nm);
         const used = !!c.stUsed[nm];
-        b += optRow('·', stShort(nm), { name: sp.kindName, cls: 'chance' },
-          used ? '本场已出' : ('−' + sp.cost + ' 灵 · ×' + sp.mul + ' · ' + sp.desc),
-          used || S.mp < sp.cost, 'do;cbt:shentong:' + encodeURIComponent(nm));
+        const banned = !!_focus && sp.parts.indexOf(_focus) < 0;
+        const costShown = (_free && !used && !banned) ? 0 : sp.cost;
+        let note;
+        if (used) note = '本场已出';
+        else if (banned) note = '偏执之势：本场禁用（只容' + _focus + '类）';
+        else note = (costShown === 0 ? '免灵' : '−' + costShown + ' 灵') + ' · ×' + stMulText(sp.mul) + ' · ' + sp.desc;
+        b += optRow('·', stShort(nm), { name: sp.kindName, cls: 'chance' }, note,
+          used || banned || S.mp < costShown, 'do;cbt:shentong:' + encodeURIComponent(nm));
       });
       b += '</ul>';
     } else {
@@ -8317,6 +8519,10 @@
     if (c.talShield) tags += '<span class="stance on">护体 · 本次减伤 ' + Math.round(c.talShield * 100) + '%</span>';
     if (c.noFoeFlee) tags += '<span class="stance on">锁灵 · 敌方不能遁走</span>';
     if (c.momentum > 0) tags += '<span class="stance bad">敌方气势 · 增伤 +' + Math.round((([1.0,1.10,1.20,1.35][c.momentum]||1) - 1) * 100) + '%</span>';
+    /* v10.4 P1·S4：入场态势。玩家得看见「这一场是按什么势在打」，
+       否则态势就是藏在公式里的隐形加成。 */
+    const _stv = curStance();
+    if (_stv) tags += '<span class="stance on">势 · ' + esc(_stv.name) + '</span>';
     if (!tags) tags = '<span class="stance">无</span>';
     mb += '<div class="frow"><span class="k">状态</span><div>' + tags + '</div></div>';
     /* v9.0 M2：第四位的血条（注册数组，多扩展并存） */
@@ -8418,6 +8624,14 @@
        而不是像旧版那样只挨打、看不出自己的防御有什么用。 */
     const myDefl = clamp(deflectOf(c, 'me') + fateAdd('defl'), 0, 0.55);   // v9.0 M1：守拙藏锋
     dmg *= (1 - myDefl);
+    /* v10.4 P1·S4：守中带攻——本场首次受击减伤三成。
+       一次性的，用完就记 stanceUsed.stGuard，不再重复减。 */
+    if (c.stance === 'shouzhong' && !(c.stanceUsed && c.stanceUsed.stGuard)) {
+      dmg *= 0.7;
+      c.stanceUsed = c.stanceUsed || {};
+      c.stanceUsed.stGuard = true;
+      logLine('守中带攻：这一击被卸去了三成。', 'good');
+    }
     if (c.defending) {
       let red = 0.5;
       if (c.talShield) red -= c.talShield;
@@ -8519,7 +8733,10 @@
        只在此处把 gap 压低——卦位表、敌方生成、胜负判定都不动，
        保证「越阶能打」不等于「越阶变简单」。 */
     const gapRaw = combatGap(c);
-    const gap = Math.max(0, gapRaw - gongfaGapUp());
+    /* 位格压制的两层减免：功法（乾天一元）+ 虚空气质的「凌位」，
+       两者取较大值而不是相加——相加会让仙人越两境也不掉伤害。 */
+    const gapCut = Math.max(gongfaGapUp(), c.temperPierce ? 1 : 0);
+    const gap = Math.max(0, gapRaw - gapCut);
     const diff = c.foe.rank - combatRank(c);
     let mult = 1;
     /* v8.1：位格压制不再把伤害压成 1 点。
@@ -8531,6 +8748,8 @@
     else if (diff <= -2) mult = 1.3;
 
     let dmg = 0, hit = true, note = '';
+    /* 出手瞬间是否已有破绽：决定这一击吃不吃 ×1.25（见下方结算处） */
+    const _markBefore = (c.foeMark || 0) > 0;
     const ratio = clamp(Math.sqrt(computePower() / Math.max(1, c.foe.power)), 0.2, 2.5);
     /* v8.1 P0 M4：妖物助战。只加「输出」不加「判定」——
        它让这一刀更重，但不改变你打不打得中，避免把命中体系搅乱。 */
@@ -8594,14 +8813,30 @@
       c.stUsed = c.stUsed || {};
       if (c.stUsed[snm]) { toast('此神通本场已出（一道一场只一次）'); render(); return; }
       const sp = shenTongSpec(snm);
-      if (S.mp < sp.cost) { toast('灵力不足（需 ' + sp.cost + '）'); render(); return; }
-      S.mp -= sp.cost;
+      /* v10.4 P1·S4：态势对神通的三处改写 */
+      const _stance = curStance();
+      const _pianzhiBan = _stance && _stance.id === 'pianzhi' &&
+        sp.parts.indexOf(stanceFocusKind()) < 0;
+      if (_pianzhiBan) {
+        toast('偏执之势：只能出「' + stanceFocusKind() + '」类神通');
+        render(); return;
+      }
+      const _freeFirst = _stance && _stance.id === 'sixiang' && !c.stanceUsed.stFree;
+      const _cost2 = _freeFirst ? 0 : sp.cost;
+      if (S.mp < _cost2) { toast('灵力不足（需 ' + _cost2 + '）'); render(); return; }
+      S.mp -= _cost2;
+      if (_freeFirst) c.stanceUsed.stFree = true;
       c.stUsed[snm] = true;
       /* v10.4 P0·S1：按 parts 逐个叠加，双属两道效果同时生效。
          旧版 `k0 = sp.kind.charAt(0)` 只认首字，与上面的 4 类模板一起
          把 26 个双属名压成了单属。 */
       let sextra = '', stTags = [];
       hit = true;
+      /* v10.4 P1：本击之前就存在的破绽才算进 ×1.25。
+         老 bug：目类神通自己会置 foeMark，而总伤害结算在「命中之后」
+         检查 foeMark>0 —— 同一击先造破绽、再吃破绽，
+         1.30 的目神通实际打出 1.30×1.25=1.625，比 1.85 的命神通还稳。 */
+
       sp.parts.forEach(function (k1) {
         if (k1 === '命') {
           stTags.push('必中');
@@ -8618,10 +8853,46 @@
           stTags.push('破绽');
         }
       });
+      /* v10.4 P1·S2：道统气质的附加效果。
+         气质只改「这一道打出去之后世界怎么变」，不改基础四类骨架 ——
+         在 parts 循环之后追加，保证双属神通仍先按双属结算。 */
+      if (sp.temper === '幽微') {
+        c.foeMark = Math.max(c.foeMark || 0, (c.foeMark || 0) + 1);
+        stTags.push('阴噬');
+      } else if (sp.temper === '转换') {
+        const back = Math.round(sp.cost * 0.18);
+        S.mp = Math.min(S.mpMax, S.mp + back);
+        stTags.push('回流 ' + back);
+      } else if (sp.temper === '生养') {
+        const back = Math.round(S.hpMax * 0.04);
+        S.hp = Math.min(S.hpMax, S.hp + back);
+        stTags.push('养生 ' + back);
+      } else if (sp.temper === '润下') {
+        c.momentum = Math.max(0, (c.momentum || 0) - 1);
+        stTags.push('夺势');
+      } else if (sp.temper === '炎上') {
+        c.foeBurn = Math.max(c.foeBurn || 0, 2);
+        c.foeBurnMul = Math.max(c.foeBurnMul || 0, 0.5);
+        c.burnFresh = true;
+        stTags.push('余焰');
+      } else if (sp.temper === '虚空') {
+        c.temperPierce = 1;      // 本场后续出手位格压制减轻一档
+        stTags.push('凌位');
+      }
+      /* 偏执：该类效果 +20%（用倍率体现，就可量） */
+      const _pzMul = (_stance && _stance.id === 'pianzhi') ? 1.2 : 1;
+      if (_pzMul > 1) stTags.push('偏执 ×1.2');
+      /* 先声夺人：首回合破绽（本场第一次出手） */
+      if (_stance && _stance.id === 'xiansheng' && !c.stanceUsed.stMark) {
+        c.foeMark = Math.max(c.foeMark || 0, 3);
+        c.stanceUsed.stMark = true;
+        stTags.push('先声');
+      }
+      if (_freeFirst) stTags.push('免灵');
       if (stTags.length) sextra = '（' + stTags.join('·') + '）';
       /* 注：神通暂不吃功法五行乘区。「功法放大神通」是方案第四节（P2 联动）
-         的设计，P0 只兑现已有承诺、不加新设计——否则 P1/P2 的验收口径会失真。 */
-      dmg = Math.round(c.foe.hpMax * Math.max(0.13, 0.26 * ratio) * sp.mul * mult * keK * (1 + artBonus('atk')) * fateMul('dmg'));
+         的设计，P1 只做气质与态势，不加跨系统叠乘——否则 P2 的验收口径会失真。 */
+      dmg = Math.round(c.foe.hpMax * Math.max(0.13, 0.26 * ratio) * sp.mul * _pzMul * mult * keK * (1 + artBonus('atk')) * fateMul('dmg'));
       c.observed = false;
       note = '神通「' + stShort(snm) + '」' + sextra;
 
@@ -8743,7 +9014,11 @@
     if (gap >= 2 && hit && ['attack', 'skill'].indexOf(sub) >= 0) {
       note = (note ? note + '；' : '') + '位格差得太远，这一下几乎打不动他';
     }
-    if (hit && dmg > 0 && c.foeMark > 0) { dmg = Math.round(dmg * 1.25); }
+    /* v10.4 P1：破绽加成只看「出手瞬间是否已有破绽」。
+       旧写法 `c.foeMark > 0` 会把自己刚造出来的破绽在同一击里吃掉，
+       让「造破绽」变成「免费加伤」——目类神通因此长期超模。 */
+    const _markApplies = (sub === 'shentong') ? _markBefore : (c.foeMark > 0);
+    if (hit && dmg > 0 && _markApplies) { dmg = Math.round(dmg * 1.25); }
     if (hit && dmg > 0) {
       c.foe.hp = Math.max(0, c.foe.hp - dmg);
       note = (note ? note + '；' : '') + '造成 ' + dmg;
@@ -8940,6 +9215,24 @@
     return !!PHASE_FREE_ACT[key];
   }
 
+  /* v10.4 P1·3.3：动作后钩子。
+     ------------------------------------------------------------
+     项目此前没有任何「动作后」全局钩子，于是功法的生活被动每挂一处
+     就要改一次对应的 ACT——30 个 ACT 就是 30 次修改，没人愿意做，
+     所以「功法在生活侧只有 1 个出口」这个洞一直没补。
+     这里给一个极轻的注册数组：所有经 dispatch 的动作在结算末尾调用一次。
+     三条纪律：
+       ① 只读 act 字符串与 S，不许在钩子里再 dispatch（会无限递归）
+       ② 钩子不许改变动作结果，只能做「顺带」的事（记录/小额奖励）
+       ③ tx: / enc: / act: 三个前缀不经过 do; —— enc: 单独挂一处 */
+  function runActionHooks(act) {
+    const X = G.WXCS3_EXT;
+    if (!X || !X.onActionHooks || !X.onActionHooks.length) return;
+    for (let i = 0; i < X.onActionHooks.length; i++) {
+      try { X.onActionHooks[i](act); } catch (e) { /* 钩子失败不许拖垮动作 */ }
+    }
+  }
+
   function dispatch(act) {
     if (!act) return;
     syncInputs();
@@ -8957,6 +9250,7 @@
     if (act.startsWith('enc:')) {
       const p = act.split(':');
       if (ACT.do_enc) ACT.do_enc(p[1], p[2]);
+      runActionHooks(act);      // 奇遇不经过 do;，单独挂一次
       return;
     }
     if (act.startsWith('act:')) { const k = act.slice(4); if (ACT[k]) ACT[k](); return; }
@@ -8969,6 +9263,7 @@
       const fn = extFn || ACT['do_' + parts[0]] || ACT[parts[0]];
       if (fn) fn(parts[1], parts[2], parts[3]);
       else toast('无此指令：' + act);
+      runActionHooks(act);
       return;
     }
     if (act.startsWith('modal:')) { closeModal(); return; }
@@ -9408,6 +9703,17 @@
     if (S.hp / S.hpMax < 0.33) r -= 0.12;
     else if (S.hp / S.hpMax < 0.66) r -= 0.05;
     if (S.cave && S.cave.facilities && S.cave.facilities[art]) r += 0.05;
+    /* v10.4 P1·3.3：四艺成功率读主修功法。
+     ------------------------------------------------------------
+     craftRateOf 是炼丹/炼器/制符/阵法四艺的唯一成功率闸口——
+     在这里挂一次，四个系统同时生效，不必改 30 个 ACT。
+     注意签名：第一个参数是「门类」(dan/qi/fu/zhen)，不是配方。
+     功法加成走加法（与境界/属性/设施同口径），不走乘法，
+     否则高成功率区会被乘得离谱。 */
+    if (G.WXCS3_EXT && G.WXCS3_EXT.gongfaCraftBonus) {
+      const _cg = G.WXCS3_EXT.gongfaCraftBonus(art);
+      if (_cg > 0) r += _cg;
+    }
     return clamp(r, 0.15, 0.95);
   }
   /* 品相判定 */
