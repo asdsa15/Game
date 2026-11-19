@@ -66,7 +66,8 @@
 │  ├─ main.js / preload.js  主进程与预加载
 │  ├─ scripts/sync-app.js   把 dist 页面搬进 app/ 并补 CSP
 │  ├─ assets/icon.ico       程序图标
-│  ├─ release_v10.3/        当前打包产物（v10.3 P0 修复版，gitignore）
+│  ├─ release_v10.3_final/ 当前打包产物（v10.3 P0 修复版，gitignore）
+│  ├─ release_v10.3/        v10.3 中途产物（gitignore；被占用删不掉，勿分发）
 │  ├─ release_m4/           上一轮产物（gitignore；含存档 bug，勿再分发）
 │  └─ release*/            历史中间包（gitignore；含体积异常与占用锁的旧目录，可自行清理）
 │
@@ -177,7 +178,7 @@ M3 的四个玩法（师徒/道统/时限/属性）都只往既有面板与结�
 ## 常用命令
 
 ```bash
-# 断言与检查（全绿 = 885 条断言 + 三项检查）
+# 断言与检查（全绿 = 886 条断言 + 三项检查）
 node tools/test_v80.js && node tools/test_play.js && node tools/test_loops.js
 node tools/test_hooks.js && node tools/test_econ.js && node tools/test_text.js
 node tools/test_beast_disciple.js && node tools/smoke_econ.js
@@ -193,7 +194,7 @@ python mobile/build.py            # → mobile/dist/index.html（插画已 base6
 python mobile/sync_apk.py         # → D:\wendao-apk，HBuilderX 里云打包
 
 # 桌面版
-cd desktop && npm run pack        # → desktop/release_m4/问道长生-win32-x64/（v10.3 起因旧包被占用，产物在 release_v10.3/）
+cd desktop && npm run pack        # → desktop/release_m4/（v10.3 起因旧包被占用，成品在 release_v10.3_final/）
 
 # 插画压缩（原图 → 交付图）
 python art/pipeline/compress_art.py

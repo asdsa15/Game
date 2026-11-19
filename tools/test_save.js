@@ -131,19 +131,29 @@ function setupBlank() {
   s.started = false; s.phase = 'create';
 }
 
-/* ============ 3. 导出：file:// 无桥时必须明说，不许假报 ============ */
+/* ============ 3. 导出：Electron 旧壳必须明说，不许假报 ============ */
 console.log('=== 3. 导出闸门 ===');
 S.started = true; S.phase = 'play';
 window.location.protocol = 'file:';
+/* Electron 的 UA 里带 Electron；此时没有 saveFile 桥就必然假成功 */
+window.navigator.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+  '(KHTML, like Gecko) 问道长生/10.2.0 Chrome/130.0.0.0 Electron/33.4.11 Safari/537.36';
 toastText();
 G.ACT.do_exp(1);
-ok(toastText().indexOf('已导出') < 0, 'file:// 无桥时不报「已导出」', toastText());
+ok(toastText().indexOf('已导出') < 0, 'Electron + file:// 无桥时不报「已导出」', toastText());
 ok(toastText().indexOf('不可用') > 0 || toastText().indexOf('导出失败') > 0,
-  'file:// 无桥时给出明确失败提示', toastText());
+  'Electron + file:// 无桥时给出明确失败提示', toastText());
 
 toastText();
 G.ACT.do_expall();
-ok(toastText().indexOf('已备份') < 0, 'file:// 下「备份全部槽位」也不假报', toastText());
+ok(toastText().indexOf('已备份') < 0, 'Electron + file:// 下「备份全部槽位」也不假报', toastText());
+
+/* 普通浏览器从磁盘打开也是 file://，但它有下载管理器，不该被误伤 */
+window.navigator.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+  '(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+toastText();
+G.ACT.do_exp(1);
+ok(toastText().indexOf('已导出') >= 0, '普通浏览器的 file:// 仍可正常导出', toastText());
 
 /* ============ 4. 读取与导入回环 ============ */
 console.log('=== 4. 读档回环 ===');

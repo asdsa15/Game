@@ -5802,11 +5802,17 @@
     } catch (e) { }
   }
 
-  /* v10.3 P0：file:// 下没有下载管理器，a.download 既不触发下载、也不抛异常，
-     旧代码于是把「什么都没有」报成「已导出」。凡是导出前先过这一关：
-     有桌面桥走系统对话框；没有桥且是 file:// 就明确报错，绝不假报成功。 */
+  /* v10.3 P0：Electron 在 file:// 下没有下载管理器，a.download 既不触发下载、
+     也不抛异常，旧代码于是把「什么都没有」报成「已导出」。
+     判据要卡准：普通浏览器从磁盘双击打开也是 file://，但它有自己的下载管理器，
+     blob 下载照常可用——一刀切拦掉反而会把能用的功能变成报错。
+     所以只在「file:// + Electron」这一种组合下判定为不可用。 */
   function downloadBlocked() {
-    try { return location.protocol === 'file:'; } catch (e) { return false; }
+    try {
+      if (location.protocol !== 'file:') return false;
+      const ua = (window.navigator && window.navigator.userAgent) || '';
+      return /Electron/i.test(ua);
+    } catch (e) { return false; }
   }
   const NO_BRIDGE_TIP = '桌面版导出不可用：请用「系统 → 存档」菜单，或安装最新版本';
 
