@@ -38,9 +38,11 @@
      凡是从存档读出来的数值，一律先过 numOr。 */
   const numOr = (v, d) => (typeof v === 'number' && isFinite(v)) ? v : d;
   const clampNum = (v, a, b, d) => clamp(numOr(v, d === undefined ? a : d), a, b);
-  /* 版本号只在这里定义一次。旧代码把 '6.2' 硬编码在 envelope、checkSaveVersion、
-     导出文件名、帮助面板四处——改一处忘三处，就会出现「新档被判成旧版」。 */
-  const VER = '10.2';
+  /* 版本号只在规则层定义一次，这里引用。
+     旧代码把 '6.2' 硬编码在 envelope、checkSaveVersion、导出文件名、帮助面板四处；
+     v9.0 把 envelope/checkSaveVersion 搬进 rules.js 时没把常量一起搬过去，
+     造成「存档全端失败」。现在唯一权威来源是 RULES.SAVE_VER。 */
+  const VER = RULES.SAVE_VER;
 
   const rnd = (n) => Math.floor(rng() * n) + 1;
   const rnd100 = () => rnd(100);
@@ -5800,6 +5802,14 @@
     } catch (e) { }
   }
 
+  /* v10.3 P0：file:// 下没有下载管理器，a.download 既不触发下载、也不抛异常，
+     旧代码于是把「什么都没有」报成「已导出」。凡是导出前先过这一关：
+     有桌面桥走系统对话框；没有桥且是 file:// 就明确报错，绝不假报成功。 */
+  function downloadBlocked() {
+    try { return location.protocol === 'file:'; } catch (e) { return false; }
+  }
+  const NO_BRIDGE_TIP = '桌面版导出不可用：请用「系统 → 存档」菜单，或安装最新版本';
+
   function downloadJson(filename, obj) {
     const txt = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
     /* 桌面版走系统「另存为」，玩家知道文件到底落在哪；
@@ -5813,6 +5823,7 @@
       }).catch(function (e) { toast('导出失败：' + e); });
       return false;
     }
+    if (downloadBlocked()) { toast(NO_BRIDGE_TIP); return false; }
     try {
       const blob = new Blob([txt], { type: 'application/json;charset=utf-8' });
       const url = URL.createObjectURL(blob);
@@ -6356,7 +6367,10 @@
     /* v10.1 第一梯队：让 reinc（百世书）结局真正出现。
        它此前零调用，因为 do_legacy 直接 newGame 从不展示结局。
        语义上「烧一页重来」本身就是这一世的结尾，所以在这里把它念出来：
-       玩家点开烧页面板，先看到自己这一世以「百世书」收尾，再选择带什么走。 */
+       玩家点开烧页面板，先看到自己这一世以「百世书」收尾，再选择带什么走。
+       v10.3 P0：补上 reincShown 标记，resolveEnding 据此把这一世判成「轮回」，
+       否则结局屏背后仍是「陨落/坐化」。 */
+    S.reincShown = true;
     const _reinc = (D.ENDINGS || []).find(function (e) { return e.id === 'reinc'; });
     let b = '';
     if (_reinc) {
@@ -8930,19 +8944,22 @@
 
   /* ---------- 结局（接 D.ENDINGS 表） ---------- */
   /* 之前结局是硬编码的一行字，12 个结局全在 data 里躺着没人用。
-     现在按「先死而后生」的顺序判定：死因 → 果位 → 道胎 → 名声 → 逍遥 */
+     v10.3 P0：旧顺序是「死因 → 果位 → 道胎 → 名声」，而进结局屏的唯一路径
+     （finalizeDeath）必定写 deathReason，于是 `if (S.deathReason) return 'fall'`
+     抢先返回，guowei / daotai / ascend / xianzun / modao 五个结局永远不会出现。
+     现在改成「高光结局先判，死因最后兜底」：
+       ① 主动证位（证真君/世尊）走 endingId；
+       ② 修为与位业到顶的成就型结局；
+       ③ 最后才按死因分寿元/失锚/横死。
+     寿元死只可能发生在有寿元的境界（<道胎），所以前置不会抢走寿元结局。 */
   function resolveEnding() {
     const pickEnd = function (id) {
       return (D.ENDINGS || []).find(function (e) { return e.id === id; }) || null;
     };
     if (S.endingId) return pickEnd(S.endingId);
-    if (S.deathReason && /寿元/.test(S.deathReason)) {
-      if (S.karma > 100 || S.stats.heart < 6) return pickEnd('sit');
-      if (S.merit >= 100 && S.karma < 30) return pickEnd('xiaoyao');
-      return pickEnd('sit');
-    }
-    if (S.deathReason && /道化|锚/.test(S.deathReason)) return pickEnd('daohua');
-    if (S.deathReason) return pickEnd('fall');
+    /* 百世书：在结局屏点「烧一页重来」即视为这一世以「轮回」收束，
+       由 ACT.do_burn 打上标记（do_legacy 随后 newGame，来不及再判一次）。 */
+    if (S.reincShown) return pickEnd('reinc');
     /* v10.1 第一梯队：补齐两个从未触发的结局。
        —— ascend（登仙）——
        原文案「补回断掉的四境」，此前代码里没有任何对应机制，故永远走不到。
@@ -8952,8 +8969,7 @@
        条件：道胎(xRealm>=5) + 四锚各 >=1 + 功德>=100（一路守正而来）。
        —— reinc（百世书）——
        原文案「烧一页重来」。此前 do_legacy 直接 newGame，从不写 endingId，
-       所以这个结局永远不显示。现在由 do_legacy 在烧页那一刻标记 S.reincShown，
-       本函数在烧页后的「短暂结局展示」里认得它；具体见 do_legacy 注释。 */
+       所以这个结局永远不显示；现由上方的 reincShown 标记认领。 */
     if (isXian() && S.xRealm >= 5) {
       const solid = Object.keys(S.anchors || {}).filter(function (k) { return (S.anchors[k] || 0) >= 1; }).length;
       if (solid >= 4 && (S.merit || 0) >= 100 && (S.karma || 0) < 100) return pickEnd('ascend');
@@ -8964,6 +8980,16 @@
     if (S.guowei) return pickEnd('guowei');
     if (S.xianzun || S.fame >= 500) return pickEnd('xianzun');
     if (S.karma >= 300) return pickEnd('modao');
+    /* —— 以下按死因兜底 —— */
+    if (S.deathReason && /寿元/.test(S.deathReason)) {
+      if (S.karma > 100 || S.stats.heart < 6) return pickEnd('sit');
+      if (S.merit >= 100 && S.karma < 30) return pickEnd('xiaoyao');
+      return pickEnd('sit');
+    }
+    /* 正则与 finalizeDeath 的成就记账统一：神道失锚写的是「枯朽」，
+       旧版这里只认「道化|锚」，庙神死得像被剑捅死。 */
+    if (S.deathReason && /道化|锚|枯朽/.test(S.deathReason)) return pickEnd('daohua');
+    if (S.deathReason) return pickEnd('fall');
     return pickEnd('sit');
   }
 
@@ -9089,6 +9115,8 @@
       }).catch(function (e) { toast('导出失败：' + e); });
       return;
     }
+    /* 与 downloadJson 同一条红线：file:// 下不假报成功 */
+    if (downloadBlocked()) { toast(NO_BRIDGE_TIP); return; }
     try {
       const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
@@ -9203,9 +9231,30 @@
     }
     return c;
   }
-  /* 成品基准售价 = 材料成本 × 2.2（文档价格链） */
+  /* 成品基准价 = 产物表里的零售价（与结算同源）。
+     v10.3 P0：旧版按「材料成本 × 2.2」给面板报价，而结算读的是
+     PILL_EXT / TALISMANS / ARTIFACT_EXT 的 price——同一件东西两套价，
+     回春丹面板说 440 石、实际只能卖 50 石，四张丹方三张半是负毛利。
+     现在面板与结算都从这里取数，净利不再漂移。
+     阵盘表没有 price 字段，退回「材料成本 × 1.6」作估算（面板与结算共用）。 */
   function outPriceOf(recipe, quality) {
-    const base = matCostOf(recipe) * 2.2;
+    let base = 0;
+    if (recipe && recipe.out) {
+      if (recipe.kind === 'dan') {
+        const p = D.PILL_EXT.find(function (x) { return x.id === recipe.out; });
+        if (p) base = p.price;
+      } else if (recipe.kind === 'fu') {
+        const t = D.TALISMANS.find(function (x) { return x.id === recipe.out; });
+        if (t) base = t.price;
+      } else if (recipe.kind === 'qi') {
+        const a = D.ARTIFACT_EXT.find(function (x) { return x.id === recipe.out; });
+        if (a) base = a.price;
+      } else if (recipe.kind === 'zhen') {
+        const dk = D.ARRAY_DISKS.find(function (x) { return x.id === recipe.out; });
+        if (dk && dk.price) base = dk.price;
+      }
+    }
+    if (!base) base = matCostOf(recipe) * 1.6;
     return Math.round(base * (quality ? quality.mul : 1));
   }
   function addMat(id, n) {
@@ -9398,7 +9447,10 @@
         '<i>有' + have + '</i></span>';
     }).join('');
     const cost = matCostOf(r);
-    const sale = outPriceOf(r, { mul: 1 });
+    /* v10.3 P0：报价与结算同源。面板给「中品回收价」（坊市基准），
+       按产出份数算总回收，净利就是玩家真能拿到的数字。 */
+    const unitBack = Math.max(1, Math.round(outPriceOf(r, { mul: 1 }) * RECOVER_BASE));
+    const totalBack = unitBack * (r.need || 1);
     const rate = craftRateOf(r.kind, r);
     const lock = !can || lack > 0;
     let b = '<div class="rrow' + (lock ? ' lock' : '') + '" data-act="' +
@@ -9407,7 +9459,8 @@
       '<span class="rtag">' + artName(r.kind) + '·' + D.GONGFA_TIERS[r.tier].name + '　需技艺 ' + lvNeed.lv + ' 品</span></div>';
     b += '<div class="rm">' + matLine + '</div>';
     b += '<div class="rs">成功率 ' + Math.round(rate * 100) + '%　产 ' + r.need + ' 份　料 ' +
-      fmtNum(cost) + ' 石 → 中品售 ' + fmtNum(sale) + '（净 ' + fmtNum(sale - cost) + '）</div>';
+      fmtNum(cost) + ' 石 → 中品回收 ' + fmtNum(unitBack) + ' 石/份（共 ' + fmtNum(totalBack) +
+      '，净 ' + fmtNum(totalBack - cost) + '）</div>';
     if (!can) b += '<div class="rs hno">做不了：需 ' + D.GONGFA_TIERS[r.tier].name + ' 技艺，且境界到' +
       (D.XIAN_REALMS[D.CRAFT_REALM_GATE[r.tier] || 0] || { name: '炼气' }).name + '</div>';
     b += '</div>';
@@ -9681,7 +9734,8 @@
     if (it && it.eff) b += '<div class="small" style="margin:6px 0">' + esc(it.eff) + '</div>';
     b += '<div class="small muted">用于配方：' + (used.length ? used.join('、') : '暂无') + '</div>';
     b += '<ul class="opts" style="margin-top:10px">';
-    b += optRow('A', '卖一份', { name: '灵石', cls: 'chance' }, '+' + fmtNum(it ? it.price : 0) + ' 石', false, 'do;sellmat:' + k);
+    b += optRow('A', '卖一份', { name: '灵石', cls: 'chance' },
+      '+' + fmtNum(it ? sellPriceOf(it.price, 1) : 0) + ' 石（' + esc(sellCh().name) + '收价）', false, 'do;sellmat:' + k);
     b += optRow('B', '看配方', { name: '平和', cls: 'peace' }, '', false, 'act:openRecipeBook');
     b += optRow('C', '去采集', { name: '占一月', cls: 'peace' }, '', false, 'act:openGather');
     b += '</ul>';
@@ -9703,7 +9757,8 @@
     const p = craftRateParts(r.kind, r);
     const m = matsOf(r);
     const cost = matCostOf(r);
-    const sale = outPriceOf(r, { mul: 1 });
+    const sale = Math.max(1, Math.round(outPriceOf(r, { mul: 1 }) * RECOVER_BASE));
+    const totalSale = sale * (r.need || 1);
     const a = D.CRAFT_ARTS.find(function (x) { return x.id === r.kind; });
     const statName = { insight: '悟性', qualify: '资质', sense: '神识' }[a ? a.stat : 'insight'] || '悟性';
 
@@ -9733,8 +9788,8 @@
       return '<span style="flex:' + q.rate + ';color:' + q.color + '">' + q.name +
         (q.mul ? ' ×' + q.mul : '') + '</span>';
     }).join('') + '</div>';
-    b += '<div class="small muted" style="margin-top:5px">料钱 ' + fmtNum(cost) + ' 石　中品可卖 ' +
-      fmtNum(sale) + ' 石　净利约 ' + fmtNum(sale - cost) + ' 石</div>';
+    b += '<div class="small muted" style="margin-top:5px">料钱 ' + fmtNum(cost) + ' 石　中品回收 ' +
+      fmtNum(sale) + ' 石/份 ×' + r.need + '　净利约 ' + fmtNum(totalSale - cost) + ' 石</div>';
 
     b += divider();
     b += '<div class="small muted">选一种火候。<b>无论成败都占一个月</b>，这一个月不能打坐。</div>';
@@ -10136,9 +10191,18 @@
     const id = S.sellCh || 'market';
     return D.SELL_CHANNELS.find(function (c) { return c.id === id; }) || D.SELL_CHANNELS[1];
   }
+  /* v10.3 P0：回收价与零售价分离。
+     旧版把渠道倍率直接乘在零售价上：坊市档 1.00 就是原价收，黑市 1.45 更高，
+     于是「坊市买入 → 黑市卖出」稳定赚 45%，0 旬 0 风险，第一天就把灵石曲线打穿。
+     现在零售价先打 RECOVER_BASE（回收折价）再乘渠道倍率；
+     最高的黑市 0.6×1.45 = 0.87，仍低于进货价，任何渠道都不再生出正套利。
+     渠道倍率的语义是「相对回收基准的系数」，不是「相对零售价的溢价」。 */
+  const RECOVER_BASE = 0.6;
   function sellPriceOf(base, mul, qualityMul) {
-    const fee = sellCh().id === 'auction' ? 0.9 : 1;
-    return Math.max(1, Math.round(base * (mul || 1) * (qualityMul === undefined ? 1 : qualityMul) * sellCh().mul * fee));
+    const ch = sellCh();
+    const fee = ch.id === 'auction' ? 0.9 : 1;
+    return Math.max(1, Math.round(base * RECOVER_BASE * (mul || 1) *
+      (qualityMul === undefined ? 1 : qualityMul) * ch.mul * fee));
   }
   ACT.do_sellch = (id) => {
     const ch = D.SELL_CHANNELS.find(function (c) { return c.id === id; });
@@ -10274,10 +10338,14 @@
     const it = D.MATERIAL_EXT.find(function (x) { return x.id === id; });
     if (!it || (S.bagMat[id] || 0) < 1) { toast('没有'); return; }
     S.bagMat[id]--;
-    const price = sellPriceOf(it.price * 0.8, 1);
+    /* v10.3 P0：材料也走同一条回收基准（原价 × RECOVER_BASE × 渠道）。
+       旧版写死 it.price × 0.8 再乘黑市 1.45，补气草 60 买 70 卖，同样是无风险正套利。 */
+    const ch = sellCh();
+    const price = sellPriceOf(it.price, 1);
     S.stones += price;
+    if (ch.id === 'black') S.karma += 3;
     ledgerAdd('in', '卖 ' + it.name, price);
-    sellTally(price, sellCh().id);
+    sellTally(price, ch.id);
     logInfo();
     closeModal(); ACT.openBagMat(); render();
   };

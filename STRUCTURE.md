@@ -9,8 +9,8 @@
 ├─ ── 运行源码（加载顺序即下方顺序）──
 ├─ wxcs3-data.js            数据层：全部表 107 张（境界/功法/事件/NPC/插画键…）
 ├─ wxcs3-art.js             插画层：ART_DATA 优先，缺图回落 art/scenes/*.jpg
-├─ wxcs3-rules.js           纯规则层：33 个不碰 DOM、不写 S 的函数（v9.0 第2步新增）
-├─ wxcs3-game.js            规则与 UI：381 函数 / 172 个 ACT 入口（M1 后只留薄缝）
+├─ wxcs3-rules.js           纯规则层：34 个不碰 DOM、不写 S 的函数（含 SAVE_VER；v9.0 第2步新增）
+├─ wxcs3-game.js            规则与 UI：约 390 函数 / 175 个 ACT 入口（M1 后只留薄缝）
 ├─ wxcs3-icons.js           图标层：内联 SVG（48 行 / 12KB）
 ├─ wxcs3-ext-10-fate.js        扩展：道痕命格（v9.0 M1）——六系命格、进阶、重悟
 ├─ wxcs3-ext-20-trib.js        扩展：五类天劫增强（v9.0 M1）——行为权重、劫类失败余波、破境预览
@@ -48,8 +48,8 @@
 │  └─ 99_归档/               过期文档
 │
 ├─ tools/                   测试与检查
-│  ├─ test_*.js             断言：v80 / play / econ / hooks / loops / text / m1 / m2 / m3 / m4 / beast_disciple / rank / tier2 / tier3 / gate_e2e / reachability
-│  ├─ smoke_econ.js         DOM 桩真跑运行时（经济面 26 项）
+│  ├─ test_*.js             断言：v80 / play / econ / hooks / loops / text / m1 / m2 / m3 / m4 / beast_disciple / rank / tier2 / tier3 / gate_e2e / reachability / save
+│  ├─ smoke_econ.js         DOM 桩真跑运行时（经济面 32 项，含四渠道无套利）
 │  ├─ check_ach.js         成就可达性
 │  ├─ check_actions.py     动作分发覆盖
 │  ├─ check_time.py        行动预算口径（读 docs/03 分档表）
@@ -66,7 +66,8 @@
 │  ├─ main.js / preload.js  主进程与预加载
 │  ├─ scripts/sync-app.js   把 dist 页面搬进 app/ 并补 CSP
 │  ├─ assets/icon.ico       程序图标
-│  ├─ release_m4/          当前打包产物（gitignore，约 277 MB + 128 MB 压缩包）
+│  ├─ release_v10.3/        当前打包产物（v10.3 P0 修复版，gitignore）
+│  ├─ release_m4/           上一轮产物（gitignore；含存档 bug，勿再分发）
 │  └─ release*/            历史中间包（gitignore；含体积异常与占用锁的旧目录，可自行清理）
 │
 ├─ _archive/                归档：只增不删
@@ -176,13 +177,13 @@ M3 的四个玩法（师徒/道统/时限/属性）都只往既有面板与结�
 ## 常用命令
 
 ```bash
-# 断言与检查（全绿 = 841 条断言 + 三项检查）
+# 断言与检查（全绿 = 885 条断言 + 三项检查）
 node tools/test_v80.js && node tools/test_play.js && node tools/test_loops.js
 node tools/test_hooks.js && node tools/test_econ.js && node tools/test_text.js
 node tools/test_beast_disciple.js && node tools/smoke_econ.js
 node tools/test_m1.js && node tools/test_m2.js && node tools/test_m3.js && node tools/test_m4.js
 node tools/test_reachability.js && node tools/test_tier2.js && node tools/test_tier3.js
-node tools/test_gate_e2e.js
+node tools/test_gate_e2e.js && node tools/test_save.js
 python tools/check_actions.py && python tools/check_time.py && node tools/check_ach.js
 
 # 网页单文件
@@ -192,7 +193,7 @@ python mobile/build.py            # → mobile/dist/index.html（插画已 base6
 python mobile/sync_apk.py         # → D:\wendao-apk，HBuilderX 里云打包
 
 # 桌面版
-cd desktop && npm run pack        # → desktop/release_m4/问道长生-win32-x64/
+cd desktop && npm run pack        # → desktop/release_m4/问道长生-win32-x64/（v10.3 起因旧包被占用，产物在 release_v10.3/）
 
 # 插画压缩（原图 → 交付图）
 python art/pipeline/compress_art.py

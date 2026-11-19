@@ -80,6 +80,7 @@ function setup(opts) {
   S.pages = opts.pages === undefined ? 3 : opts.pages;
   S.deathReason = opts.deathReason || null;
   S.endingId = opts.endingId || null;
+  S.reincShown = opts.reincShown || false;
   S.legacyPact = null; S.bloodDebt = 0;
   S.stones = 1000; S.hp = 100; S.hpMax = 100; S.mp = 100; S.mpMax = 100;
   S.month = 3; S.year = 387; S.turn = 0; S.xun = 0;
@@ -158,6 +159,48 @@ ok(missing.length === 0, '12 个结局无一遗漏', missing.join(','));
 setup({ xRealm: 5, anchors: { wu: 1, ren: 0, shi: 1, yi: 1 }, merit: 150, karma: 0 });
 ok(G.resolveEnding().id === 'daotai', '四锚不齐时不判登仙，落回道胎');
 
+/* ============ 2b. 真实死亡流程（v10.3 P0） ============
+   旧测试用 setup({deathReason:null}) 调 resolveEnding，验证的是
+   一个游戏永远不会产生的状态：真实路径必定先写 deathReason，
+   而旧顺序里 `if (deathReason) return 'fall'` 抢在前头，
+   于是道胎/果位/登仙/名望/魔道五个结局永不出现。
+   下面这条用例走完整链路：气血归零 → 临终 → 闭眼 → 结局。 */
+console.log('=== 2b. 真实死亡流程 ===');
+setup({ xRealm: 4, merit: 0, karma: 0 });
+S.hp = 0;
+G.render();
+ok(S.phase === 'dying', '气血归零先进临终，不直接进结局', S.phase);
+G.ACT.do_die('close');
+S = G.S;
+ok(S.phase === 'over', '临终闭眼后进入结局屏（phase=' + S.phase + '）');
+ok(!!S.deathReason, '真实死亡一定带死亡原因', S.deathReason);
+ok(G.resolveEnding().id === 'fall', '寻常横死仍是「陨落」', G.resolveEnding() && G.resolveEnding().id);
+
+/* 死在金丹果位上：应当是果位收束，而不是被死因判成陨落 */
+setup({ xRealm: 4, guowei: { n: '玄天果位' }, merit: 0, karma: 0 });
+S.hp = 0; G.render(); G.ACT.do_die('close'); S = G.S;
+ok(G.resolveEnding().id === 'guowei', '金丹果位横死按「果位」收束',
+  G.resolveEnding() && G.resolveEnding().id);
+
+/* 道胎横死：四锚全固但功德不足，落道胎而非登仙 */
+setup({ xRealm: 5, merit: 0, karma: 0 });
+S.hp = 0; G.render(); G.ACT.do_die('close'); S = G.S;
+ok(G.resolveEnding().id === 'daotai', '道胎横死按「道胎」收束',
+  G.resolveEnding() && G.resolveEnding().id);
+
+/* 神道失锚写的是「枯朽」，不能按横死处理 */
+setup({ cultivation: 'shen', pillar: 5, deathReason: '枯朽：像犹在，不复应汝。' });
+ok(G.resolveEnding().id === 'daohua', '神道「枯朽」归入道化，不再算陨落',
+  G.resolveEnding() && G.resolveEnding().id);
+
+/* 寿元死只可能发生在有寿元的境界，前置高光判定不能把它抢走 */
+setup({ xRealm: 2, age: 60, lifeMax: 60, karma: 0 });
+S.hp = 0;
+/* 寿元死来自 advanceMonth 的 age>=lifeMax 判定，这里直接走同一入口 */
+S.deathReason = '寿元耗尽。你在蒲团上坐着，直到风把道袍吹干。';
+ok(G.resolveEnding().id === 'sit', '低境寿元死仍按「坐化」收束',
+  G.resolveEnding() && G.resolveEnding().id);
+
 /* ============ 3. oldGrudge 计数器已接 ============ */
 console.log('=== 3. 旧怨上门 ===');
 setup({});
@@ -178,6 +221,10 @@ const burnHtml = els['modals'] ? els['modals'].innerHTML : '';
 const reinc = D.ENDINGS.find(function (e) { return e.id === 'reinc'; });
 ok(burnHtml.indexOf(reinc.name) >= 0, '烧页面板出现「' + reinc.name + '」结局名');
 ok(burnHtml.indexOf(reinc.text.slice(0, 8)) >= 0, '烧页面板出现该结局正文');
+/* v10.3 P0：烧页即这一世的收束，结局判定要认这个标记 */
+ok(S.reincShown === true, '烧页打上 reincShown 标记');
+ok(G.resolveEnding() && G.resolveEnding().id === 'reinc',
+  '烧页后结局判为「' + reinc.name + '」', G.resolveEnding() && G.resolveEnding().id);
 
 /* ============ 5. 战斗状态可见 ============ */
 console.log('=== 5. 战斗状态可见 ===');

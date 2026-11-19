@@ -169,13 +169,28 @@ G.ACT.openSell();
 html = els['modals'].innerHTML;
 ok(html.indexOf('交宗门') > 0 && html.indexOf('坊市摆摊') > 0 && html.indexOf('黑市') > 0, '三个渠道都在');
 G.ACT.do_selldan('pillHp');
-ok(S.stones === 50, '坊市价：回春丹 50 石', S.stones);
+ok(S.stones === 30, '坊市价：回春丹 50 石零售 · 回收 30 石', S.stones);
 S.stones = 0; S.bag.pillHp = 1; S.sellCh = 'black'; S.sect.contrib = 0;
 G.ACT.openSell(); G.ACT.do_selldan('pillHp');
-ok(S.stones === 73 && S.karma === 3, '黑市：73 石 + 业力 3', S.stones + '/' + S.karma);
+ok(S.stones === 44 && S.karma === 3, '黑市：44 石 + 业力 3（50×0.6×1.45）', S.stones + '/' + S.karma);
 S.stones = 0; S.bag.pillHp = 1; S.sellCh = 'sect'; S.sect.contrib = 0;
 G.ACT.openSell(); G.ACT.do_selldan('pillHp');
-ok(S.stones === 35 && S.sect.contrib === 7, '交宗门：35 石 + 贡献 7', S.stones + '/' + S.sect.contrib);
+ok(S.stones === 21 && S.sect.contrib === 4, '交宗门：21 石 + 贡献 4（50×0.6×0.7）', S.stones + '/' + S.sect.contrib);
+
+/* v10.3 P0：任何渠道的回收价都必须低于进货价，否则就是无风险正套利。
+   旧版坊市档 1.00、黑市 1.45 都乘在零售价上，回春丹 50 买 73 卖。 */
+['sect', 'market', 'auction', 'black'].forEach(function (ch) {
+  S.stones = 0; S.bag.pillHp = 1; S.sellCh = ch; S.sect = { rank: 1, contrib: 0 };
+  G.ACT.do_selldan('pillHp');
+  ok(S.stones < 50, '渠道 ' + ch + ' 回收 ' + S.stones + ' 石 < 进货 50 石（无套利）', S.stones);
+});
+
+/* 材料同理：回收价不得高于零售价 */
+S.sellCh = 'black'; S.bagMat = { buqiCao: 1 }; S.stones = 0; S.karma = 0;
+G.ACT.do_sellmat('buqiCao');
+ok(S.stones < 60, '黑市收补气草 ' + S.stones + ' 石 < 零售 60 石（无套利）', S.stones);
+ok(S.karma === 3, '黑市卖材料同样背业力 3', S.karma);
+S.bagMat = {};
 S.sellCh = 'market';
 
 console.log('\n结果：' + pass + ' 通过 / ' + fail + ' 失败');

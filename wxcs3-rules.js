@@ -103,15 +103,23 @@
     };
   }
 
+  /* 存档格式版本号归规则层所有。
+     v10.3 P0：此前 VER 只定义在 game.js 的 IIFE 里，而 envelope /
+     checkSaveVersion 在 v9.0 重构时搬到了本文件——两个 IIFE 作用域互不可见，
+     于是每次存槽位都抛 ReferenceError: VER is not defined，
+     被 catch 吞成一句「存档失败」，槽位与元数据从来没写进去过。
+     存档协议是纯规则的一部分，因此常量放在这里，game.js 反过来引用它。 */
+  var SAVE_VER = '10.2';
+
   function envelope(st) {
-    return { format: 'wxcs3-save', version: VER, savedAt: Date.now(), state: st };
+    return { format: 'wxcs3-save', version: SAVE_VER, savedAt: Date.now(), state: st };
   }
 
   function checkSaveVersion(o) {
     if (!o || typeof o !== 'object') return { ok: false, why: '不是对象' };
     const v = String(o.version || o.format || '');
     if (o.format === 'wxcs3-all') return { ok: true, why: '备份包' };
-    if (o.format === 'wxcs3-save' && v !== VER) return { ok: true, why: '存自 v' + v + '（字段已兜底）' };
+    if (o.format === 'wxcs3-save' && v !== SAVE_VER) return { ok: true, why: '存自 v' + v + '（字段已兜底）' };
     if (!o.format && !o.state && o.started === undefined) return { ok: false, why: '无法识别的存档' };
     return { ok: true, why: 'ok' };
   }
@@ -290,6 +298,7 @@
   RULES.stampName = stampName;
   RULES.realmNameOf = realmNameOf;
   RULES.buildMeta = buildMeta;
+  RULES.SAVE_VER = SAVE_VER;
   RULES.envelope = envelope;
   RULES.checkSaveVersion = checkSaveVersion;
   RULES.keMul = keMul;

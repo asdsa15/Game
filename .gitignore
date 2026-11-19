@@ -16,7 +16,9 @@ node_modules/
 # ===== 会话临时文件 =====
 .tmp/
 .dumate/
+.loomy-attachments/
 box-agent*
+.box-agent*
 
 # ===== Python / 系统 =====
 __pycache__/
