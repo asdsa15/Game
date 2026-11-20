@@ -310,6 +310,8 @@ console.log('=== 4. 七个死钩子接线 ===');
 
 /* gongfaMpCap */
 setup({ gongfa: ['juqi'], ownedGongfa: ['juqi', 'tunhai'] });
+/* v10.5：上限改为境界基数制，这条钩子断言放在胎息（基数 100）验比值 */
+S.xRealm = 0; S.xStage = 0;
 S.mpMax = 100; S.mp = 100; S.mpGfMul = 1;
 G.dispatch('do;setgf:tunhai');
 ok(S.mpMax === 115, '吞海功：换功法即在面板上看到 100→115');

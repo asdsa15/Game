@@ -183,6 +183,24 @@
       key: '以己心代天心之后' }
   ];
 
+  /* ====== 气血 / 灵力上限基数（v10.5 P0·C1） ======
+     旧版上限在创角写死 100，破境只改寿元，于是境界、修炼、功法、淬体的成长
+     全部挤在 100 的尺度里。这里给「境界基数」，乘区（淬体/受箓/功法）另算。
+     数值取每境约 ×1.8~2.0，与 power 的 ×2.5~4 解耦：
+     气血不该跟着战力指数爆炸，否则丹药与固定伤害全部失真。 */
+  const CAP_BASE = {
+    xian: {
+      hp: [100, 180, 320, 600, 1200, 2400],   // 胎息→道胎
+      mp: [100, 160, 260, 420, 700, 1200]
+    },
+    shen: {
+      hp: [100, 150, 240, 380, 600, 950, 1500, 2400], // 一柱→八柱
+      mp: [100, 140, 200, 300, 450, 650, 950, 1400]
+    }
+  };
+  /* 每小阶 / 每位 +4%：六境共 32 个小阶，满阶也只多三成，不与大境基数抢戏 */
+  const CAP_STAGE_STEP = 0.04;
+
   /* 仙基品阶 */
   const XIANJI = [
     { name: '黄基', cond: '黄阶功法＋普通灵脉', limit: 1, note: '粗胚，一场大战就能打裂' },
@@ -233,56 +251,56 @@
   /* ====== 功法（扩充 · 全品阶可购） ====== */
   const GONGFA_EXT = [
     /* 黄阶 · 入门 */
-    { id: 'juqi',     name: '聚气诀',     tier: 'huang', el: null,    price: 120,  eff: '入门内功，引气之正' },
-    { id: 'liehuo',   name: '烈火掌',     tier: 'huang', el: 'fire',  price: 160,  eff: '火属小术' },
-    { id: 'yufeng',   name: '御风术',     tier: 'huang', el: 'wind',  price: 140,  eff: '遁速 +5%' },
-    { id: 'lianqi',   name: '敛气诀',     tier: 'huang', el: null,    price: 180,  eff: '敛其气机，人莫能窥' },
-    { id: 'daoahai',  name: '蹈海诀',     tier: 'huang', el: 'water', price: 200,  eff: '水属步法，涉水如夷' },
-    { id: 'guixi',    name: '龟息延年诀', tier: 'huang', el: 'earth', price: 220,  eff: '吐纳绵长，寿元 +10' },
-    { id: 'jinguang', name: '金光咒',     tier: 'huang', el: 'metal', price: 190,  eff: '金光护体，减伤一成' },
+    { id: 'juqi',     name: '聚气诀',     tier: 'huang', el: null,    price: 120,   role: 'dao', eff: '入门内功，引气之正' },
+    { id: 'liehuo',   name: '烈火掌',     tier: 'huang', el: 'fire',  price: 160,   role: 'fa', eff: '火属小术' },
+    { id: 'yufeng',   name: '御风术',     tier: 'huang', el: 'wind',  price: 140,   role: 'dao', eff: '遁速 +5%' },
+    { id: 'lianqi',   name: '敛气诀',     tier: 'huang', el: null,    price: 180,   role: 'dao', eff: '敛其气机，人莫能窥' },
+    { id: 'daoahai',  name: '蹈海诀',     tier: 'huang', el: 'water', price: 200,   role: 'dao', eff: '水属步法，涉水如夷' },
+    { id: 'guixi',    name: '龟息延年诀', tier: 'huang', el: 'earth', price: 220,   role: 'dao', eff: '吐纳绵长，寿元 +10' },
+    { id: 'jinguang', name: '金光咒',     tier: 'huang', el: 'metal', price: 190,   role: 'dao', eff: '金光护体，减伤一成' },
     /* 玄阶 */
-    { id: 'changchun',name: '长春功',     tier: 'xuan',  el: 'wood',  price: 520,  eff: '气血自复，疗伤之资' },
-    { id: 'liuhuo',   name: '流火剑诀',   tier: 'xuan',  el: 'fire',  price: 560,  eff: '火属剑法，中者灼' },
-    { id: 'bingpo',   name: '冰魄诀',     tier: 'xuan',  el: 'ice',   price: 600,  eff: '冰属，缓其行' },
-    { id: 'tunhai',   name: '吞海功',     tier: 'xuan',  el: 'water', price: 640,  eff: '气海 +15%，玄阶之厚者' },
-    { id: 'bihai',    name: '碧海功',     tier: 'xuan',  el: 'water', price: 660,  eff: '水属常法，绵绵不绝' },
-    { id: 'zhenlei',  name: '震雷诀',     tier: 'xuan',  el: 'thunder', price: 680, eff: '雷属起手，破其防' },
-    { id: 'lingbo',   name: '凌波仙经',   tier: 'xuan',  el: 'water', price: 700,  eff: '身法：遁速 +12%' },
-    { id: 'meihua',   name: '梅花易',     tier: 'xuan',  el: null,    price: 720,  eff: '卜筮之术，机缘 +6，窥因果一线' },
-    { id: 'xumai',    name: '续脉决',     tier: 'xuan',  el: 'wood',  price: 700,  eff: '经脉损而自复，疗伤 +30%' },
+    { id: 'changchun',name: '长春功',     tier: 'xuan',  el: 'wood',  price: 520,   role: 'dao', eff: '气血自复，疗伤之资' },
+    { id: 'liuhuo',   name: '流火剑诀',   tier: 'xuan',  el: 'fire',  price: 560,   role: 'fa', eff: '火属剑法，中者灼' },
+    { id: 'bingpo',   name: '冰魄诀',     tier: 'xuan',  el: 'ice',   price: 600,   role: 'fa', eff: '冰属，缓其行' },
+    { id: 'tunhai',   name: '吞海功',     tier: 'xuan',  el: 'water', price: 640,   role: 'dao', eff: '气海 +15%，玄阶之厚者' },
+    { id: 'bihai',    name: '碧海功',     tier: 'xuan',  el: 'water', price: 660,   role: 'dao', eff: '水属常法，绵绵不绝' },
+    { id: 'zhenlei',  name: '震雷诀',     tier: 'xuan',  el: 'thunder', price: 680,  role: 'fa', eff: '雷属起手，破其防' },
+    { id: 'lingbo',   name: '凌波仙经',   tier: 'xuan',  el: 'water', price: 700,   role: 'dao', eff: '身法：遁速 +12%' },
+    { id: 'meihua',   name: '梅花易',     tier: 'xuan',  el: null,    price: 720,   role: 'dao', eff: '卜筮之术，机缘 +6，窥因果一线' },
+    { id: 'xumai',    name: '续脉决',     tier: 'xuan',  el: 'wood',  price: 700,   role: 'dao', eff: '经脉损而自复，疗伤 +30%' },
     /* 地阶 */
-    { id: 'zixiao',   name: '紫霄雷法',   tier: 'di',    el: 'thunder', price: 2400, eff: '雷属大威，须雷灵根' },
-    { id: 'xuanyuan', name: '玄元剑经',   tier: 'di',    el: 'metal', price: 2600, eff: '剑属威力 +40%' },
-    { id: 'tianhe',   name: '天河剑诀',   tier: 'di',    el: 'metal', price: 2800, eff: '剑势若天河倒泻，伤害 +50%' },
-    { id: 'tianli',   name: '天遁剑诀',   tier: 'di',    el: 'metal', price: 2900, eff: '攻遁合一，遁走 +15' },
-    { id: 'jiuhuan',   name: '九寰天书',   tier: 'di',    el: null,    price: 3100, eff: '包罗九寰，诸法可入' },
-    { id: 'jujing',   name: '九变化龙诀', tier: 'di',    el: null,    price: 3200, eff: '九变之身，攻守兼顾（魔门正统）' },
-    { id: 'jixing',  name: '剑君谈玄执金秘章', tier: 'di', el: 'metal', price: 3000, eff: '执金执剑，二者并绝' },
-    { id: 'wuling',   name: '万灵归墟道经', tier: 'di', el: null,    price: 3300, eff: '万灵归墟，借众物之气' },
+    { id: 'zixiao',   name: '紫霄雷法',   tier: 'di',    el: 'thunder', price: 2400,  role: 'fa', eff: '雷属大威，须雷灵根' },
+    { id: 'xuanyuan', name: '玄元剑经',   tier: 'di',    el: 'metal', price: 2600,  role: 'fa', eff: '剑属威力 +40%' },
+    { id: 'tianhe',   name: '天河剑诀',   tier: 'di',    el: 'metal', price: 2800,  role: 'fa', eff: '剑势若天河倒泻，伤害 +50%' },
+    { id: 'tianli',   name: '天遁剑诀',   tier: 'di',    el: 'metal', price: 2900,  role: 'fa', eff: '攻遁合一，遁走 +15' },
+    { id: 'jiuhuan',   name: '九寰天书',   tier: 'di',    el: null,    price: 3100,  role: 'dao', eff: '包罗九寰，诸法可入' },
+    { id: 'jujing',   name: '九变化龙诀', tier: 'di',    el: null,    price: 3200,  role: 'fa', eff: '九变之身，攻守兼顾（魔门正统）' },
+    { id: 'jixing',  name: '剑君谈玄执金秘章', tier: 'di', el: 'metal', price: 3000,  role: 'fa', eff: '执金执剑，二者并绝' },
+    { id: 'wuling',   name: '万灵归墟道经', tier: 'di', el: null,    price: 3300,  role: 'fa', eff: '万灵归墟，借众物之气' },
     /* 天阶 */
-    { id: 'taixu',    name: '太虚剑典',   tier: 'tian',  el: 'metal', price: 12000, eff: '剑属大成，一念千剑' },
-    { id: 'zaohua',   name: '造化丹经',   tier: 'tian',  el: null,    price: 13000, eff: '丹道登峰之途' },
-    { id: 'butian',   name: '补天真经',   tier: 'tian',  el: null,    price: 14000, eff: '补天之缺，寿元上限 +80' },
-    { id: 'xuanrong', name: '乾天一元统摄诸天神法', tier: 'tian', el: null, price: 15000, eff: '统摄诸天，位格压制 +1 档' },
-    { id: 'xianghuo', name: '香火成神法', tier: 'tian',  el: null,    price: 14500, eff: '以香火铸神，神道之正' },
-    { id: 'datie',    name: '天语焜烨龙章', tier: 'tian', el: null,  price: 15500, eff: '龙章凤姿，威压自生' },
+    { id: 'taixu',    name: '太虚剑典',   tier: 'tian',  el: 'metal', price: 12000,  role: 'fa', eff: '剑属大成，一念千剑' },
+    { id: 'zaohua',   name: '造化丹经',   tier: 'tian',  el: null,    price: 13000,  role: 'dao', eff: '丹道登峰之途' },
+    { id: 'butian',   name: '补天真经',   tier: 'tian',  el: null,    price: 14000,  role: 'dao', eff: '补天之缺，寿元上限 +80' },
+    { id: 'xuanrong', name: '乾天一元统摄诸天神法', tier: 'tian', el: null, price: 15000,  role: 'dao', eff: '统摄诸天，位格压制 +1 档' },
+    { id: 'xianghuo', name: '香火成神法', tier: 'tian',  el: null,    price: 14500,  role: 'dao', eff: '以香火铸神，神道之正' },
+    { id: 'datie',    name: '天语焜烨龙章', tier: 'tian', el: null,  price: 15500,  role: 'dao', eff: '龙章凤姿，威压自生' },
     /* 仙阶 */
     /* 玄鉴仙族取材 */
-    { id: 'jianghe',   name: '江河一气诀',     tier: 'di',    el: 'water', price: 0, eff: '一气贯江河，修为绵长' },
-    { id: 'zilei',     name: '紫雷秘元功',     tier: 'di',    el: 'thunder', price: 0, eff: '雷元内蕴，破境抗噬' },
-    { id: 'jindian',   name: '金殿煌元诀',     tier: 'tian',  el: 'metal', price: 0, eff: '金殿煌煌，护体不破' },
-    { id: 'minghua',   name: '明华煌元经',     tier: 'tian',  el: null,   price: 0, eff: '明华照世，威压自生' },
-    { id: 'yingyue',   name: '月阙剑典',       tier: 'di',    el: 'metal', price: 0, eff: '月阙悬空，剑出无影' },
-    { id: 'xuanShui',  name: '玄水剑诀',       tier: 'xuan',  el: 'water', price: 640, eff: '水凝为剑，柔中寓刚' },
-    { id: 'chaoXia',   name: '朝霞采露诀',     tier: 'huang', el: 'wood', price: 210, eff: '采朝露之气，入门之正' },
-    { id: 'yueHu',     name: '月湖映秋诀',     tier: 'xuan',  el: 'water', price: 700, eff: '月湖映秋，心境不扰' },
-    { id: 'taixuDou',  name: '太虚斗转诀',     tier: 'di',    el: null,   price: 0, eff: '斗转星移，易位而避' },
-    { id: 'taiyinTuna',name: '太阴吐纳养轮经', tier: 'tian',  el: null,   price: 0, eff: '养轮之法，寿元上限 +60' },
-    { id: 'baishou',   name: '白首叩庭经',     tier: 'di',    el: null,   price: 0, eff: '白首叩庭，道心不堕' },
-    { id: 'xuanguang', name: '玄光赶山经',     tier: 'di',    el: 'earth', price: 0, eff: '玄光赶山，御土如驱' },
-    { id: 'hongmeng', name: '鸿蒙紫气诀', tier: 'xian',  el: null,    price: 68000, eff: '万法归宗，须天道机缘' },
-    { id: 'taiyin',   name: '太阴蜕形尸解真法', tier: 'xian', el: null, price: 72000, eff: '形蜕神存，死生不复为形所囿' },
-    { id: 'bailian',  name: '百炼成仙道法', tier: 'xian', el: null, price: 75000, eff: '百炼凡骨，终成仙体' }
+    { id: 'jianghe',   name: '江河一气诀',     tier: 'di',    el: 'water', price: 0,  role: 'dao', eff: '一气贯江河，修为绵长' },
+    { id: 'zilei',     name: '紫雷秘元功',     tier: 'di',    el: 'thunder', price: 0,  role: 'dao', eff: '雷元内蕴，破境抗噬' },
+    { id: 'jindian',   name: '金殿煌元诀',     tier: 'tian',  el: 'metal', price: 0,  role: 'dao', eff: '金殿煌煌，护体不破' },
+    { id: 'minghua',   name: '明华煌元经',     tier: 'tian',  el: null,   price: 0,  role: 'dao', eff: '明华照世，威压自生' },
+    { id: 'yingyue',   name: '月阙剑典',       tier: 'di',    el: 'metal', price: 0,  role: 'fa', eff: '月阙悬空，剑出无影' },
+    { id: 'xuanShui',  name: '玄水剑诀',       tier: 'xuan',  el: 'water', price: 640,  role: 'fa', eff: '水凝为剑，柔中寓刚' },
+    { id: 'chaoXia',   name: '朝霞采露诀',     tier: 'huang', el: 'wood', price: 210,  role: 'dao', eff: '采朝露之气，入门之正' },
+    { id: 'yueHu',     name: '月湖映秋诀',     tier: 'xuan',  el: 'water', price: 700,  role: 'dao', eff: '月湖映秋，心境不扰' },
+    { id: 'taixuDou',  name: '太虚斗转诀',     tier: 'di',    el: null,   price: 0,  role: 'fa', eff: '斗转星移，易位而避' },
+    { id: 'taiyinTuna',name: '太阴吐纳养轮经', tier: 'tian',  el: null,   price: 0,  role: 'dao', eff: '养轮之法，寿元上限 +60' },
+    { id: 'baishou',   name: '白首叩庭经',     tier: 'di',    el: null,   price: 0,  role: 'dao', eff: '白首叩庭，道心不堕' },
+    { id: 'xuanguang', name: '玄光赶山经',     tier: 'di',    el: 'earth', price: 0,  role: 'fa', eff: '玄光赶山，御土如驱' },
+    { id: 'hongmeng', name: '鸿蒙紫气诀', tier: 'xian',  el: null,    price: 68000,  role: 'dao', eff: '万法归宗，须天道机缘' },
+    { id: 'taiyin',   name: '太阴蜕形尸解真法', tier: 'xian', el: null, price: 72000,  role: 'dao', eff: '形蜕神存，死生不复为形所囿' },
+    { id: 'bailian',  name: '百炼成仙道法', tier: 'xian', el: null, price: 75000,  role: 'dao', eff: '百炼凡骨，终成仙体' }
   ];
 
   /* ====== 丹药（扩充） ====== */
@@ -834,7 +852,11 @@
     xian:  { name: '仙阶', mul: 3.0, color: '#C05F55' }
   };
 
-  const GONGFA = GONGFA_EXT.map(function (x) { return { id: x.id, name: x.name, tier: x.tier, el: x.el, eff: x.eff }; });
+  /* v10.5 P0·A1：role 是「修炼功法 dao / 杀伐术法 fa」的数据边界。
+     下游不再靠 id/eff 特判——道基只认 dao，术法池只认 fa。 */
+  const GONGFA = GONGFA_EXT.map(function (x) {
+    return { id: x.id, name: x.name, tier: x.tier, el: x.el, role: x.role || 'dao', eff: x.eff };
+  });
 
   /* ====== 体质 ====== */
   /* v8.1 P0 M2：体质从「创角选一次的文本」变成真读数。
@@ -992,6 +1014,14 @@
     { idx: 7, name: '八柱', title: '真君', need: 25000000,  power: 8000, life: null, miao: '敕封', coeff: 3.0 }
   ];
   const POSITIONS = ['初位', '中位', '上位', '正位'];
+
+  /* ====== 神通授予节奏（v10.5 P0·N1） ======
+     当前 fromRealm=3 保持「紫府起可求」；后续改 2 即「筑基起赋予」，
+     不需要改流程。shenTongLimit 仍管额度，这里只管入口何时开。 */
+  const SHENTONG_GRANT = {
+    xian: { fromRealm: 3, perBreak: 1, perStage: 1, pool: 'daotong' },
+    shen: { fromPillar: 0, perBreak: 1, perStage: 1, pool: 'daotong' }
+  };
 
   const PIETY = [{ v: 0.5, name: '半信半疑' }, { v: 1.0, name: '常来上香' }, { v: 1.5, name: '日日供奉' }, { v: 2.0, name: '生死相托' }];
   const MIAO_COEFF = { '野祀': 0.6, '私祀': 0.8, '乡祀': 1.0, '郡祀': 1.3, '州祀': 1.6, '国祀': 2.0, '天下祀': 2.5, '敕封': 3.0 };
@@ -3346,13 +3376,13 @@
     LINGQI, ROOTS, ELEMENTS, MUT_ELEMENTS,
     GONGFA_TIERS, GONGFA, BODIES, TALENTS, ORIGINS,
     FAXIANG, ZODIAC_CLASH,
-    PILLARS, POSITIONS, PIETY, MIAO_COEFF, QIHE, FOLLOW_LIMIT, BREAK_BASE, QUENCH, FIXED_COST, TRIBULATION, TRIB_WEIGHT,
+    PILLARS, POSITIONS, PIETY, CAP_BASE, CAP_STAGE_STEP, SHENTONG_GRANT, MIAO_COEFF, QIHE, FOLLOW_LIMIT, BREAK_BASE, QUENCH, FIXED_COST, TRIBULATION, TRIB_WEIGHT,
     BEAST_STOCK, BEAST_BARN, BEAST_BOND, BEAST_CARE,
     DISCIPLE_LIMIT, DISCIPLE_TEACH, DISCIPLE_STAGE,
     STAT_TIER, INSIGHT_LINES,
     TIANJIANG, DIZHA, GUOWEI, GUOWEI_RANK,
     ANCHOR_TYPES, ANCHOR_STATES, ANCHOR_STATUS, RITUALS,
-    LU, DAOTONG, SANXUAN, SHENTONG, DAOTONG_TEMPER,
+    LU, DAOTONG, SANXUAN, SHENTONG, SHENTONG_GRANT, DAOTONG_TEMPER,
     SHIXIU, RENCAI, REGIONS, PATHS, GOALS, NPC_POOL, FAVOR_TIERS,
     UNLOCK_XIAN, UNLOCK_SHEN,
     SHOP, SHOP_GONGFA, SHOP_CATS, GATE, SHENWEI, EVENTS, ENDINGS, SCRIPTS,

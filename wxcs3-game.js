@@ -92,6 +92,10 @@
       stats: { qualify: 8, insight: 8, sense: 8, speed: 8, heart: 8, fate: 8 },
 
       hp: 100, hpMax: 100, mp: 100, mpMax: 100,
+      /* v10.5 P0·C1：上限字段。hpMax/mpMax 是缓存，真值 = 基数 + 平加 × 乘区 */
+      hpFlatBonus: 0, mpFlatBonus: 0,
+      hpLuMul: 1, mpLuMul: 1, hpPermMul: 1, mpPermMul: 1,
+      capVer: 1, mpGfMul: 1, hpGfMul: 1, lifeGfBonus: 0,
 
       // 仙道
       xRealm: 0, xStage: 0,        // 六境 + 小阶
@@ -140,6 +144,7 @@
       daogong: 'juqi',             // 道基功法（决定修炼速度与境界上限）
       skillsKnown: [],             // 已习杀伐神通（招式 id）
       skillsEquip: ['zhiquan'],    // 装配进斗法的，默认只带一击
+      ownedArts: [],               // v10.5：术法（role=fa 的功法），id 前缀 fa:
 
       // —— v6.3 宗门与家族 ——
       sect: null,                  // {rank, contrib, hall, peak, joinedTurn}
@@ -955,15 +960,57 @@
     const v = (X && X.gongfaMpCap) ? X.gongfaMpCap() : 0;
     return 1 + clamp(numOr(v, 0), 0, 0.5);
   }
-  function syncMpCap() {
-    const m = gongfaMpCapMul();
-    const old = S.mpGfMul || 1;
-    if (Math.abs(m - old) < 1e-9) return false;
-    S.mpMax = Math.max(10, Math.round(S.mpMax / old * m));
-    S.mpGfMul = m;
-    if (S.mp > S.mpMax) S.mp = S.mpMax;
-    return true;
+  /* ============================================================
+     v10.5 P0·C1：气血 / 灵力上限的唯一重算出口
+     ------------------------------------------------------------
+     旧版上限在创角写死 100，破境只改寿元 —— 境界、修炼、功法、淬体
+     的成长全部挤在 100 的尺度里。现在口径是：
+       上限 = (境界基数 + 永久平加) × 淬体 × 受箓 × 永久 × 功法
+     所有加成只写字段，禁止直接乘缓存值；需要变上限时一律调 recalcCaps。
+     ============================================================ */
+  function capLine() {
+    if (isShen() && !hasXianLine()) return 'shen';
+    return 'xian';
   }
+  function capBase(kind) {
+    const line = capLine();
+    const arr = (D.CAP_BASE[line] || D.CAP_BASE.xian)[kind];
+    const idx = line === 'shen' ? (S.pillar || 0) : (S.xRealm || 0);
+    /* 神道用四位折算小阶：初/中/上/正位各 +1%，合计约 +3% */
+    const sub = line === 'shen' ? ((S.pos || 0) / 4) : (S.xStage || 0);
+    return Math.round(arr[clamp(idx, 0, arr.length - 1)] * (1 + D.CAP_STAGE_STEP * sub));
+  }
+  function gongfaHpCapAdd() {
+    const X = G.WXCS3_EXT;
+    return (X && X.gongfaHpCap) ? clamp(numOr(X.gongfaHpCap(), 0), 0, 0.5) : 0;
+  }
+  function hpMulAll() {
+    return Math.max(0.1, quenchHpMul() * (S.hpLuMul || 1) * (S.hpPermMul || 1) * (1 + gongfaHpCapAdd()));
+  }
+  function mpMulAll() {
+    return Math.max(0.1, gongfaMpCapMul() * (S.mpLuMul || 1) * (S.mpPermMul || 1));
+  }
+  /* keepRatio=true：按旧上限等比缩放当前气血/灵力，伤势不漂移；
+     false：只把当前值截到新上限（创角用）。 */
+  function recalcCaps(keepRatio) {
+    const oldHp = Math.max(1, S.hpMax || 100);
+    const oldMp = Math.max(1, S.mpMax || 100);
+    S.hpMax = Math.max(1, Math.round((capBase('hp') + (S.hpFlatBonus || 0)) * hpMulAll()));
+    S.mpMax = Math.max(10, Math.round((capBase('mp') + (S.mpFlatBonus || 0)) * mpMulAll()));
+    /* 兼容字段：只供面板/扩展读取，不再参与换算 */
+    S.mpGfMul = gongfaMpCapMul();
+    S.hpGfMul = hpMulAll() / Math.max(1e-9, quenchHpMul() * (S.hpLuMul || 1) * (S.hpPermMul || 1));
+    if (keepRatio) {
+      S.hp = clamp(Math.round((S.hp || 0) * S.hpMax / oldHp), 0, S.hpMax);
+      S.mp = clamp(Math.round((S.mp || 0) * S.mpMax / oldMp), 0, S.mpMax);
+    } else {
+      S.hp = Math.min(S.hp || 0, S.hpMax);
+      S.mp = Math.min(S.mp || 0, S.mpMax);
+    }
+  }
+  /* v10.4 的老入口保留为薄包装：功法乘区变了要立刻重算，不再靠「差额换算」，
+     避免反复换功法/受箓后取整误差累积。 */
+  function syncMpCap() { recalcCaps(true); return true; }
   /* 遁速：御风/凌波/天遁的「遁走 +X%」由扩展给，这里只做口径统一 */
   function gongfaEscapeAdd() {
     const X = G.WXCS3_EXT;
@@ -1002,18 +1049,33 @@
     const X = G.WXCS3_EXT;
     return !!(X && X.gongfaLifeStop && X.gongfaLifeStop());
   }
-  /* 道基功法：与 getGongfa 同源，另立名字是为了让「功法分家」这件事在代码里看得见 */
+  /* v10.5 P0·A1/A2：功法的数据边界。
+     dao = 修炼功法（可作道基、决定境界上限）；fa = 杀伐术法（进术法池、可装配）。
+     旧版 GONGFA_EXT 把两者混在一张表里，do_setgf 于是能把《烈火掌》设成道基。 */
+  function gongfaById(id) { return D.GONGFA.find(function (g) { return g.id === id; }); }
+  function isFaGongfa(id) { const g = gongfaById(id); return !!(g && g.role === 'fa'); }
+  function daoGongfaList() { return D.GONGFA.filter(function (g) { return g.role !== 'fa'; }); }
+  function faGongfaList() { return D.GONGFA.filter(function (g) { return g.role === 'fa'; }); }
+
+  /* 道基功法：fa 永不返回；旧档若指向 fa，回退到第一本 dao 功法 */
   function getDaogong() {
-    return D.GONGFA.find(function (g) { return g.id === S.daogong; }) || getGongfa();
+    const g = gongfaById(S.daogong);
+    if (g && g.role !== 'fa') return g;
+    const fb = gongfaById((S.gongfa || [])[0]);
+    if (fb && fb.role !== 'fa') return fb;
+    return gongfaById('juqi') || D.GONGFA[0];
   }
   /* 唯一的「获得功法」入口。之前坊市/传法/奇遇三处各写一次裸 push，
      旧档缺字段时必崩；收成一个函数，兜底只需要写一遍。 */
   function addGongfa(id) {
-    if (!D.GONGFA.find(function (g) { return g.id === id; })) return false;
+    const _g0 = gongfaById(id);
+    if (!_g0) return false;
+    /* 术法不进道基池——它走 learnArt('fa:'+id) */
+    if (_g0.role === 'fa') return false;
     if (!Array.isArray(S.ownedGongfa)) S.ownedGongfa = ['juqi'];
     if (S.ownedGongfa.indexOf(id) >= 0) return false;
     S.ownedGongfa.push(id);
-    const g = D.GONGFA.find(function (x) { return x.id === id; });
+    const g = _g0;
     queueGain('功法《' + (g ? g.name : id) + '》', 0,
       (g && g.tier ? (D.GONGFA_TIERS[g.tier] || {}).name + ' · ' : '') + '要参悟才换主修', true);
     return true;
@@ -1907,12 +1969,17 @@
           logLine('宗门月课：贡献 −' + due + '。', '');
           continue;
         }
-        const cash = due * D.FIXED_COST.sectCashPerContrib;
+        /* v10.5 P0·E2：只按「贡献缺口」折灵石。
+           旧版先把贡献扣光、又按全额收钱——contrib=90/due=120 时
+           等于缺口 30，却付了 120 贡献的钱。 */
+        const have = Math.max(0, S.sect.contrib || 0);
+        const gap = Math.max(0, due - have);
+        const cash = gap * D.FIXED_COST.sectCashPerContrib;
         if (S.stones >= cash) {
+          S.sect.contrib = Math.max(0, have - due);
           S.stones -= cash;
           ledgerAdd('out', '宗门月课（灵石抵缴）', cash);
-          S.sect.contrib = Math.max(0, (S.sect.contrib || 0) - due);
-          logLine('贡献不够，月课折了 ' + cash + ' 灵石。', '');
+          logLine('贡献 ' + have + '，缺口 ' + gap + ' 折 ' + cash + ' 灵石。', '');
           continue;
         }
         S.sectArrears = (S.sectArrears || 0) + 1;
@@ -3156,6 +3223,7 @@
       if (S.xStage < r.stages.length - 1) {
         S.xStage++;
         S.xiuwei = 0;
+        recalcCaps(true);   // v10.5：每小阶 +4% 的基数增长在这里落地
         logLine('破境：晋 ' + realmName() + '。', 'good');
         const sv = reciteVerse('breakStage');
         if (sv) logLine('· ' + sv, '');
@@ -3170,6 +3238,7 @@
         /* v10.4 P0：破境会把 lifeMax 重设成境界基准值，
            补天/龟息/太阴吐纳的加成必须重新落一次，否则一破境就丢。 */
         S.lifeGfBonus = 0; syncLifeBonus();
+        recalcCaps(true);     // v10.5：境界基数换档，先重算再回满
         healOnMajorBreak();   // 只有破大境界才回满
         /* v8.1：补 idx === 1（练气）——旧版从 0 直接跳到 3，
            「胎息」「练气」两档的境界词因此永不可达。 */
@@ -3362,6 +3431,7 @@
     S.guowei = g;
     S.xRealm = 4; S.xStage = 0; S.xiuwei = 0;
     S.lifeMax = 1200;
+    recalcCaps(true);
     S.jinxing = true;
     bumpUnlock('xian', 5);
     /* 功过格「孤证」：既无道侣，也无一个交情过 40 的人——
@@ -3390,6 +3460,7 @@
 
   ACT.do_daotai = () => {
     S.xRealm = 5; S.xStage = 0;
+    recalcCaps(true);
     S.lifeMax = 0; S.lifeStop = true;
     S.anchors = { wu: 1, ren: 1, shi: 1, yi: 1 };
     bumpUnlock('xian', 6);
@@ -3419,6 +3490,7 @@
     closeModal();
     if (rng() < posRate()) {
       S.pos++;
+      recalcCaps(true);
       S.xianghuo = Math.round(S.xianghuo * 0.6);   // 升位只折损六成，不清零
       S.renGong = (S.renGong || 0) + 120;
       logLine(`升位成功：晋 ${realmName()}。`, 'good');
@@ -3483,6 +3555,7 @@
       S.lastBreakMode = mode;
       S.miao = D.PILLARS[S.pillar].miao;
       S.lifeMax = D.PILLARS[S.pillar].life || 0;
+      recalcCaps(true);
       if (!S.miaoHao) S.miaoHao = pick(['清微', '玄裳', '沧溟', '白岩']) + pick(['显应侯', '灵应公', '土地正神', '真君']);
       if (mode === 'seize') {
         bump('seizeWin');
@@ -3826,6 +3899,7 @@
     b += '<div class="small muted">换道基功法会重算境界上限。修至上限之上则被卡住——此非舛误，乃其制如此。</div>';
     b += '<div class="selgrid" style="margin-top:6px">';
     for (const x of D.GONGFA) {
+      if (x.role === 'fa') continue;          // 术法不进道基候选
       if (!S.ownedGongfa || !S.ownedGongfa.includes(x.id)) continue;
       const on = getDaogong().id === x.id;
       const c2 = D.DAOGONG_CAP[x.tier] || D.DAOGONG_CAP.huang;
@@ -3839,15 +3913,16 @@
     }
     b += '</div>';
     b += divider();
-    b += '<div style="margin-top:4px"><button class="btn ghost" data-act="act:openSkillBook">杀伐神通 · 装配（' +
+    b += '<div style="margin-top:4px"><button class="btn ghost" data-act="act:openSkillBook">术法 · 装配（' +
       equippedSkills().length + '/' + equipLimit() + '）</button></div>';
     openModal('道基功法', b);
   };
 
   ACT.do_setgf = (id) => {
-    if (!S.ownedGongfa || !S.ownedGongfa.includes(id)) { toast('未拥有此功法'); return; }
-    const g = D.GONGFA.find(function (x) { return x.id === id; });
+    const g = gongfaById(id);
     if (!g) return;
+    if (g.role === 'fa') { toast('这是术法，不能作道基'); return; }
+    if (!S.ownedGongfa || !S.ownedGongfa.includes(id)) { toast('未拥有此功法'); return; }
     const oldCap = (D.DAOGONG_CAP[getDaogong().tier] || D.DAOGONG_CAP.huang).cap;
     const newCap = (D.DAOGONG_CAP[g.tier] || D.DAOGONG_CAP.huang).cap;
     if (S.gongfa[0] !== id) bump('gfChanged');   // 「一炁」要求从未换过功法
@@ -3968,12 +4043,9 @@
     S.stones -= q.stones;
     S.bagMat[q.herbId] = (S.bagMat[q.herbId] || 0) - q.herbN;
     ledgerAdd('out', '淬体 · ' + q.def.name, q.stones);
-    const before = quenchHpMul();
     S.quench = q.lv;
-    const mul = q.def.hpMul / before;
-    S.hpMax = Math.round(S.hpMax * mul);
-    S.hp = Math.min(S.hpMax, Math.round(S.hp * mul));
     S.quenchApplied = q.lv;
+    recalcCaps(true);   // v10.5：乘区交给 recalcCaps，不再直接乘缓存
     logLine('淬体：' + q.def.name + '。气血上限 ' + fmtNum(S.hpMax) + '，卸力 ' + Math.round(quenchBlock() * 100) + '%。', 'good');
     toast('淬体 · ' + q.def.name);
     closeModal(); advanceXun(1); if (S.phase !== 'play') return render(); render();
@@ -4012,8 +4084,7 @@
     const up = Math.max(parseInt(S.lingqiUp, 10) || 0, placeBaseLingqi(S.place));
     const cost = (up + 1) * 800;
     if (up >= D.LINGQI.length - 1) { toast('灵气已至洞天'); return; }
-    if (S.stones < cost) { toast('灵石不足'); return; }
-    S.stones -= cost;
+    if (!spendStones(cost, '灵脉升档')) { toast('灵石不足'); return; }
     S.lingqiUp = up + 1;
     syncLingqi();
     logLine(`灵脉升至${D.LINGQI[S.lingqi].name}。`, 'good');
@@ -4262,9 +4333,12 @@
       });
       if (!list.length) return '<div class="hint">没有匹配的功法。</div>';
       list.forEach(function (g) {
-        const owned = (S.ownedGongfa || []).includes(g.id);
+        /* v10.5 P0·A2：术法（role=fa）不卖作道基，买回去进术法池 */
+        const isFa = g.role === 'fa';
+        const owned = isFa ? hasArt('fa:' + g.id) : (S.ownedGongfa || []).includes(g.id);
+        const tagName = isFa ? '术法' : D.GONGFA_TIERS[g.tier].name;
         b += iconRow('GONGFA_EXT', g.id, '·', g.name + '（' + D.GONGFA_TIERS[g.tier].name + '）',
-          { name: D.GONGFA_TIERS[g.tier].name, cls: 'peace' },
+          { name: tagName, cls: 'peace' },
           owned ? '已习得' : fmtNum(g.price) + ' 石', owned || S.stones < g.price, 'do;buyg:' + g.id);
       });
     } else {
@@ -4282,12 +4356,44 @@
       list.forEach(function (it) {
         let note = fmtNum(it.price) + ' 石';
         if (it.tier) note = D.GONGFA_TIERS[it.tier].name + ' · ' + note;
+        let owned = false;
+        let tag = it.cat === 'art' ? '法器' : it.cat === 'mat' ? '材料' : '丹药';
+        if (it.type === 'land') {
+          tag = '灵脉契';
+          owned = (parseInt(S.lingqiUp, 10) || 0) >= D.LINGQI.length - 1;
+          if (owned) note = '已至洞天';
+        } else if (it.cat === 'art') {
+          /* v10.5 P0·E6：购买入口唯一；制作/掉落仍可多件，不限制已有库存 */
+          owned = (S.arts || []).indexOf(it.id) >= 0;
+          if (owned) note = '已拥有';
+        }
         b += iconRow(shopIconTable(it.cat), it.id, '·', it.name + '　' + (it.desc || it.eff || ''),
-          { name: it.cat === 'art' ? '法器' : it.cat === 'mat' ? '材料' : '丹药', cls: 'peace' },
-          note, S.stones < it.price, 'do;buy:' + it.id);
+          { name: tag, cls: 'peace' },
+          note, owned || S.stones < it.price, 'do;buy:' + it.id);
       });
     }
     return b;
+  }
+  /* v10.5 P0·E1：所有灵石支出只走这一处——余额校验、扣款、记账、空囊成就。
+     此前坊市买入从不写账本，月账净入虚高；各购买分支各写一遍也迟早会漏。 */
+  function spendStones(n, label) {
+    n = Math.round(n || 0);
+    if (!(n > 0)) return true;
+    if ((S.stones || 0) < n) return false;
+    S.stones -= n;
+    if (S.stones === 0) bump('buyAtZero');
+    ledgerAdd('out', label, n);
+    return true;
+  }
+  /* v10.5 P0·E5：买完只换列表与余额，不重建弹窗——
+     搜索框焦点、滚动位置、已输的检索词都留住。失败也不关窗。 */
+  function refreshShop(cat) {
+    const ul = document.getElementById('shop-list');
+    if (ul) ul.innerHTML = shopListInner(cat || _shopLastCat || 'pill');
+    const stone = document.getElementById('shop-stone');
+    if (stone) stone.textContent = fmtNum(S.stones);
+    const title = document.getElementById('modal-title');
+    if (title) title.textContent = '坊市 · 灵石 ' + fmtNum(S.stones);
   }
   ACT.openShop = (cat) => {
     // 两套系统各走各的门：神道进的是庙市，仙道才进坊市
@@ -4296,7 +4402,7 @@
     if (cat === 'sell') { ACT.openSell(); return; }
     _shopLastCat = cat;
     const tabs = [['pill', '丹药'], ['gongfa', '功法'], ['art', '法器'], ['mat', '材料'], ['sell', '卖出']];
-    let b = '<div class="row"><span class="lab">灵石</span><b style="color:var(--stone)">' + fmtNum(S.stones) + '</b></div>';
+    let b = '<div class="row"><span class="lab">灵石</span><b id="shop-stone" style="color:var(--stone)">' + fmtNum(S.stones) + '</b></div>';
     b += '<div class="shop-tabs">';
     for (const t of tabs) {
       b += '<span class="shop-tab ' + (cat === t[0] ? 'on' : '') + '" data-act="do;shopcat:' + t[0] + '">' + t[1] + '</span>';
@@ -4336,13 +4442,26 @@
   ACT.do_buyg = (id) => {
     const g = D.SHOP_GONGFA.find(function (x) { return x.id === id; });
     if (!g) return;
-    if ((S.ownedGongfa || []).includes(g.id)) { toast('已习得'); closeModal(); return; }
-    if (S.stones < g.price) { toast('灵石不足'); closeModal(); return; }
-    S.stones -= g.price;
+    const isFa = g.role === 'fa';
+    const artId = 'fa:' + g.id;
+    const owned = isFa ? hasArt(artId) : (S.ownedGongfa || []).includes(g.id);
+    if (owned) { toast(isFa ? '已习得此术法' : '已习得'); return; }
+    if (!spendStones(g.price, (isFa ? '术法 ' : '功法 ') + g.name)) {
+      toast('灵石不足：需 ' + fmtNum(g.price) + '，余 ' + fmtNum(S.stones));
+      return;
+    }
+    if (isFa) {
+      learnArt(artId);
+      logLine('购得术法「' + g.name + '」（' + D.GONGFA_TIERS[g.tier].name + '）。', 'good');
+      toast('习得术法 ' + g.name + ' · 余 ' + fmtNum(S.stones) + ' 石');
+      refreshShop('gongfa'); render();
+      flushGain('得一门术法', '术法要装配进斗法才用得上——去「术法 · 装配」选一格。', true);
+      return;
+    }
     addGongfa(g.id);
     logLine('购得功法「' + g.name + '」（' + D.GONGFA_TIERS[g.tier].name + '）。', 'good');
-    toast('习得 ' + g.name);
-    closeModal(); render();
+    toast('习得 ' + g.name + ' · 余 ' + fmtNum(S.stones) + ' 石');
+    refreshShop('gongfa'); render();
     flushGain('得一部功法', '买了不等于在用——去「功法」面板参悟，才会换成主修。', true);
   };
 
@@ -4365,30 +4484,40 @@
     openModal('法宝', b);
   };
 
-    ACT.do_buy = (id) => {
+  ACT.do_buy = (id) => {
     // 灵脉契是「地产」不是法宝：旧代码先判 cat==='art' 就把 fudi 塞进 S.arts，
     // 结果花 2400 石买了个看不见也用不上的东西。
     const land = (D.SHOP || []).find(function (x) { return x.id === id; });
     if (land && land.type === 'land') {
-      if (S.lingqiUp >= D.LINGQI.length - 1) { toast('灵气已至洞天，再无可升'); closeModal(); return; }
-      if (S.stones < land.price) { toast('灵石不足'); closeModal(); return; }
-      S.stones -= land.price;
+      if ((parseInt(S.lingqiUp, 10) || 0) >= D.LINGQI.length - 1) { toast('灵气已至洞天，再无可升'); return; }
+      if (!spendStones(land.price, '灵脉契')) {
+        toast('灵石不足：需 ' + fmtNum(land.price) + '，余 ' + fmtNum(S.stones));
+        return;
+      }
       S.lingqiUp = (parseInt(S.lingqiUp, 10) || 0) + 1;
       syncLingqi();
       logLine('立灵脉契，洞府灵气升一档：' + D.LINGQI[S.lingqi].name + '。', 'good');
-      closeModal(); render(); return;
+      toast('灵脉契 · ' + D.LINGQI[S.lingqi].name + ' · 余 ' + fmtNum(S.stones) + ' 石');
+      refreshShop('art'); render();
+      return;
     }
     const it = D.SHOP.find(function (x) { return x.id === id; });
     if (!it) return;
-    if (it.type === 'xiang' && !usesShenLine()) { toast('此物唯神道受用'); closeModal(); return; }
-    if (S.stones < it.price) { toast('灵石不足'); closeModal(); return; }
-    S.stones -= it.price;
-    /* 功过格「空囊」：正好把最后一块灵石花出去 */
-    if (S.stones === 0) bump('buyAtZero');
+    if (it.type === 'xiang' && !usesShenLine()) { toast('此物唯神道受用'); return; }
     if (it.cat === 'art') {
-      S.arts = (S.arts || []).concat([it.id]);
+      /* v10.5 P0·E6：购买唯一。已经有一件就别再花一次灵石买同一件。
+         制作/掉落仍可多件，只卡「买」这个入口。 */
+      S.arts = S.arts || [];
+      if (S.arts.indexOf(it.id) >= 0) { toast('已拥有此法宝'); return; }
+    }
+    if (!spendStones(it.price, '购 ' + it.name)) {
+      toast('灵石不足：需 ' + fmtNum(it.price) + '，余 ' + fmtNum(S.stones));
+      return;
+    }
+    if (it.cat === 'art') {
+      S.arts.push(it.id);
       logLine('购得「' + it.name + '」，可佩戴。', 'good');
-      toast('购得 ' + it.name);
+      toast('购得 ' + it.name + ' · 余 ' + fmtNum(S.stones) + ' 石');
       S.gainQueue = S.gainQueue || [];
       queueGain(it.name, 0, (it.eff || '法宝') + ' · 待佩戴', true);
     } else if (it.cat === 'mat') {
@@ -4396,15 +4525,14 @@
          结果「在坊市花钱买的材料，炼丹永远显示没有」——四艺整条链断在这里。 */
       addMat(it.id, 1);
       logLine('购得材料「' + it.name + '」。', 'good');
-      toast('购得 ' + it.name);
-    } else if (it.type === 'land') {
-      if (S.lingqi >= D.LINGQI.length - 1) { toast('灵气已至顶'); S.stones += it.price; closeModal(); return; }
-      S.lingqi++; logLine('灵脉契生效，灵气升至 ' + D.LINGQI[S.lingqi].name + '。', 'good');
+      toast('购得 ' + it.name + ' · 余 ' + fmtNum(S.stones) + ' 石');
     } else {
       S.bag[it.id] = (S.bag[it.id] || 0) + 1;
       logLine('购得「' + it.name + '」。', 'good');
+      toast('购得 ' + it.name + ' · 余 ' + fmtNum(S.stones) + ' 石');
     }
-    closeModal(); render();
+    /* 买完不关窗：只换列表与余额，能接着买下一件 */
+    refreshShop(_shopLastCat || 'pill'); render();
     // 只在这一种料是「第一次见到」时弹窗说明，连买十份不会弹十次
     if (it.cat === 'mat') flushGain('新材料', '这种料以前没用过——看看它能做什么。', false);
     else if (it.cat === 'art') flushGain('得一件法宝', '法宝不佩戴就不生效。去「法宝」选位置：攻击位加伤、护体位减伤、遁走位加遁速。', true);
@@ -5906,6 +6034,25 @@
         return true;
       }).map(function (k) { return k.id; });
     }
+    /* v10.5 P0·A1：ownedGongfa 里的术法迁到 ownedArts，道基/主修回退到 dao。
+       旧档若把《烈火掌》设成道基，读档后回到第一本 dao 功法，术法本身不丢。 */
+    if (!Array.isArray(out.ownedArts)) out.ownedArts = [];
+    {
+      const _dao = [], _fa2 = [];
+      (out.ownedGongfa || []).forEach(function (id) {
+        const g = gongfaById(id);
+        if (g && g.role === 'fa') _fa2.push('fa:' + id);
+        else _dao.push(id);
+      });
+      if (_fa2.length) {
+        out.ownedGongfa = _dao.length ? _dao : ['juqi'];
+        _fa2.forEach(function (id) { if (out.ownedArts.indexOf(id) < 0) out.ownedArts.push(id); });
+      }
+      const _dg = gongfaById(out.daogong);
+      if (!_dg || _dg.role === 'fa') out.daogong = out.ownedGongfa[0] || 'juqi';
+      const _mg = gongfaById((out.gongfa || [])[0]);
+      if (!_mg || _mg.role === 'fa') out.gongfa = [out.daogong];
+    }
     if (!Array.isArray(out.chronicle)) out.chronicle = [];
     if (!Array.isArray(out.books)) out.books = [];
     if (!out.bookRead || typeof out.bookRead !== 'object') out.bookRead = {};
@@ -5989,8 +6136,27 @@
        旧档没有 mpGfMul/lifeGfBonus 字段，先补基准再同步。 */
     if (typeof S.mpGfMul !== 'number') S.mpGfMul = 1;
     if (typeof S.lifeGfBonus !== 'number') S.lifeGfBonus = 0;
-    syncMpCap();
+    if (typeof S.hpFlatBonus !== 'number') S.hpFlatBonus = 0;
+    if (typeof S.mpFlatBonus !== 'number') S.mpFlatBonus = 0;
+    if (typeof S.hpLuMul !== 'number') S.hpLuMul = 1;
+    if (typeof S.mpLuMul !== 'number') S.mpLuMul = 1;
+    if (typeof S.hpPermMul !== 'number') S.hpPermMul = 1;
+    if (typeof S.mpPermMul !== 'number') S.mpPermMul = 1;
+    /* v10.5 P0·S1：上限体系迁移。旧档的上限里已经含淬体/受箓，直接按新基数
+       重算会把玩家的成长砍掉。做法是先除掉淬体乘区、反推一个「永久平加」，
+       只增不减；capVer 防止重复迁移。 */
+    if (!S.capVer) {
+      const _baseHp = capBase('hp');
+      const _baseMp = capBase('mp');
+      const _qMul = Math.max(1, quenchHpMul());
+      S.hpFlatBonus = Math.max(S.hpFlatBonus || 0,
+        Math.max(0, Math.round((S.hpMax || 100) / _qMul - _baseHp)));
+      S.mpFlatBonus = Math.max(S.mpFlatBonus || 0,
+        Math.max(0, Math.round((S.mpMax || 100) - _baseMp)));
+      S.capVer = 1;
+    }
     syncLifeBonus();
+    recalcCaps(true);
     /* v9.0 M0：读档即恢复随机序列。放在 S = out 之后，
        保证注入的是「这份存档的种子」，而不是上一份的。 */
     setSeed(S.seed);
@@ -6321,10 +6487,10 @@
     if (!x) { closeModal(); return; }
     S.lu = { rank: x.rank, name: x.name, eff: x.eff };
     S.luHistory = (S.luHistory || []).concat([{ name: x.name, rank: x.rank }]);
-    if (x.name === '力贯千钧') S.hpMax = Math.round(S.hpMax * 1.3);
-    /* 受箓的 ×1.5 乘在「已含功法乘区」的上限上，随后重设基准记录，
-       这样下个月月初 syncMpCap 不会把它再乘一遍。 */
-    if (x.name === '重海长鲸') { S.mpMax = Math.round(S.mpMax * 1.5); S.mpGfMul = gongfaMpCapMul(); }
+    /* v10.5：受箓只写乘区字段，由 recalcCaps 统一重算——
+       旧版直接乘 hpMax，破境/读档重算时要么丢、要么重复乘。 */
+    if (x.name === '力贯千钧') { S.hpLuMul = 1.3; recalcCaps(true); }
+    if (x.name === '重海长鲸') { S.mpLuMul = 1.5; recalcCaps(true); }
     if (x.name === '延年长命' && S.lifeMax) S.lifeMax += 40;
     if (x.name === '彩彻云衢') for (const k in S.stats) S.stats[k] = clamp(S.stats[k] + 1, 1, 20);
     if (x.name === '明霜松岭') S.stats.sense = clamp(S.stats.sense + 3, 1, 20);
@@ -6959,6 +7125,7 @@
         const nr4 = D.XIAN_REALMS[4] || D.XIAN_REALMS[D.XIAN_REALMS.length - 1];
         S.lifeMax = nr4.life || 0;
         bumpUnlock('xian', 4);
+        recalcCaps(true);
         healOnMajorBreak();
         reciteLiturgy('breakXian');
         logLine('渡过' + gate + '，三关俱过。紫府散尽，气海里那点东西凝成了 —— 晋入 ' + nr4.name + '。', 'good');
@@ -7600,12 +7767,45 @@
      与道基功法分家之后：招式不再随境界白送，
      要么入宗门在藏经阁学，要么靠奇遇/传法撞上。
      「真传才授上乘神通」——zhen 层只有真传身份能碰。 */
+  /* v10.5 P0·A2：术法池 = SKILLS + GONGFA(role=fa)。
+     fa 功法用 'fa:' 前缀存 id，避免与 SKILLS 的同名 id 撞车
+     （烈火掌 fa:liehuo 与焚山掌 liehuo 是两回事）。 */
+  const FA_ART_COST = { huang: 25, xuan: 30, di: 40, tian: 50, xian: 60 };
+  const FA_ART_MUL = { huang: 1.35, xuan: 1.50, di: 1.70, tian: 1.90, xian: 2.10 };
+  const EL_TO_KIND = { metal: 'sword', fire: 'fire', water: 'water', wood: 'wood', earth: 'earth',
+    thunder: 'thunder', ice: 'water', wind: 'normal', yin: 'normal', yang: 'fire' };
+  function faArtSpec(g) {
+    return {
+      id: 'fa:' + g.id, name: g.name,
+      cost: FA_ART_COST[g.tier] || 30, mul: FA_ART_MUL[g.tier] || 1.40,
+      kind: EL_TO_KIND[g.el] || 'normal',
+      lvl: g.tier === 'huang' ? 'wai' : g.tier === 'xuan' ? 'nei' : 'zhen',
+      desc: g.eff, fromGongfa: true
+    };
+  }
+  function artSpecOf(id) {
+    if (!id) return null;
+    if (id.indexOf('fa:') === 0) {
+      const g = gongfaById(id.slice(3));
+      return (g && g.role === 'fa') ? faArtSpec(g) : null;
+    }
+    return D.SKILLS.find(function (k) { return k.id === id; }) || null;
+  }
+  function artSpecByName(nm) {
+    const sk = D.SKILLS.find(function (k) { return k.name === nm; });
+    if (sk) return sk;
+    const g = D.GONGFA.find(function (x) { return x.role === 'fa' && x.name === nm; });
+    return g ? faArtSpec(g) : null;
+  }
+  function hasArt(id) { return Array.isArray(S.ownedArts) && S.ownedArts.indexOf(id) >= 0; }
+
   function knownSkills() {
     if (!Array.isArray(S.skillsKnown)) S.skillsKnown = [];
     const ids = ['zhiquan'].concat(S.skillsKnown.filter(function (x) { return x !== 'zhiquan'; }));
-    return ids.map(function (id) {
-      return D.SKILLS.find(function (k) { return k.id === id; });
-    }).filter(Boolean);
+    (Array.isArray(S.ownedArts) ? S.ownedArts : []).forEach(function (id) {
+      if (ids.indexOf(id) < 0) ids.push(id);
+    });
+    return ids.map(function (id) { return artSpecOf(id); }).filter(Boolean);
   }
   /* 装配进斗法的招式池 */
   function equippedSkills() {
@@ -7620,14 +7820,23 @@
     if (S.sect) return (D.SECT.ranks[S.sect.rank] || D.SECT.ranks[0]).equip;
     return clamp(2 + Math.floor((S.xRealm || 0) / 2), 2, 4);
   }
-  function learnSkill(id) {
-    if (!Array.isArray(S.skillsKnown)) S.skillsKnown = [];
-    if (id === 'zhiquan' || S.skillsKnown.indexOf(id) >= 0) return false;
-    S.skillsKnown.push(id);
-    if (S.skillsEquip.length < equipLimit()) S.skillsEquip.push(id);
+  function learnArt(id) {
+    if (!artSpecOf(id)) return false;
+    if (id.indexOf('fa:') === 0) {
+      if (!Array.isArray(S.ownedArts)) S.ownedArts = [];
+      if (S.ownedArts.indexOf(id) >= 0) return false;
+      S.ownedArts.push(id);
+    } else {
+      if (!Array.isArray(S.skillsKnown)) S.skillsKnown = [];
+      if (id === 'zhiquan' || S.skillsKnown.indexOf(id) >= 0) return false;
+      S.skillsKnown.push(id);
+    }
+    if (!Array.isArray(S.skillsEquip)) S.skillsEquip = ['zhiquan'];
+    if (S.skillsEquip.indexOf(id) < 0 && S.skillsEquip.length < equipLimit()) S.skillsEquip.push(id);
     return true;
   }
-  function skillById(id) { return D.SKILLS.find(function (k) { return k.id === id; }); }
+  function learnSkill(id) { return learnArt(id); }   // 兼容旧调用
+  function skillById(id) { return artSpecOf(id); }
   /* 该身份能学哪一层 */
   function sectAllowedLvl() {
     if (!S.sect) return ['wai'];
@@ -7653,7 +7862,7 @@
   }
 
   function skillMulByName(nm) {
-    const sk = D.SKILLS.find(function (x) { return x.name === nm; });
+    const sk = artSpecByName(nm);
     if (!sk) return 1;
     const r = resonResult(sk);
     skillMulByName.last = r.txt;      // 供战斗日志取用
@@ -8532,7 +8741,7 @@
     });
     b += '</ul>';
     b += '<div class="hint">装配满了就得先卸一个。带得多了不一定是好事——灵力不够，招式就是废纸。</div>';
-    openModal('杀伐神通 · 装配', b);
+    openModal('术法 · 装配', b);
   };
 
   ACT.do_eqsk = (id) => {
@@ -8905,6 +9114,7 @@
     S.combat = null; S.phase = 'play';
     const loot = Math.round((100 + c.foe.rank * 200) * fateMul('loot'));   // v9.0 M1：血债偿心
     S.stones += loot; S.fame += 5;
+    ledgerAdd('in', '斗法所得', loot);   // v10.5 P0·E3：收入进月账
     logLine(combatLine('kill') + '。', 'danger');
     if (_slayMaster) logLine('仆者，授业之人也。不呼汝名。', 'danger');
     logLine(isShen() ? `散去对方的香火，得灵石 ${loot}。` : `一剑毕${c.foe.name}，得灵石 ${loot}。`, 'danger');
@@ -8977,7 +9187,7 @@
       c.observed = false;
     } else if (sub === 'skill') {
       const nm = decodeURIComponent(arg || '');
-      const sk = D.SKILLS.find(function (x) { return x.name === nm; });
+      const sk = artSpecByName(nm);
       if (!sk) { render(); return; }
       if (S.mp < sk.cost) { toast('灵力不足'); render(); return; }
       S.mp -= sk.cost;
@@ -9397,7 +9607,7 @@
     document.body.classList.add('modal-open');
     const box = document.getElementById('modals');
     box.innerHTML = `<div class="modal"${noClose ? ' data-noclose="1"' : ''}><div class="box">
-      <h3>${esc(title)}</h3>${body}
+      <h3 id="modal-title">${esc(title)}</h3>${body}
       ${noClose ? '' : '<div style="margin-top:12px"><button class="btn ghost" data-act="modal:close">关闭</button></div>'}
     </div></div>`;
     enhanceA11y(box);
@@ -9598,12 +9808,13 @@
     for (const k in S.stats) S.stats[k] = clamp(S.stats[k], 1, 20);
 
     S.dao = genDao();
-    S.hpMax = Math.round((100 + (S.hpFlatBonus || 0)) * quenchHpMul());
-    S.mpMax = 100 + (S.mpFlatBonus || 0);
+    /* v10.5：创角也走同一条重算出口。胎息/一柱基数仍是 100，
+       所以开局面板不变，但境界与乘区从此有地方落。 */
+    S.quenchApplied = quenchLv();
+    recalcCaps(false);
     S.hp = S.hpMax; S.mp = S.mpMax;
     /* 起步就在第一档：仙道胎息 / 神道一柱·立庙。旧版这里留 0，
        于是 stage 1 的境界词永远走不到。 */
-    S.quenchApplied = quenchLv();
     S.unlockStage = 1;
     /* 开局那一档的境界词也要落地，否则 16 条里永远缺第一条 */
     const _r0 = unlockRow(S.cultivation === 'shen' ? 'shen' : 'xian', 1);
@@ -9617,14 +9828,18 @@
     } else {
       S.lifeMax = D.XIAN_REALMS[0].life;
       S.xiuwei = 0;
-      if (!S.ownedGongfa || !S.ownedGongfa.length) S.ownedGongfa = ['juqi', 'liehuo', 'yufeng'];
-      else S.ownedGongfa = S.ownedGongfa.concat(['liehuo', 'yufeng']);
+      /* v10.5 P0·A1：烈火掌是术法，不再混进道基池 */
+      if (!S.ownedGongfa || !S.ownedGongfa.length) S.ownedGongfa = ['juqi', 'yufeng'];
+      else S.ownedGongfa = S.ownedGongfa.filter(function (x) { return x !== 'liehuo'; }).concat(['yufeng']);
+      learnArt('fa:liehuo');
     }
     if (S.cultivation === 'both') {
       S.lifeMax = D.XIAN_REALMS[0].life;
       S.followers = 100;
-      if (!S.ownedGongfa || !S.ownedGongfa.length) S.ownedGongfa = ['juqi', 'liehuo', 'yufeng'];
-      else S.ownedGongfa = S.ownedGongfa.concat(['liehuo', 'yufeng']);
+      /* v10.5 P0·A1：烈火掌是术法，不再混进道基池 */
+      if (!S.ownedGongfa || !S.ownedGongfa.length) S.ownedGongfa = ['juqi', 'yufeng'];
+      else S.ownedGongfa = S.ownedGongfa.filter(function (x) { return x !== 'liehuo'; }).concat(['yufeng']);
+      learnArt('fa:liehuo');
       S.miao = '野祀';
     }
     if (!S.ownedGongfa) S.ownedGongfa = ['juqi'];
@@ -10697,7 +10912,7 @@
       apply: function () { S.stats.qualify = Math.min(20, st('qualify') + 1); },
       desc: '匣中二十一枚碎玉，边缘皆有云纹，像从同一件器物上崩下来的。' },
     { id: 'lot_bone', name: '无名兽骨', base: 900, eff: '气血上限 +20',
-      apply: function () { S.hpMax += 20; S.hp += 20; },
+      apply: function () { S.hpFlatBonus = (S.hpFlatBonus || 0) + 20; recalcCaps(true); S.hp = Math.min(S.hpMax, S.hp + 20); },
       desc: '三尺长，骨上有旧伤，摸上去还是温的。' },
     { id: 'lot_map', name: '半卷残图', base: 1400, eff: '机缘 +1',
       apply: function () { S.stats.fate = Math.min(20, st('fate') + 1); },
@@ -11758,7 +11973,7 @@
     if (m.id === 'm_light') { S.lingqiUp = (parseInt(S.lingqiUp, 10) || 1) + 1; syncLingqi(); }
     else if (m.id === 'm_word') { S.stats.insight = clamp(S.stats.insight + 2, 1, 20); }
     else if (m.id === 'm_xiang') { S.followers = (S.followers || 0) + 50; }
-    else if (m.id === 'm_hand') { S.hpMax = (S.hpMax || 100) + 20; S.hp = S.hpMax; }
+    else if (m.id === 'm_hand') { S.hpFlatBonus = (S.hpFlatBonus || 0) + 20; recalcCaps(true); S.hp = S.hpMax; }
     else if (m.id === 'm_gate') { S.fame = (S.fame || 0) + 30; }
     else if (m.id === 'm_wei') { S.stones = (S.stones || 0) + 500; }
     else if (m.id === 'm_qian') { S.memPreach = true; }
