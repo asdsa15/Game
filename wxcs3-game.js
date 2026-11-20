@@ -140,11 +140,11 @@
       fate: null,                  // {id, tier} 择痕之后永久生效
       fateReroll: 0,               // 一生一次重悟，用掉记 1
 
-      // —— v6.3 道基功法 / 杀伐神通 分家 ——
-      daogong: 'juqi',             // 道基功法（决定修炼速度与境界上限）
-      skillsKnown: [],             // 已习杀伐神通（招式 id）
-      skillsEquip: ['zhiquan'],    // 装配进斗法的，默认只带一击
-      ownedArts: [],               // v10.5：术法（role=fa 的功法），id 前缀 fa:
+      // —— v6.3 能力三分：修炼功法 / 术法 / 神通 ——
+      daogong: 'juqi',             // 修炼功法（道基，决定修炼速度与境界上限）
+      skillsKnown: [],             // 术法（SKILLS 表 id；兼容字段名，v11 再删）
+      skillsEquip: ['zhiquan'],    // 装配进斗法的术法，默认只带一击
+      ownedArts: [],               // 术法（role=fa 的功法，id 前缀 fa:）
 
       // —— v6.3 宗门与家族 ——
       sect: null,                  // {rank, contrib, hall, peak, joinedTurn}
@@ -153,6 +153,9 @@
       // —— v6.3 年谱（完整纪事，不截断） ——
       chronicle: [],
       books: [], bookRead: {}, insightXp: 0,   // 道书与阅读进度
+      /* v10.6：叙事标记。事件与奇遇写下的事，后续事件用它作前置——
+         「火塘不认」先落 ancestor_reject，才轮得到「阴亲之议」。 */
+      flags: {},
       lastVerse: '',
 
       // —— v6.4 四艺 ——
@@ -166,7 +169,12 @@
       disks: [],              // 已布阵盘
       dishes: { dan: 0, qi: 0, fu: 0, zhen: 0 },  // 本月制作次数（用于收支）
       ledger: { income: [], expense: [] },        // 本月收支明细
-      market: { mul: { dan: 1, qi: 1, fu: 1, zhen: 1 }, month: 0 },
+      /* v10.5 P1·E8：行情双向——sell 是回收价，buy 是进货价。
+         两套倍率分开波动，囤货与择时才有意义；护栏保证最低买入仍高于最高回收。 */
+      market: { mul: { dan: 1, qi: 1, fu: 1, zhen: 1, mat: 1 },
+                buy: { dan: 1, qi: 1, fu: 1, zhen: 1, mat: 1 }, month: 0 },
+      /* v10.5 P1·E4：坊市摆摊每月限件数（文案承诺），按月重置 */
+      sellMonth: { market: 0 },
       sellCh: 'market',           // 卖出渠道：sect / market / black
       txHistory: [], pendingTx: null, lastLiturgy: '',
       breakBonus: 0, cultBonus: 1,  // 丹药临时加成
@@ -269,9 +277,9 @@
     const g = getDaogong();
     const gf = g ? D.GONGFA_TIERS[g.tier].mul : 1;
     let zt = 1.0;
-    if (S.hp / S.hpMax < 0.33) zt = 0.4;
-    else if (S.hp / S.hpMax < 0.66) zt = 0.7;
-    else if (S.hp / S.hpMax < 0.9) zt = 0.9;
+    if (hpRatio() < 0.33) zt = 0.4;
+    else if (hpRatio() < 0.66) zt = 0.7;
+    else if (hpRatio() < 0.9) zt = 0.9;
 
     let v = r.base * qi * qual * root * gf * zt;
     // 体质加成只在这里乘一次（先天道体 +50%）
@@ -335,8 +343,8 @@
     const _Q = (typeof G !== 'undefined') ? G.WXCS3_EXT : null;
     const qiheC = (_Q && _Q.xianghuoQiheMul) ? _Q.xianghuoQiheMul() : (isShen() ? 1.2 : 0.8);
     let zt = 1.0;
-    if (S.hp / S.hpMax < 0.33) zt = 0.4;
-    else if (S.hp / S.hpMax < 0.66) zt = 0.7;
+    if (hpRatio() < 0.33) zt = 0.4;
+    else if (hpRatio() < 0.66) zt = 0.7;
     if (S.templeBroken) zt = Math.min(zt, 0.6);
     let v = f * S.piety * miaoC * qi * qiheC * zt;
     v *= (1 + 0.08 * miaoUpCount('lu'));          // 铜香炉：每座 +8%
@@ -526,6 +534,7 @@
       S.dishes = { dan: 0, qi: 0, fu: 0, zhen: 0 };
       S.votMade = 0; S.votSold = 0;   // 愿物按月重置制作/售出次数
       S.xiangExchangeMonth = 0;      // 香火钱箱按月清空额度
+      S.sellMonth = { market: 0 };   // v10.5 P1·E4：坊市摊位额度按月重置
 
       /* —— 仙道：修为不再由时间自动产出。
          旧版这里直接 S.xiuwei += monthXiuwei()，等于「你躺着也涨」，
@@ -601,7 +610,9 @@
       if (isXian() || S.cultivation === 'both') addGfProf(S.meditate ? 8 : 4, '于月下运转');
       // —— 灵力回复（原只在吃丹药与创角时变化，打几场就永久枯竭）
       if (S.mp < S.mpMax) {
-        S.mp = Math.min(S.mpMax, S.mp + 5 + (S.xRealm || 0) * 3);
+        /* v10.5 P1·C4：月回灵同样按上限百分比兜底，
+           否则上限涨到千级后，「5+境界×3」这点回复会让连续战斗直接卡死。 */
+        S.mp = Math.min(S.mpMax, S.mp + Math.max(5 + (S.xRealm || 0) * 3, Math.round(S.mpMax * MONTH_MP_PCT)));
       }
       // —— 神位人功（P0-7）
       tickShenwei();
@@ -1070,8 +1081,13 @@
   function addGongfa(id) {
     const _g0 = gongfaById(id);
     if (!_g0) return false;
-    /* 术法不进道基池——它走 learnArt('fa:'+id) */
-    if (_g0.role === 'fa') return false;
+    /* v10.5 P0·A1：术法走术法池。所有获得入口（遗物/传法/奇遇）仍只调
+       addGongfa，不各自分叉——否则总有一条路把术法塞回道基池。 */
+    if (_g0.role === 'fa') {
+      const okArt = learnArt('fa:' + id);
+      if (okArt) queueGain('术法《' + _g0.name + '》', 0, '已入术法池，装配后才用得上', true);
+      return okArt;
+    }
     if (!Array.isArray(S.ownedGongfa)) S.ownedGongfa = ['juqi'];
     if (S.ownedGongfa.indexOf(id) >= 0) return false;
     S.ownedGongfa.push(id);
@@ -1090,13 +1106,19 @@
   }
 
   /* ============ 战力 ============ */
+  /* v10.5 P2·S2：气血比例的唯一出口。
+     上限异常为 0（旧档/半初始化状态）时返回 0，而不是 NaN——
+     NaN 会一路传进战力、破境率与面板宽度，最后表现为整块界面空白。 */
+  function hpRatio() {
+    return S.hpMax > 0 ? clamp((S.hp || 0) / S.hpMax, 0, 1) : 0;
+  }
   function computePower() {
     if (isShen()) {
       const p = pillar();
       const posMul = [1.0, 1.15, 1.3, 1.45][S.pos];
       let stMul = 1.0;
-      if (S.hp / S.hpMax < 0.33) stMul = 0.4;
-      else if (S.hp / S.hpMax < 0.66) stMul = 0.7;
+      if (hpRatio() < 0.33) stMul = 0.4;
+      else if (hpRatio() < 0.66) stMul = 0.7;
       if (S.templeBroken) stMul *= 0.8;
       /* v10.4 P1·S4：战力按「类别多样性」聚合，不再只数数量。
          旧版每道 +5% 封顶 2.0 —— 五道同类与四类各一道收益完全相同，
@@ -1131,8 +1153,12 @@
     if (r.idx === 4) base = S.guowei ? D.GUOWEI_RANK[S.guowei.rank].power : 450;
     if (r.idx >= 5) base = 6000;
     let stMul = 1.0;
-    if (S.hp / S.hpMax < 0.33) stMul = 0.4;
-    else if (S.hp / S.hpMax < 0.66) stMul = 0.7;
+    /* v10.5 P1·C5：低血惩罚从 0.4 提到 0.55。
+       旧口径下「低血 → 战力 ×0.4 → ratio 变小 → 敌方 ×1/ratio 放大」
+       形成正反馈，高境界一场斗法会直接死亡螺旋；0.55 保留「重伤乏力」
+       的语义，但不至必死。 */
+    if (hpRatio() < 0.33) stMul = 0.55;
+    else if (hpRatio() < 0.66) stMul = 0.7;
     else if (S.mp <= 0) stMul = 0.6;
     let sd = 0.8 + stEquipList().length * 0.05;
     sd = clamp(sd, 0.8, 2.0);
@@ -1284,8 +1310,8 @@
     let b = '';
 
     const ab = [];
-    if (S.hp / S.hpMax < 0.33) ab.push('垂死');
-    else if (S.hp / S.hpMax < 0.66) ab.push('重伤');
+    if (hpRatio() < 0.33) ab.push('垂死');
+    else if (hpRatio() < 0.66) ab.push('重伤');
     if (S.suiFlag) ab.push('祟气缠身');
     if (S.templeBroken) ab.push('庙宇破损');
     if (S.karma > 50) ab.push('业力缠身');
@@ -1310,7 +1336,7 @@
     }
     life += '<div class="row"><span class="lab">气血</span>' + bar(S.hp, S.hpMax, 'var(--hp)', 'hp', '气血') + '</div>';
     life += '<div class="row"><span class="lab">灵力</span>' + bar(S.mp, S.mpMax, 'var(--mp)', 'mp', '灵力') + '</div>';
-    b += sgBox('life', '生存', life, Math.round(S.hp / (S.hpMax || 1) * 100) + '% 气血', S.hp / S.hpMax < 0.33);
+    b += sgBox('life', '生存', life, Math.round(hpRatio() * 100) + '% 气血', hpRatio() < 0.33);
 
     /* —— 修为：境界细节、道统、箓印、灵根、六维 —— */
     let cult = '';
@@ -1327,7 +1353,7 @@
       cult += '<div class="sl"><span class="k">道统</span><span class="v">' + esc(S.daotong) +
         (dtClass ? '<span class="small muted">（' + esc(dtClass) + '）</span>' : '') +
         (S.sanxuan ? ' · ' + esc(D.SANXUAN[S.sanxuan].name) : '') + '</span></div>';
-      // 该道统下可得的杀伐神通（把 SHENTONG 表也接上，不再只作装饰）
+      // 该道统下可得的神通（把 SHENTONG 表也接上，不再只作装饰）
       const pool = D.SHENTONG[S.daotong];
       if (pool && pool.length) {
         cult += '<div class="small muted" style="margin-top:-2px">可求神通：' +
@@ -1488,7 +1514,7 @@
      桌面三栏齐全，手机竖屏的状态栏在页面最底部——不把这四个数抬上来，
      玩家每次都得滚两屏才知道自己还剩多少血、多少钱。 */
   function renderVitals() {
-    const lowHp = S.hp / S.hpMax < 0.33;
+    const lowHp = hpRatio() < 0.33;
     const lowLife = S.lifeMax && !S.lifeStop && (S.lifeMax - S.age) <= 20;
     const hpV = Math.round(S.hp), mpV = Math.round(S.mp);
     let b = '<div class="vitals">';
@@ -1691,7 +1717,7 @@
       ? '权柄＝你被人求的那件事。河神管不了旱灾。'
       : '仙道是与天争命——快，但天要收你。') + '</div>';
 
-    /* 功法分家后，中栏要一眼看出「道基 / 杀伐」两条线 */
+    /* 能力三分后，中栏要一眼看出「道基 / 术法 / 神通」三条线 */
     const g = getDaogong();
     const cap = D.DAOGONG_CAP[g.tier] || D.DAOGONG_CAP.huang;
     b += divider();
@@ -1701,9 +1727,13 @@
       esc(D.GONGFA_TIERS[g.tier].name) + ' ×' + D.GONGFA_TIERS[g.tier].mul + '</span></div>';
     b += '<div class="slotnote">' + esc(g.eff) + '　｜　上限 ' + esc(cap.to) + '</div>';
     const eqs = equippedSkills();
-    b += '<div class="slotline"><span class="sk">杀伐</span>' +
+    b += '<div class="slotline"><span class="sk">术法</span>' +
       '<span class="sv">' + (eqs.length ? eqs.map(function (k) { return esc(k.name); }).join(' · ') : '无') + '</span>' +
       '<span class="tier" style="background:#8B98A6">' + eqs.length + '/' + equipLimit() + '</span></div>';
+    const _stN = (S.shenTong || []);
+    b += '<div class="slotline"><span class="sk">神通</span>' +
+      '<span class="sv">' + (_stN.length ? _stN.map(function (nm) { return esc(stShort(nm)); }).join(' · ') : '无') + '</span>' +
+      '<span class="tier" style="background:#8B6FA8">' + _stN.length + ' 道</span></div>';
 
     if (S.ownedGongfa && S.ownedGongfa.length > 1) {
       b += '<div class="small muted" style="margin-top:5px">已习：' + S.ownedGongfa.map(function (id) {
@@ -2519,6 +2549,24 @@
     if (S.xRealm === 2) return { '黄基': 1, '玄基': 2, '地基': 3, '天基': 4 }[S.xianji] || 1;
     return 0;
   }
+  /* v10.5 P1·N2：神通入口配置化。
+     旧版把「紫府 idx===3」写死在破境与紫府关两处，筑基有额度却没有入口。
+     现在入口只读 SHENTONG_GRANT：改一个 fromRealm 就能让神通从筑基起赋予。 */
+  function canGrantShenTong(reason) {
+    const line = capLine();
+    const cfg = D.SHENTONG_GRANT && D.SHENTONG_GRANT[line];
+    if (!cfg) return false;
+    if (line === 'xian' && (S.xRealm || 0) < (cfg.fromRealm || 0)) return false;
+    if (line === 'shen' && (S.pillar || 0) < (cfg.fromPillar || 0)) return false;
+    const lim = shenTongLimit();
+    if (lim <= 0) return false;
+    return (S.shenTong || []).length < lim;
+  }
+  function grantShenTong(reason) {
+    if (!canGrantShenTong(reason)) return false;
+    openShentongPick();
+    return true;
+  }
 
   /* ============================================================
      v10.4 P2·11：神通装配（S.stEquip 子集）
@@ -2652,7 +2700,7 @@
      WXCS3_ART 缺失（Node 测试桩只装 data+game 两文件）时静默回退纯文字。 */
   function sceneArtKey() {
     if (S.justBroke) return 'break';
-    if (S.hp / S.hpMax < 0.33) return 'hurt';
+    if (hpRatio() < 0.33) return 'hurt';
     if (S.justClosed) return 'closed';
     if (S.visitorIncoming) return 'visitor';
     if (S.famine) return 'drought';
@@ -2683,7 +2731,7 @@
     // 特殊场景优先
     const sp = D.SCENES_SPECIAL || {};
     if (S.justBroke) { S.justBroke = false; return pick(sp.breakXian || ['天还没亮你就醒了。']); }
-    if (S.hp / S.hpMax < 0.33) return pick(sp.hurt || ['伤口在阴天里发痒。']);
+    if (hpRatio() < 0.33) return pick(sp.hurt || ['伤口在阴天里发痒。']);
     if (S.justClosed) { S.justClosed = false; return pick(sp.closure || ['出关的那天，你站在洞口。']); }
     if (S.visitorIncoming) { S.visitorIncoming = false; return pick(sp.visitor || ['门外有人咳嗽了一声。']) + '你起身去开门。'; }
     if (S.famine) return pick(sp.drought || ['天旱了几个月。']);
@@ -3017,8 +3065,8 @@
     // 破境丹类加成（新表：小破障/筑基/大破障/凝婴）
     r += (S.breakBonus || 0);
     r += prepBonus();   // v8.0 择地／备药／护法三项准备的合计加成
-    if (S.hp / S.hpMax < 0.33) r -= 0.15;
-    if (S.hp / S.hpMax < 0.66) r -= 0.06;
+    if (hpRatio() < 0.33) r -= 0.15;
+    if (hpRatio() < 0.66) r -= 0.06;
     if (hasDebuff('karma_tangle')) r -= 0.08;   // 因果缠身
     return clamp(r, 0.05, 0.95);
   }
@@ -3252,7 +3300,7 @@
         S.afterBreak = [];
         if (nr.idx === 2) S.afterBreak.push('xianji');
         if (nr.idx >= 2 && (S.daoyin || []).length < 4) S.afterBreak.push('daoyin');
-        if (nr.idx === 3 && S.shenTong.length < shenTongLimit()) S.afterBreak.push('shentong');
+        if (canGrantShenTong('break')) S.afterBreak.push('shentong');
         /* v9.0 M1：命格是破境的第四道手续——无痕者排进队列（扩展判空） */
         {
           const FX = G.WXCS3_EXT;
@@ -3511,7 +3559,7 @@
     if (S.karma > 30) adj -= 10;
     if (D.LINGQI[S.lingqi].v >= 2.0) adj += 5;
     if (S.xianghuo > pillar().need * 1.5) adj += 5;
-    if (S.hp / S.hpMax < 0.33) adj -= 15;
+    if (hpRatio() < 0.33) adj -= 15;
     if (S.sanxuan === 'tong' && mode === 'borrow') adj += 10;
     if (S.sanxuan === 'dou' && mode === 'seize') adj += 10;
     if (hasDebuff('karma_tangle')) adj -= 8;
@@ -3871,7 +3919,7 @@
   ACT.openGongfa = () => {
     const g = getDaogong();
     const cap = D.DAOGONG_CAP[g.tier] || D.DAOGONG_CAP.huang;
-    let b = '<div class="small">道基功法管「能修多远」，杀伐神通管「能打多狠」。两者分开养。</div>';
+    let b = '<div class="small">修炼功法管「能修多远」，术法与神通管「能打多狠」。三者分开养。</div>';
     b += divider();
     b += '<div class="slotline"><span class="sk">道基</span><span class="sv">' + esc(g.name) + '</span>' +
       '<span class="tier" style="background:' + D.GONGFA_TIERS[g.tier].color + '">' +
@@ -3915,7 +3963,7 @@
     b += divider();
     b += '<div style="margin-top:4px"><button class="btn ghost" data-act="act:openSkillBook">术法 · 装配（' +
       equippedSkills().length + '/' + equipLimit() + '）</button></div>';
-    openModal('道基功法', b);
+    openModal('修炼功法（道基）', b);
   };
 
   ACT.do_setgf = (id) => {
@@ -3929,7 +3977,7 @@
     S.gongfa[0] = id;
     S.daogong = id;
     const gname = g.name;
-    logLine('改修《' + gname + '》为道基功法。', '');
+    logLine('改修《' + gname + '》为道基（修炼功法）。', '');
     if (newCap < S.xRealm) {
       // 换低阶功法会把自己卡在当下——这是代价，得说清楚
       logLine('此功法只供得起' + (D.DAOGONG_CAP[g.tier] || D.DAOGONG_CAP.huang).to +
@@ -4318,14 +4366,46 @@
   /* ---------- 坊市（仙道专用） ---------- */
   /* v10.2：商品一多，价格排序与按名检索比来回翻列表快 */
   let _shopSort = 'def', _shopQ = '', _shopLastCat = 'pill';
+  /* v10.5 P0·E5：坊市开着时不要把「所得」面板顶上来 */
+  let _shopOpen = false;
   function shopNameHit(name) {
     const q = (_shopQ || '').trim();
     return !q || String(name).indexOf(q) >= 0;
   }
   function shopListInner(cat) {
     let b = '';
-    if (cat === 'gongfa') {
-      const list = D.SHOP_GONGFA.filter(function (g) { return shopNameHit(g.name); });
+    if (cat === 'fa') {
+      /* v10.5 P1·A4：术法单独成页。只卖外门/内门两档 SKILLS，
+         与藏经阁的「贡献换」形成灵石/贡献双轨；真传术法不上市。 */
+      const list = D.SKILLS.filter(function (s) {
+        return s.id !== 'zhiquan' && (s.lvl === 'wai' || s.lvl === 'nei') && shopNameHit(s.name);
+      });
+      list.sort(function (a, b2) {
+        const pa = D.SKILL_PRICE[a.lvl], pb = D.SKILL_PRICE[b2.lvl];
+        if (_shopSort === 'asc') return pa - pb;
+        if (_shopSort === 'desc') return pb - pa;
+        return 0;
+      });
+      /* role=fa 的功法也归术法：它们与 SKILLS 同属「买来装配」的一侧，
+         不回到修炼功法页，否则三分在货架上又混了。 */
+      const faG = D.SHOP_GONGFA.filter(function (g) { return g.role === 'fa' && shopNameHit(g.name); });
+      if (!list.length && !faG.length) return '<div class="hint">没有匹配的术法。</div>';
+      list.forEach(function (s) {
+        const price = Math.round(D.SKILL_PRICE[s.lvl] * 1.2);
+        const owned = knownSkills().some(function (k) { return k.id === s.id; });
+        b += iconRow('SKILLS', s.id, '·', s.name,
+          { name: '术法', cls: 'peace' },
+          owned ? '已习得' : fmtNum(price) + ' 石', owned || S.stones < price, 'do;buyfa:' + s.id);
+      });
+      faG.forEach(function (g) {
+        const owned = hasArt('fa:' + g.id);
+        b += iconRow('GONGFA_EXT', g.id, '·', g.name + '（' + D.GONGFA_TIERS[g.tier].name + '）',
+          { name: '功法术法', cls: 'peace' },
+          owned ? '已习得' : fmtNum(g.price) + ' 石', owned || S.stones < g.price, 'do;buyg:' + g.id);
+      });
+    } else if (cat === 'gongfa') {
+      /* v10.5 P1·A4：修炼功法页只列 dao；role=fa 的功法改列「术法」页 */
+      const list = D.SHOP_GONGFA.filter(function (g) { return g.role !== 'fa' && shopNameHit(g.name); });
       list.sort(function (a, b2) {
         if (_shopSort === 'asc') return a.price - b2.price;
         if (_shopSort === 'desc') return b2.price - a.price;
@@ -4354,7 +4434,9 @@
       });
       if (!list.length) return '<div class="hint">没有匹配的物品。</div>';
       list.forEach(function (it) {
-        let note = fmtNum(it.price) + ' 石';
+        /* v10.5 P1·E8：买入价随行情波动；显示价与扣款同源 */
+        const price = buyPriceOf(it);
+        let note = fmtNum(price) + ' 石';
         if (it.tier) note = D.GONGFA_TIERS[it.tier].name + ' · ' + note;
         let owned = false;
         let tag = it.cat === 'art' ? '法器' : it.cat === 'mat' ? '材料' : '丹药';
@@ -4369,7 +4451,7 @@
         }
         b += iconRow(shopIconTable(it.cat), it.id, '·', it.name + '　' + (it.desc || it.eff || ''),
           { name: tag, cls: 'peace' },
-          note, owned || S.stones < it.price, 'do;buy:' + it.id);
+          note, owned || S.stones < price, 'do;buy:' + it.id);
       });
     }
     return b;
@@ -4401,7 +4483,7 @@
     cat = cat || 'pill';
     if (cat === 'sell') { ACT.openSell(); return; }
     _shopLastCat = cat;
-    const tabs = [['pill', '丹药'], ['gongfa', '功法'], ['art', '法器'], ['mat', '材料'], ['sell', '卖出']];
+    const tabs = [['pill', '丹药'], ['gongfa', '修炼功法'], ['fa', '术法'], ['art', '法器'], ['mat', '材料'], ['sell', '卖出']];
     let b = '<div class="row"><span class="lab">灵石</span><b id="shop-stone" style="color:var(--stone)">' + fmtNum(S.stones) + '</b></div>';
     b += '<div class="shop-tabs">';
     for (const t of tabs) {
@@ -4418,6 +4500,7 @@
     b += '<div class="hint">坊市只售黄、玄两阶。地阶以上不上市——那要靠「传法机缘」自己撞。</div>';
     b += '<div class="hint">坊市只认灵石，不认香火。香火是庙里的东西。</div>';
     openModal('坊市 · 灵石 ' + fmtNum(S.stones), b);
+    _shopOpen = true;
     /* 边输边筛：只换列表，不动整个弹窗，焦点才留得住 */
     const qi = document.getElementById('shop-q');
     if (qi && qi.addEventListener) {
@@ -4428,6 +4511,21 @@
       });
     }
   };
+  ACT.do_buyfa = (id) => {
+    const s = D.SKILLS.find(function (x) { return x.id === id; });
+    if (!s) return;
+    const price = Math.round(D.SKILL_PRICE[s.lvl] * 1.2);
+    if (knownSkills().some(function (k) { return k.id === id; })) { toast('已习得此术法'); return; }
+    if (!spendStones(price, '术法 ' + s.name)) {
+      toast('灵石不足：需 ' + fmtNum(price) + '，余 ' + fmtNum(S.stones));
+      return;
+    }
+    learnArt(id);
+    logLine('购得术法「' + s.name + '」。', 'good');
+    toast('习得术法 ' + s.name + ' · 余 ' + fmtNum(S.stones) + ' 石');
+    refreshShop('fa'); render();
+  };
+
   ACT.do_shopsort = (s) => { _shopSort = s || 'def'; ACT.openShop(_shopLastCat || 'pill'); };
 
   ACT.do_shopcat = (c) => { closeModal(); ACT.openShop(c); };
@@ -4454,15 +4552,15 @@
       learnArt(artId);
       logLine('购得术法「' + g.name + '」（' + D.GONGFA_TIERS[g.tier].name + '）。', 'good');
       toast('习得术法 ' + g.name + ' · 余 ' + fmtNum(S.stones) + ' 石');
-      refreshShop('gongfa'); render();
-      flushGain('得一门术法', '术法要装配进斗法才用得上——去「术法 · 装配」选一格。', true);
+      refreshShop('fa'); render();
+      if (!_shopOpen) flushGain('得一门术法', '术法要装配进斗法才用得上——去「术法 · 装配」选一格。', true);
       return;
     }
     addGongfa(g.id);
-    logLine('购得功法「' + g.name + '」（' + D.GONGFA_TIERS[g.tier].name + '）。', 'good');
+    logLine('购得修炼功法「' + g.name + '」（' + D.GONGFA_TIERS[g.tier].name + '）。', 'good');
     toast('习得 ' + g.name + ' · 余 ' + fmtNum(S.stones) + ' 石');
     refreshShop('gongfa'); render();
-    flushGain('得一部功法', '买了不等于在用——去「功法」面板参悟，才会换成主修。', true);
+    if (!_shopOpen) flushGain('得一部功法', '买了不等于在用——去「功法」面板参悟，才会换成主修。', true);
   };
 
   /* 法器：购买入包 + 佩戴 */
@@ -4490,8 +4588,9 @@
     const land = (D.SHOP || []).find(function (x) { return x.id === id; });
     if (land && land.type === 'land') {
       if ((parseInt(S.lingqiUp, 10) || 0) >= D.LINGQI.length - 1) { toast('灵气已至洞天，再无可升'); return; }
-      if (!spendStones(land.price, '灵脉契')) {
-        toast('灵石不足：需 ' + fmtNum(land.price) + '，余 ' + fmtNum(S.stones));
+      const landPrice = buyPriceOf(land);
+      if (!spendStones(landPrice, '灵脉契')) {
+        toast('灵石不足：需 ' + fmtNum(landPrice) + '，余 ' + fmtNum(S.stones));
         return;
       }
       S.lingqiUp = (parseInt(S.lingqiUp, 10) || 0) + 1;
@@ -4510,8 +4609,9 @@
       S.arts = S.arts || [];
       if (S.arts.indexOf(it.id) >= 0) { toast('已拥有此法宝'); return; }
     }
-    if (!spendStones(it.price, '购 ' + it.name)) {
-      toast('灵石不足：需 ' + fmtNum(it.price) + '，余 ' + fmtNum(S.stones));
+    const buyPrice = buyPriceOf(it);
+    if (!spendStones(buyPrice, '购 ' + it.name)) {
+      toast('灵石不足：需 ' + fmtNum(buyPrice) + '，余 ' + fmtNum(S.stones));
       return;
     }
     if (it.cat === 'art') {
@@ -4533,9 +4633,12 @@
     }
     /* 买完不关窗：只换列表与余额，能接着买下一件 */
     refreshShop(_shopLastCat || 'pill'); render();
-    // 只在这一种料是「第一次见到」时弹窗说明，连买十份不会弹十次
-    if (it.cat === 'mat') flushGain('新材料', '这种料以前没用过——看看它能做什么。', false);
-    else if (it.cat === 'art') flushGain('得一件法宝', '法宝不佩戴就不生效。去「法宝」选位置：攻击位加伤、护体位减伤、遁走位加遁速。', true);
+    /* 坊市开着就先不弹「所得」，否则一买就被顶掉、连买断掉 */
+    if (!_shopOpen) {
+      // 只在这一种料是「第一次见到」时弹窗说明，连买十份不会弹十次
+      if (it.cat === 'mat') flushGain('新材料', '这种料以前没用过——看看它能做什么。', false);
+      else if (it.cat === 'art') flushGain('得一件法宝', '法宝不佩戴就不生效。去「法宝」选位置：攻击位加伤、护体位减伤、遁走位加遁速。', true);
+    }
   };
 
   ACT.do_equip = (id) => { equipArt(id); closeModal(); render(); };
@@ -4680,7 +4783,7 @@
       (S.sect.peak ? ' · ' + esc(D.SECT.peaks[S.sect.peak]) : ' · ' + esc(D.SECT.halls[S.sect.hall])) + '</span></div>';
     b += '<div class="statline"><span class="k">贡献</span><span class="v">' + fmtNum(S.sect.contrib) +
       (r.need ? ' / ' + fmtNum(r.need) : '') + '</span></div>';
-    if (S.sect.rank > 0) b += '<div class="small muted">月俸 ' + r.pay + ' 灵石 · 可装配招式 ' + r.equip + ' 道</div>';
+    if (S.sect.rank > 0) b += '<div class="small muted">月俸 ' + r.pay + ' 灵石 · 可装配术法 ' + r.equip + ' 道</div>';
     if (sectDue() > 0) b += '<div class="small muted">月课 ' + fmtNum(sectDue()) + ' 贡献（不足则以 ' +
       fmtNum(sectDue() * D.FIXED_COST.sectCashPerContrib) + ' 灵石抵缴）' +
       (S.sectArrears ? '　<span class="danger">已欠 ' + S.sectArrears + ' 月</span>' : '') + '</div>';
@@ -4759,24 +4862,37 @@
 
   ACT.openSectLib = () => {
     const lvls = sectAllowedLvl();
-    const r = sectRank();
+    const r = sectRank() || { name: '散修' };
     let b = '<div class="small">藏经阁 · ' + esc(r.name) + '能进 ' + lvls.map(function (l) {
       return ({ wai: '外门层', nei: '内门层', zhen: '神通层' })[l];
     }).join('、') + '。</div>';
     b += '<div class="muted small" style="margin:4px 0">贡献 ' + fmtNum(S.sect.contrib) + '</div>' + divider();
-    b += '<div class="small muted" style="margin-bottom:4px">功法</div><ul class="opts">';
+    /* v10.5 P1·A3/A4：藏经阁按能力三分分架。
+       修炼功法只列 role!=fa；术法 = GONGFA(role=fa) + SKILLS；
+       神通只列来源，不可在此购买——它由道基/破境按 SHENTONG_GRANT 授予。 */
+    const priceOfTier = { huang: 200, xuan: 700, di: 2600, tian: 9000, xian: 30000 };
+    b += '<div class="small muted" style="margin-bottom:4px">修炼功法</div><ul class="opts">';
     // 之前遍历 SHOP_GONGFA（只有黄/玄），所以地阶/天阶永远不会出现，
     // 「真传可学上乘功法」是空的，也是「天阶只能金丹后拿、金丹又要天阶」的死锁源头。
-    D.GONGFA_EXT.forEach(function (g) {
+    D.GONGFA_EXT.filter(function (g) { return g.role !== 'fa'; }).forEach(function (g) {
       const tierLvl = ({ huang: 'wai', xuan: 'nei', di: 'zhen', tian: 'zhen', xian: 'zhen' })[g.tier];
       const ok = lvls.indexOf(tierLvl) >= 0;
       const owned = (S.ownedGongfa || []).indexOf(g.id) >= 0;
-      const price = ({ huang: 200, xuan: 700, di: 2600, tian: 9000, xian: 30000 })[g.tier];
-      b += iconRow('GONGFA_EXT', g.id, '·', g.name + '（' + D.GONGFA_TIERS[g.tier].name + '）', { name: '功法', cls: 'peace' },
+      const price = priceOfTier[g.tier];
+      b += iconRow('GONGFA_EXT', g.id, '·', g.name + '（' + D.GONGFA_TIERS[g.tier].name + '）', { name: '修炼', cls: 'peace' },
         owned ? '已习' : (!ok ? '身份不够' : fmtNum(price) + ' 贡献'), owned || !ok || S.sect.contrib < price,
         'do;libb:' + g.id);
     });
-    b += '</ul>' + divider() + '<div class="small muted" style="margin-bottom:4px">杀伐神通</div><ul class="opts">';
+    b += '</ul>' + divider() + '<div class="small muted" style="margin-bottom:4px">术法</div><ul class="opts">';
+    D.GONGFA_EXT.filter(function (g) { return g.role === 'fa'; }).forEach(function (g) {
+      const tierLvl = ({ huang: 'wai', xuan: 'nei', di: 'zhen', tian: 'zhen', xian: 'zhen' })[g.tier];
+      const ok = lvls.indexOf(tierLvl) >= 0;
+      const owned = hasArt('fa:' + g.id);
+      const price = priceOfTier[g.tier];
+      b += iconRow('GONGFA_EXT', g.id, '·', g.name + '（' + D.GONGFA_TIERS[g.tier].name + '）', { name: '术法', cls: 'peace' },
+        owned ? '已习' : (!ok ? '身份不够' : fmtNum(price) + ' 贡献'), owned || !ok || S.sect.contrib < price,
+        'do;libb:' + g.id);
+    });
     D.SKILLS.forEach(function (sk) {
       if (sk.id === 'zhiquan') return;
       const ok = lvls.indexOf(sk.lvl) >= 0;
@@ -4786,8 +4902,17 @@
         own ? '已习' : (!ok ? '非真传不可学' : fmtNum(price) + ' 贡献'),
         own || !ok || S.sect.contrib < price, 'do;libskill:' + sk.id);
     });
+    b += '</ul>' + divider() + '<div class="small muted" style="margin-bottom:4px">神通（只列来源）</div><ul class="opts">';
+    if ((S.shenTong || []).length) {
+      S.shenTong.forEach(function (nm) {
+        b += '<div class="small" style="padding:3px 0">' + esc(stShort(nm)) +
+          '<span class="muted"> · ' + esc(shenTongKindMarked(nm) || '道基所赋') + ' · 不可购</span></div>';
+      });
+    } else {
+      b += '<div class="small muted">尚无神通。破境/紫府按道统授予，不由藏经阁出售。</div>';
+    }
     b += '</ul>';
-    b += '<div class="hint">「真正厉害的神通都在顶层，非真传不可学」——你在哪一层，决定你能碰到什么。</div>';
+    b += '<div class="hint">「真正厉害的术法都在顶层，非真传不可学」；神通是道基所赋，买不到。</div>';
     openModal('藏经阁', b);
   };
 
@@ -4813,10 +4938,11 @@
 
   ACT.do_sectdeal = (id) => {
     const deals = {
-      dan: { contrib: 90, take: function () { S.bag.pillHp -= 3; }, ok: function () { return (S.bag.pillHp || 0) >= 3; } },
-      fu: { contrib: 120, take: function () { S.talismans.fuHuo -= 5; }, ok: function () { return (S.talismans.fuHuo || 0) >= 5; } },
-      qi: { contrib: 600, take: function () { S.arts.pop(); }, ok: function () { return (S.arts || []).length > 0; } },
-      zhen: { contrib: 400, take: function () { S.disks = (S.disks || []).filter(function (d) { return d.id !== 'zhenJuLing'; }); }, ok: function () { return (S.disks || []).some(function (d) { return d.id === 'zhenJuLing'; }); } }
+      /* v10.5 P1·M2：交成品换贡献统一上浮两成，给四艺一个稳定出口 */
+      dan: { contrib: 108, take: function () { S.bag.pillHp -= 3; }, ok: function () { return (S.bag.pillHp || 0) >= 3; } },
+      fu: { contrib: 144, take: function () { S.talismans.fuHuo -= 5; }, ok: function () { return (S.talismans.fuHuo || 0) >= 5; } },
+      qi: { contrib: 720, take: function () { S.arts.pop(); }, ok: function () { return (S.arts || []).length > 0; } },
+      zhen: { contrib: 480, take: function () { S.disks = (S.disks || []).filter(function (d) { return d.id !== 'zhenJuLing'; }); }, ok: function () { return (S.disks || []).some(function (d) { return d.id === 'zhenJuLing'; }); } }
     };
     const d = deals[id];
     if (!d) return;
@@ -4834,10 +4960,11 @@
     if (sectAllowedLvl().indexOf(tierLvl) < 0) { toast('身份不够，进不了这一层'); return; }
     const price = ({ huang: 200, xuan: 700, di: 2600, tian: 9000, xian: 30000 })[g.tier];
     if (S.sect.contrib < price) { toast('贡献不足'); return; }
-    if ((S.ownedGongfa || []).indexOf(id) >= 0) { toast('已习'); return; }
+    const isFa = g.role === 'fa';
+    if (isFa ? hasArt('fa:' + id) : (S.ownedGongfa || []).indexOf(id) >= 0) { toast('已习'); return; }
     S.sect.contrib -= price;
     addGongfa(id);
-    logLine('以 ' + price + ' 贡献从藏经阁换得《' + g.name + '》。', 'good');
+    logLine('以 ' + price + ' 贡献从藏经阁换得' + (isFa ? '术法《' : '修炼功法《') + g.name + '》。', 'good');
     closeModal(); advanceXun(1); if (S.phase !== 'play') return render(); render();
   };
 
@@ -4850,8 +4977,8 @@
     if ((S.skillsKnown || []).indexOf(id) >= 0) { toast('已习'); return; }
     S.sect.contrib -= price;
     learnSkill(id);
-    logLine('从藏经阁学得神通「' + sk.name + '」。', 'good');
-    toast('神通 · ' + sk.name);
+    logLine('从藏经阁学得术法「' + sk.name + '」。', 'good');
+    toast('术法 · ' + sk.name);
     closeModal(); advanceXun(1); if (S.phase !== 'play') return render(); render();
   };
 
@@ -5806,6 +5933,21 @@
         out.push((n ? n.name : '故人') + '好感 ' + (eff.fav > 0 ? '+' : '') + eff.fav);
       }
     }
+    /* v10.6：两条新键，为「事件也能落物、落因果」。
+       art 给法宝（旧版事件只能给材料，写「得旧物」就成了空话）；
+       flag 给后续事件当条件——when.flag 一直在读，此前却没有人写。 */
+    if (eff.art) {
+      const a = D.ARTIFACT_EXT.find(function (x) { return x.id === eff.art; });
+      if (a) {
+        S.arts = S.arts || [];
+        S.arts.push(a.id);
+        out.push('得' + a.name);
+      }
+    }
+    if (eff.flag) {
+      S.flags = S.flags || {};
+      S.flags[eff.flag] = 1;
+    }
     return out;
   }
 
@@ -6016,7 +6158,7 @@
       out.ownedGongfa = (out.gongfa || []).slice();
       if (out.ownedGongfa.indexOf('juqi') < 0) out.ownedGongfa.unshift('juqi');
     }
-    // v6.3 迁移：道基功法 / 杀伐神通
+    // v6.3 迁移：修炼功法 / 术法（旧字段名 skillsKnown 保留一版兼容）
     if (!out.daogong || !D.GONGFA.find(function (g) { return g.id === out.daogong; }))
       out.daogong = (out.gongfa && out.gongfa[0]) || 'juqi';
     if (!Array.isArray(out.skillsKnown)) out.skillsKnown = [];
@@ -6090,7 +6232,15 @@
     });
     if (!out.dishes || typeof out.dishes !== 'object') out.dishes = { dan: 0, qi: 0, fu: 0, zhen: 0 };
     if (!out.ledger || typeof out.ledger !== 'object') out.ledger = { income: [], expense: [] };
-    if (!out.market || typeof out.market !== 'object') out.market = { mul: { dan: 1, qi: 1, fu: 1, zhen: 1 }, month: 0 };
+    if (!out.market || typeof out.market !== 'object') out.market = { mul: {}, buy: {}, month: 0 };
+    if (!out.market.mul || typeof out.market.mul !== 'object') out.market.mul = {};
+    if (!out.market.buy || typeof out.market.buy !== 'object') out.market.buy = {};
+    ['dan', 'qi', 'fu', 'zhen', 'mat'].forEach(function (k) {
+      if (typeof out.market.mul[k] !== 'number') out.market.mul[k] = 1;
+      if (typeof out.market.buy[k] !== 'number') out.market.buy[k] = 1;
+    });
+    if (!out.sellMonth || typeof out.sellMonth !== 'object') out.sellMonth = { market: 0 };
+    if (typeof out.sellMonth.market !== 'number') out.sellMonth.market = 0;
     if (!out.sellCh) out.sellCh = 'market';
     if (!Array.isArray(out.goals)) out.goals = [];
     if (!Array.isArray(out.encSeen)) out.encSeen = [];
@@ -6572,7 +6722,7 @@
   /* ---------- 神通：原著里只有少数标了类别（命/术/身/目），其余按名字稳定分配 ----------
      为什么要四类而不是统一倍率：神通是这个游戏里唯一「属于你自己的道」的东西。
      如果每道神通都只是「伤害 ×1.5」，玩家集四道也感觉不到变化——这正是
-     「有杀伐神通但攻击方式单一」的来源。 */
+     「有术法但攻击方式单一」的来源。 */
   const SHENTONG_SPEC = {
     '命': { mul: 1.85, cost: 45, kindName: '命神通', desc: '必中·破防，正面一击' },
     '术': { mul: 1.55, cost: 40, kindName: '术神通', desc: '压其势，两回合伤害 −30%' },
@@ -6634,9 +6784,10 @@
     /* 气质的乘区与耗损：加法微调后取整，避免 1.85×1.10 这种隐性叠乘 */
     const tm = tp ? tp.mul : 0;
     const tc = tp ? tp.cost : 0;
-    let base;
+    let base, baseCost;
     if (parts.length === 1) {
       const b = SHENTONG_SPEC[parts[0]];
+      baseCost = b.cost;
       base = { mul: b.mul, cost: b.cost, desc: b.desc,
         kind: parts[0], kindName: b.kindName, parts: parts };
     } else {
@@ -6653,9 +6804,10 @@
          比值就变成 1.103；再叠气质取整会偏到 1.076/1.106，
          两边的舍入方向还不一致，最终比值飘到 1.13。
          倍率保持全精度，只在展示时舍（见 stMulText）。 */
+      baseCost = Math.round(cost * 0.7);
       base = {
         mul: mul * 1.1,
-        cost: Math.round(cost * 0.7),
+        cost: baseCost,
         desc: descs.join('；'),
         kind: parts.join(''),
         kindName: names.join('') + '双属',
@@ -6665,12 +6817,15 @@
     if (tp) {
       /* 同样不取整：气质是加法微调，舍入留到最后一步 */
       base.mul = base.mul + tm;
-      base.cost = Math.max(5, base.cost + tc);
+      base.cost = Math.max(5, baseCost + tc);
       base.temper = tp.id;
       base.temperText = tp.text;
       base.desc = base.desc + '；' + tp.desc;
       base.kindName = base.kindName + '·' + tp.name;
     }
+    /* v10.5 P1·C4：单独记一份「基础耗灵」，
+       百分比兜底只作用于它，气质的加减改动不被抹平。 */
+    base.costBase = baseCost;
     return base;
   }
 
@@ -6797,7 +6952,7 @@
     const pool = daotongPool().filter(function (x) { return S.shenTong.indexOf(x) < 0; });
     if (!pool.length) { toast('道统池已空'); return; }
     const choose = pickN(pool, Math.min(3, pool.length));
-    let b = '<div class="small">紫府开一关，道统池中得一道神通。<b>三选一</b>。上限 ' + lim + '（仙基所限），已有 ' + S.shenTong.length + '。</div>';
+    let b = '<div class="small">道基有感，道统池中得一道神通。<b>三选一</b>。上限 ' + lim + '（仙基所限），已有 ' + S.shenTong.length + '。</div>';
     b += divider() + '<ul class="opts">';
     choose.forEach(function (x, i) {
       b += optRow('ABC'[i], x, { name: '神通', cls: 'chance' }, '战力上升', false, 'do;st:' + encodeURIComponent(x));
@@ -7138,8 +7293,7 @@
       }
       S.xStage++;
       logLine('渡过' + gate + '，紫府又开一重。晋 ' + realmName() + '。', 'good');
-      if (S.shenTong.length < shenTongLimit()) openShentongPick();
-      else { toast('紫府 · ' + realmName()); advanceXun(1); render(); }
+      if (!grantShenTong('stage')) { toast('紫府 · ' + realmName()); advanceXun(1); render(); }
     } else {
       if (gate === '幻想关') {
         S.xiuwei = 0;
@@ -7364,6 +7518,30 @@
   }
 
   /* ---------- 丹药效果兑现（扩充版） ---------- */
+  /* v10.5 P1·C4：固定值改为「下限 + 上限百分比」。
+     战斗与回血都是比例制（敌伤按 foe.hpMax、我伤按 S.hpMax），
+     上限随境界涨到 1200~2400 后，固定 50 的丹药、固定 20 的术法耗灵
+     会被稀释成噪声：高境界吃回春丹几乎无感、术法灵力近乎免费。
+     规则：固定值作「下限」，与上限百分比取较大者；0 仍为 0（免灵/无耗）。 */
+  const PILL_HP_PCT = 0.08, PILL_MP_PCT = 0.08, SKILL_MP_PCT = 0.05,
+        SHENTONG_MP_PCT = 0.08, ART_HP_COST_PCT = 0.01, MONTH_MP_PCT = 0.06;
+  function pillHealOf(it, kind) {
+    const base = it.v || (kind === 'mp' ? 40 : 50);
+    return Math.max(base, Math.round((kind === 'mp' ? S.mpMax : S.hpMax) * (kind === 'mp' ? PILL_MP_PCT : PILL_HP_PCT)));
+  }
+  function skillCostOf(sk) {
+    if (!sk || !sk.cost) return 0;
+    return Math.max(sk.cost, Math.round(S.mpMax * SKILL_MP_PCT));
+  }
+  function shenTongCostOf(sp) {
+    if (!sp || !sp.cost) return 0;
+    /* 百分比兜底只作用于「基础耗灵」，气质的加减改动保留——
+       否则两个道统的耗灵差会被上限百分比一起抹平，
+       「道统改耗灵」这条机制直接失效（见 shenTongSpec 的 costBase）。 */
+    const base = (typeof sp.costBase === 'number') ? sp.costBase : sp.cost;
+    return Math.max(base, Math.round(S.mpMax * SHENTONG_MP_PCT)) + (sp.cost - base);
+  }
+
   function applyPill(it) {
     if (!it) return '';
     consumeQuality(it.id);
@@ -7371,10 +7549,16 @@
     if (typeof it.v === 'number' && it.v) it = Object.assign({}, it, { v: it.v * fateMul('pill') });
     let msg = '';
     switch (it.type) {
-      case 'hp': S.hp = Math.min(S.hpMax, S.hp + (it.v || 50)); msg = '气血 +' + (it.v || 50); break;
+      case 'hp': {
+        const g = pillHealOf(it, 'hp');
+        S.hp = Math.min(S.hpMax, S.hp + g); msg = '气血 +' + g; break;
+      }
       case 'hpPct': { const g = Math.round(S.hpMax * (it.v || 0.5)); S.hp = Math.min(S.hpMax, S.hp + g); msg = '气血 +' + g; break; }
       case 'hpFull': S.hp = S.hpMax; msg = '气血全满'; break;
-      case 'mp': S.mp = Math.min(S.mpMax, S.mp + (it.v || 40)); msg = '灵力 +' + (it.v || 40); break;
+      case 'mp': {
+        const g = pillHealOf(it, 'mp');
+        S.mp = Math.min(S.mpMax, S.mp + g); msg = '灵力 +' + g; break;
+      }
       case 'mpPct': { const g = Math.round(S.mpMax * (it.v || 0.4)); S.mp = Math.min(S.mpMax, S.mp + g); msg = '灵力 +' + g; break; }
       case 'mpFull': S.mp = S.mpMax; msg = '灵力全满'; break;
       case 'cure': S.hp = Math.min(S.hpMax, S.hp + Math.round(S.hpMax * 0.6)); S.injury = null; msg = '伤势痊愈'; break;
@@ -7756,15 +7940,17 @@
     return v;
   }
   function applyAttackArtCost() {
-    const cost = artBonus('hpCost');
+    /* v10.5 P1·C4：百魂幡的固定反噬随上限一起抬，
+       固定 5 在 2400 上限时是噪声，等于「攻击位法宝白送」。 */
+    const cost = Math.max(artBonus('hpCost'), Math.round(S.hpMax * ART_HP_COST_PCT));
     if (cost > 0) {
-      S.hp = Math.max(1, S.hp - Math.round(cost));
-      logLine('百魂幡反噬，气血 −' + Math.round(cost) + '。', 'danger');
+      S.hp = Math.max(1, S.hp - cost);
+      logLine('百魂幡反噬，气血 −' + cost + '。', 'danger');
     }
   }
 
-  /* ---------- 招式（杀伐神通）----------
-     与道基功法分家之后：招式不再随境界白送，
+  /* ---------- 术法（SKILLS + role=fa 功法）----------
+     与修炼功法分家之后：术法不再随境界白送，
      要么入宗门在藏经阁学，要么靠奇遇/传法撞上。
      「真传才授上乘神通」——zhen 层只有真传身份能碰。 */
   /* v10.5 P0·A2：术法池 = SKILLS + GONGFA(role=fa)。
@@ -8357,6 +8543,120 @@
           cls = '';
         }
         break;
+      /* ====== 2026-11-20 素材增补：五处奇遇 ======
+         每条都真的改账：数值、钩子、熟练度、好感，各归其位。
+         写着「得某物」却什么都不发生的选项，等于骗人。 */
+      /* 石液观机 */
+      case 'shiyeguanji':
+        if (opt === 'cave') {
+          S.stats.fate = clamp(S.stats.fate + 2, 1, 20);
+          S.breakBonus = (S.breakBonus || 0) + 0.03;
+          msg = '一滴入目，见青光一处，定在来月洞府。机缘 +2；此后再看那座洞府，路是熟的。';
+          cls = 'good';
+        } else if (opt === 'debt') {
+          pushHook('hook_old_debt');
+          msg = '第二滴入目，见银中带金一缕，闪烁不定——那是一笔旧债，还没到日子。';
+          cls = '';
+        } else {
+          S.stats.fate = clamp(S.stats.fate + 1, 1, 20);
+          addMat('yuhuaYu', 1);
+          msg = '你把瓶口重新封了。「百鸟在林，不如一鸟在手。」这一滴留着，等最急那一日。机缘 +1，得未启之液一瓶。';
+          cls = 'good';
+        }
+        break;
+      /* 三关·荡魂 */
+      case 'sanguandanghun':
+        if (opt === 'mountain') {
+          if (S.karma > 20) {
+            S.stats.heart = clamp(S.stats.heart - 3, 1, 20);
+            msg = '山上风起，平生所悔之事一一走过，一件也没落下。你走下时，道心散了三分。';
+            cls = 'danger';
+          } else {
+            S.stats.heart = clamp(S.stats.heart + 2, 1, 20);
+            msg = '山上风起，平生所悔之事一一走过。走完你才发现，悔过的事，都已经过去了。道心 +2。';
+            cls = 'good';
+          }
+        } else if (opt === 'valley') {
+          S.stats.fate = clamp(S.stats.fate + 1, 1, 20);
+          const met = Object.keys(S.npcs || {}).filter(function (k) {
+            return S.npcs[k] && S.npcs[k].met && (S.npcs[k].fav || 0) > 0;
+          });
+          if (met.length) {
+            const pid = pick(met);
+            const pn = D.NPC_POOL.find(function (x) { return x.id === pid; });
+            S.npcs[pid].fav = 0;
+            msg = '你绕谷而行，魂魄未动，却丢了一样东西——醒来时怎么也想不起' +
+              (pn ? pn.name : '那个人') + '的名字。脸还记得，名字空了。机缘 +1。';
+          } else {
+            msg = '你绕谷而行，魂魄未动，却丢了一样东西。翻遍行囊，不知少的是什么。机缘 +1。';
+          }
+          cls = '';
+        } else {
+          S.lifeMax = Math.max(20, (S.lifeMax || 0) - 2);
+          S.breakBonus = (S.breakBonus || 0) + 0.03;
+          msg = '逆流而上，水从脚底往下走。你走完了，寿元折去二年，掌心多一道逆流的痕。';
+          cls = 'danger';
+        }
+        break;
+      /* 命灯之问 */
+      case 'mingdengzhiwen':
+        if (opt === 'light') {
+          S.karma += 3;
+          addMat('wulianXue', 1);
+          msg = '你割指滴血，命火燃起。从今日起，你是本宗的记名弟子——命牌认牌不认人，好在牌在你身上。业力 +3。';
+          cls = '';
+        } else if (opt === 'blow') {
+          S.stats.fate = clamp(S.stats.fate + 1, 1, 20);
+          S.karma += 3;
+          pushHook('hook_lamp_out');
+          msg = '灯灭的一瞬，你听见远处有人笑。那盏灯本属一个天赋极高的人。机缘 +1，业力 +3。';
+          cls = 'danger';
+        } else {
+          S.stats.heart = clamp(S.stats.heart + 2, 1, 20);
+          msg = '你连牌都不想要。「命牌认牌不认人」——那便不认。道心 +2，此路于你关了。';
+          cls = 'good';
+        }
+        break;
+      /* 伪箓之问 */
+      case 'weiluzhiwen':
+        if (opt === 'point') {
+          S.craft.fu = (S.craft.fu || 0) + 15;
+          if (S.npcs.laodao && S.npcs.laodao.met) {
+            S.npcs.laodao.fav = clamp((S.npcs.laodao.fav || 0) + 8, 0, 120);
+          }
+          msg = '「这不是符，是名籍。名籍上了才算有司——你这是画反了。」那人脸一白，收符就走。制符 +15。';
+          cls = 'good';
+        } else if (opt === 'take') {
+          S.karma += 2;
+          S.insightXp = (S.insightXp || 0) + 1;
+          msg = '你收下了，没戳破。假符也是符，糊弄鬼神未必不成——只是这张符，从此压在你箱底。业力 +2，悟道 +1。';
+          cls = 'danger';
+        } else {
+          S.stats.heart = clamp(S.stats.heart + 1, 1, 20);
+          pushHook('hook_false_register');
+          msg = '火起时，那人没跑，只说了一句：「你也没真懂。」符烧完了，灰是黑的。道心 +1。';
+          cls = '';
+        }
+        break;
+      /* 三炷香 */
+      case 'sanzhuxiang':
+        if (opt === 'yes') {
+          S.followers = Math.min(followLimit(), S.followers + 40);
+          S.piety = clamp((S.piety || 1) + 0.1, 0.5, 2.0);
+          S.karma += 2;
+          msg = '你应了。第三炷香插正，火苗忽然直了。祠堂里从此多一炷是给你的，阴邪之事绕你三分。信众 +40。';
+          cls = 'good';
+        } else if (opt === 'no') {
+          S.stats.heart = clamp(S.stats.heart + 2, 1, 20);
+          S.followers = Math.max(0, S.followers - 15);
+          msg = '「死人只认亲不认理。」——你不属于这里。香灭了，门外的人散得比来得快。道心 +2，信众 −15。';
+          cls = '';
+        } else {
+          S.stats.fate = clamp(S.stats.fate + 1, 1, 20);
+          msg = '「我是谁？」婆婆不答，只把第三炷香插正。插完她说：「问这个的，都是外面来的。」机缘 +1。';
+          cls = 'good';
+        }
+        break;
       default: msg = '什么也没发生。';
     }
 
@@ -8662,7 +8962,7 @@
     openModal('谋 · 不打也是本事', b);
   };
 
-  /* 招式菜单 */
+  /* 术法菜单（SKILLS + role=fa 功法）；神通是另一张清单 */
   ACT.openSkills = () => {
     const c = S.combat;
     if (!c) return;
@@ -8675,9 +8975,9 @@
     let b = '<div class="small">灵力 <b>' + Math.round(S.mp) + '</b>/' + Math.round(S.mpMax) +
       '　道基《' + esc(g.name) + '》（' + esc(g.el ? D.ELEMENTS[g.el].name : '无属') + '）</div>' + divider();
 
-    b += '<div class="sechead">招式　装配 ' + list.length + '/' + equipLimit() + '　可用多次</div>';
+    b += '<div class="sechead">术法　装配 ' + list.length + '/' + equipLimit() + '　可用多次</div>';
     b += '<ul class="opts">';
-    if (!list.length) b += '<div class="small muted">一式未装。去「招式」面板装配。</div>';
+    if (!list.length) b += '<div class="small muted">一门未装。去「术法」面板装配。</div>';
     list.forEach(function (sk) {
       const dis = S.mp < sk.cost;
       const r = resonResult(sk);
@@ -8716,21 +9016,22 @@
     } else {
       b += '<div class="small muted" style="margin-top:8px">尚无神通。紫府开一关时，可从道统池中取一道——那是你自己的道。</div>';
     }
-    b += '<div class="hint">招式吃同源共鸣（同系 +20%、相生 +10%、相克 −15%）；神通不吃共鸣，但必中，且带破防／自愈／破绽。</div>';
+    b += '<div class="hint">术法吃同源共鸣（同系 +20%、相生 +10%、相克 −15%）；神通不吃共鸣，但必中，且带破防／自愈／破绽。</div>';
+    if (sts.length) b += '<div class="hint">面板上的 × 是<b>基础倍率</b>，不是最终伤害：神通结算 = 敌方气血上限 × 0.26 × 基础倍率 × 位格/共鸣修正。</div>';
     if ((S.shenTong || []).length) {
       b += '<div style="margin-top:8px"><button class="btn ghost" data-act="act:openStEquip">神通 · 取舍（本场带 ' +
         stEquipList().length + '/' + S.shenTong.length + ' 道）</button></div>';
     }
-    openModal('交手 · 招式与神通', b);
+    openModal('交手 · 术法与神通', b);
   };
 
-  /* 招式装配/拆卸管理 */
+  /* 术法装配/拆卸管理 */
   ACT.openSkillBook = () => {
     const eq = Array.isArray(S.skillsEquip) ? S.skillsEquip : [];
     const lim = equipLimit();
-    let b = '<div class="small">已习 ' + knownSkills().length + ' 式 · 装配上限 ' + lim +
+    let b = '<div class="small">已习 ' + knownSkills().length + ' 门术法 · 装配上限 ' + lim +
       (S.sect ? '（' + esc(D.SECT.ranks[S.sect.rank].name) + '）' : '（散修）') + '</div>';
-    b += '<div class="muted small" style="margin:4px 0">只有装配进斗法的招式才能用。</div>' + divider();
+    b += '<div class="muted small" style="margin:4px 0">只有装配进斗法的术法才能用。</div>' + divider();
     b += '<ul class="opts">';
     knownSkills().forEach(function (sk) {
       const on = eq.indexOf(sk.id) >= 0;
@@ -8740,7 +9041,7 @@
         false, 'do;eqsk:' + sk.id);
     });
     b += '</ul>';
-    b += '<div class="hint">装配满了就得先卸一个。带得多了不一定是好事——灵力不够，招式就是废纸。</div>';
+    b += '<div class="hint">装配满了就得先卸一个。带得多了不一定是好事——灵力不够，术法就是废纸。</div>';
     openModal('术法 · 装配', b);
   };
 
@@ -8893,7 +9194,7 @@
       const g = getDaogong();
       mb += '<div class="frow"><span class="k">道基</span>' + esc(g.name) +
         (g.el ? elemChip(g.el) : '') + '</div>';
-      mb += '<div class="frow"><span class="k">招式</span>装配 ' + equippedSkills().length + '/' + equipLimit() + '</div>';
+      mb += '<div class="frow"><span class="k">术法</span>装配 ' + equippedSkills().length + '/' + equipLimit() + '</div>';
       if ((S.shenTong || []).length) {
         const stn = S.shenTong.map(stShort);
         mb += '<div class="frow"><span class="k">神通</span><span class="small">' +
@@ -8923,8 +9224,13 @@
     if (c.foeMark > 0) tags += '<span class="stance on">破绽 · 我方伤害 ×1.25' + nw('（' + c.foeMark + ' 回合）') + '</span>';
     if (c.foeWeaken > 0) tags += '<span class="stance on">压制 · 敌方伤害 ×0.7' + nw('（' + c.foeWeaken + ' 回合）') + '</span>';
     /* v10.4 P0·S3：灼烧/迟滞两条状态此前只写不读，玩家看不见，也就算不动 */
-    if (c.foeBurn > 0) tags += '<span class="stance bad">灼烧 · 每回合 ' +
-      burnTickOf(c) + ' 伤' + nw('（' + c.foeBurn + ' 回合）') + '</span>';
+    if (c.foeBurn > 0) {
+      /* v10.5 P2·C7：点火当回合只清标记、不落伤，必须写出来，
+         否则玩家会以为「点了没生效」；同一回合再点火是刷新，不是叠层。 */
+      tags += c.burnFresh
+        ? '<span class="stance bad">余焰将起 · 下回合起每回合 ' + burnTickOf(c) + ' 伤' + nw('（' + c.foeBurn + ' 回合）') + '</span>'
+        : '<span class="stance bad">灼烧 · 每回合 ' + burnTickOf(c) + ' 伤' + nw('（' + c.foeBurn + ' 回合）') + '</span>';
+    }
     if (c.foeSlow > 0) tags += '<span class="stance bad">迟滞 · 敌方伤害 ×0.85' + nw('（' + c.foeSlow + ' 回合）') + '</span>';
     if (c.talBuff) tags += '<span class="stance on">神通加成 · 伤害 +' + Math.round(c.talBuff * 100) + '%</span>';
     if (c.talShield) tags += '<span class="stance on">护体 · 本次减伤 ' + Math.round(c.talShield * 100) + '%</span>';
@@ -8954,7 +9260,7 @@
     o.push(optRow('1', '攻', { name: '风险', cls: 'risk' },
       '必中 · 约' + atkPct + '% 伤害' + (artBonus('atk') ? ' ·宝+' + Math.round(artBonus('atk') * 100) + '%' : ''), false, 'do;cbt:attack'));
     o.push(optRow('2', '术', { name: '平和', cls: 'peace' },
-      '招式' + equippedSkills().length + '·神通' + (S.shenTong || []).length, S.mp < 15, 'act:openSkills'));
+      '术法' + equippedSkills().length + '·神通' + (S.shenTong || []).length, S.mp < 15, 'act:openSkills'));
     o.push(optRow('3', '御', { name: '平和', cls: 'peace' },
       '减伤 50%' + (artBonus('body') ? ' +法宝' : ''), false, 'do;cbt:defend'));
     o.push(optRow('4', '器', { name: '机缘', cls: 'chance' },
@@ -9018,12 +9324,14 @@
     if (c.round > 0 && c.round % 3 === 0) c.momentum = Math.min(3, c.momentum + 1);
     const momMul = [1.0, 1.10, 1.20, 1.35][c.momentum] || 1;
     // P1-8：双向按血量百分比结算
-    const ratio = clamp(Math.sqrt(computePower() / Math.max(1, c.foe.power)), 0.2, 2.5);
+    /* v10.5 P1·C5：ratio 下限从 0.2 提到 0.35，最大约 1/0.35≈2.86（原 5）。
+       下限越低，「我战力低」时敌方伤害被放大得越狠，正是死亡螺旋的放大口。 */
+    const ratio = clamp(Math.sqrt(computePower() / Math.max(1, c.foe.power)), 0.35, 2.5);
     /* v8.1：基础值保持 0.15。旧版玩家的期望伤害是 0.20×0.72=0.144，
        去掉空挥后若不同步回调这里，战斗会整体变简单。 */
     let dmg = S.hpMax * 0.15 * (1 / ratio) * (0.8 + rng() * 0.4) * momMul;
-    if (gap >= 1) dmg *= 1.6;
-    if (gap <= -1) dmg *= 0.35;
+    /* v10.5 P1·C6：敌方还手与玩家出手共用 GAP_MUL 表，inc 即「被抬多少」 */
+    dmg *= gapMul(gap).inc;
     if (c.foeWeaken > 0) dmg *= 0.7;   // 术神通压住了他的势
     if (c.foeSlow > 0) {
       dmg *= 0.85;                     // v10.4 P0·S3：迟滞，身法被冻住
@@ -9138,6 +9446,24 @@
     advanceXun(1); render();
   }
 
+  /* v10.5 P1·C6：位格压制一张表，玩家出手与敌方还手共用。
+     旧版玩家用「gapCut 之后的 gap」、敌方用原始 gap，两侧不对称且不可预期，
+     玩家无法从面板推算「越两境打人会被压多少、挨打会被抬多少」。 */
+  const GAP_MUL = {
+    up2:  { out: 0.15, inc: 1.60 },   // 低两档打高两档：出手很轻，挨打很重
+    up1:  { out: 0.45, inc: 1.60 },
+    even: { out: 1.00, inc: 1.00 },
+    down1:{ out: 1.30, inc: 0.35 },
+    down2:{ out: 1.30, inc: 0.35 }
+  };
+  function gapMul(gap) {
+    if (gap >= 2) return GAP_MUL.up2;
+    if (gap >= 1) return GAP_MUL.up1;
+    if (gap <= -2) return GAP_MUL.down2;
+    if (gap <= -1) return GAP_MUL.down1;
+    return GAP_MUL.even;
+  }
+
   ACT.do_cbt = (sub, arg) => {
     const c = S.combat;
     if (!c) return;
@@ -9150,13 +9476,13 @@
     const gapCut = Math.max(gongfaGapUp(), c.temperPierce ? 1 : 0);
     const gap = Math.max(0, gapRaw - gapCut);
     const diff = c.foe.rank - combatRank(c);
-    let mult = 1;
     /* v8.1：位格压制不再把伤害压成 1 点。
        「全力一击只留下浅痕」和「未中」是同一种失败体验——出手了却毫无意义。
-       现在压制是「打得很轻」而不是「打了等于没打」，差距仍然由 ratio 与卸力体现。 */
-    if (gap >= 2) mult = 0.15;
-    else if (gap >= 1) mult = 0.45;
-    else if (diff >= 2) mult = 0.75;
+       现在压制是「打得很轻」而不是「打了等于没打」，差距仍然由 ratio 与卸力体现。
+       v10.5 P1·C6：系数取 GAP_MUL 的 out，与敌方还手的 inc 同源同表。 */
+    let mult = gapMul(gap).out;
+    /* 同大境但位阶差大时仍有一条 diff 规则（表中没有这一档） */
+    if (diff >= 2) mult = Math.min(mult, 0.75);
     else if (diff <= -2) mult = 1.3;
 
     let dmg = 0, hit = true, note = '';
@@ -9189,8 +9515,11 @@
       const nm = decodeURIComponent(arg || '');
       const sk = artSpecByName(nm);
       if (!sk) { render(); return; }
-      if (S.mp < sk.cost) { toast('灵力不足'); render(); return; }
-      S.mp -= sk.cost;
+      /* v10.5 P1·C4：术法耗灵同样按上限百分比兜底，
+         否则上限涨到千级后，20~60 的耗灵在灵力池面前等于免费。 */
+      const _skCost = skillCostOf(sk);
+      if (S.mp < _skCost) { toast('灵力不足（需 ' + _skCost + '）'); render(); return; }
+      S.mp -= _skCost;
       let mul2 = skillMulByName(nm);
       const reson = resonResult(sk);
       let sure = false, extra = reson.txt && reson.txt !== '无关' ? '（' + reson.txt + '）' : '';
@@ -9235,7 +9564,8 @@
         render(); return;
       }
       const _freeFirst = _stance && _stance.id === 'sixiang' && !c.stanceUsed.stFree;
-      const _cost2 = _freeFirst ? 0 : sp.cost;
+      /* v10.5 P1·C4：神通耗灵按上限百分比兜底（免灵仍为 0）。 */
+      const _cost2 = _freeFirst ? 0 : shenTongCostOf(sp);
       if (S.mp < _cost2) { toast('灵力不足（需 ' + _cost2 + '）'); render(); return; }
       S.mp -= _cost2;
       if (_freeFirst) c.stanceUsed.stFree = true;
@@ -9306,10 +9636,11 @@
         const _gst = (G.WXCS3_EXT && G.WXCS3_EXT.gongfaSpellStatus)
           ? G.WXCS3_EXT.gongfaSpellStatus(null) : null;
         if (_gst && _gst.burn) _bm = Math.min(0.9, _bm + _gst.burn * 0.5);
+        const _wasBurn = c.foeBurn > 0;
         c.foeBurn = Math.max(c.foeBurn || 0, 2);
         c.foeBurnMul = Math.max(c.foeBurnMul || 0, _bm);
         c.burnFresh = true;
-        stTags.push(_bm > 0.5 ? '余焰·焚身' : '余焰');
+        stTags.push(_wasBurn ? '余焰已续' : (_bm > 0.5 ? '余焰·焚身' : '余焰'));
       } else if (sp.temper === '虚空') {
         c.temperPierce = 1;      // 本场后续出手位格压制减轻一档
         stTags.push('凌位');
@@ -9375,7 +9706,11 @@
           /* v10.4 P0·S3：点火当回合不结算，从下一回合起烧。
              否则「灼烧 2 回合」实际只在点火后烧 1 次——名与实对不上。
              用 burnFresh 记住「这一道是刚点的」，在 foeTurn 里消费一次。 */
-          if (_gst.burn) { c.foeBurn = 2; c.foeBurnMul = _gst.burn; c.burnFresh = true; }
+          if (_gst.burn) {
+            const _wasBurn = c.foeBurn > 0;
+            c.foeBurn = 2; c.foeBurnMul = _gst.burn; c.burnFresh = true;
+            if (_wasBurn) logLine('余焰再起，火势续为 2 回合。', 'good');
+          }
           if (_gst.slow) { c.foeSlow = 2; }
           if (_gst.pierce) { c.foeWeaken = Math.max(c.foeWeaken || 0, 2); }
         }
@@ -9625,6 +9960,7 @@
   function clearModalBody() {
     const box = document.getElementById('modals');
     if (box) box.innerHTML = '';
+    _shopOpen = false;
     document.body.classList.remove('modal-open');
   }
   function closeModal() {
@@ -10137,7 +10473,7 @@
   /* ============================================================
      v6.4 四艺：炼丹 / 炼器 / 制符 / 阵法
      定位：四艺是「手段」不是「身份」——不设职业、不设互斥，谁都能学。
-     唯一的硬约束：每次制作占 1 个月，和打坐采气互斥。
+     唯一的硬约束：每次制作占 1 旬，和打坐采气互斥。
      ============================================================ */
 
   function craftTierOf(art) {
@@ -10158,8 +10494,8 @@
     // 状态：灵力/神识/伤势
     const a = D.CRAFT_ARTS.find(function (x) { return x.id === art; });
     if (a) r += (st(a.stat) - 10) * 0.012;
-    if (S.hp / S.hpMax < 0.33) r -= 0.12;
-    else if (S.hp / S.hpMax < 0.66) r -= 0.05;
+    if (hpRatio() < 0.33) r -= 0.12;
+    else if (hpRatio() < 0.66) r -= 0.05;
     if (S.cave && S.cave.facilities && S.cave.facilities[art]) r += 0.05;
     /* v10.4 P1·3.3：四艺成功率读主修功法。
      ------------------------------------------------------------
@@ -10238,6 +10574,18 @@
     }
     if (!base) base = matCostOf(recipe) * 1.6;
     return Math.round(base * (quality ? quality.mul : 1));
+  }
+  /* v10.5 P1·M2：自制品相溢价。
+     买料→制作→卖若按零售回收，四艺的中间档会稳定亏六成以上，
+     产业链只剩「自己采集」一条腿。这里只抬「亲手做出来」的成品：
+     底价取 max(表价, 材料成本 × 1.55)，再走统一的回收折价。
+     坊市买来的同 id 货物没有 craftedQ 记录，仍按表价回收——
+     所以不会出现「低买高卖」的套利。 */
+  const CRAFTED_VALUE_MUL = 1.55;
+  function craftedValueOf(recipe) {
+    if (!recipe) return 0;
+    const table = outPriceOf(recipe, { mul: 1 });
+    return Math.max(1, Math.round(Math.max(table, matCostOf(recipe) * CRAFTED_VALUE_MUL)));
   }
   function addMat(id, n) {
     S.bagMat = S.bagMat || {};
@@ -10322,7 +10670,7 @@
   ACT.openCraft = () => {
     const arts = D.CRAFT_ARTS;
     let b = '<div class="small">四艺是手段，不是身份。谁都能学，学几样都行。</div>';
-    b += '<div class="muted small" style="margin:4px 0">唯一的硬约束：每次制作占一个月，与打坐采气互斥。</div>' + divider();
+    b += '<div class="muted small" style="margin:4px 0">唯一的硬约束：每次制作占一旬，与打坐采气互斥。</div>' + divider();
     b += '<div class="craftgrid">';
     arts.forEach(function (a) {
       const learned = (S.learnedArts || []).indexOf(a.id) >= 0;
@@ -10340,7 +10688,7 @@
     b += divider();
     b += '<div class="small muted">顺序：<b>攒料 → 学技艺（带配方）→ 制作 → 卖出</b>。料从采集／坊市／宗门任务来。</div>';
     b += '<ul class="opts" style="margin-top:6px">';
-    b += optRow('A', '采集材料', { name: '占一月', cls: 'peace' }, '不花灵石 · 看境界', false, 'act:openGather');
+    b += optRow('A', '采集材料', { name: '占一旬', cls: 'peace' }, '不花灵石 · 看境界', false, 'act:openGather');
     b += optRow('B', '学技艺（买技艺书）', { name: '平和', cls: 'peace' }, '黄阶 200 石起', false, 'act:openCraftBook');
     b += optRow('C', '看配方 · 制作', { name: '平和', cls: 'peace' }, '已掌握 ' + (S.learnedRecipes || []).length + ' 张 · 库存 ' + bagMatText(), false, 'act:openRecipeBook');
     b += optRow('D', '材料库存', { name: '平和', cls: 'peace' }, bagMatText(), false, 'act:openBagMat');
@@ -10406,8 +10754,8 @@
     const lvB = D.CRAFT_LEVELS[lv - 1].rate;
     const stB = a ? (st(a.stat) - 10) * 0.012 : 0;
     let hpB = 0;
-    if (S.hp / S.hpMax < 0.33) hpB = -0.12;
-    else if (S.hp / S.hpMax < 0.66) hpB = -0.05;
+    if (hpRatio() < 0.33) hpB = -0.12;
+    else if (hpRatio() < 0.66) hpB = -0.05;
     const facB = (S.cave && S.cave.facilities && S.cave.facilities[art]) ? 0.05 : 0;
     return {
       base: recipe.base, lv: lvB, stat: stB, hp: hpB, fac: facB,
@@ -10431,7 +10779,7 @@
     const cost = matCostOf(r);
     /* v10.3 P0：报价与结算同源。面板给「中品回收价」（坊市基准），
        按产出份数算总回收，净利就是玩家真能拿到的数字。 */
-    const unitBack = Math.max(1, Math.round(outPriceOf(r, { mul: 1 }) * RECOVER_BASE));
+    const unitBack = Math.max(1, Math.round(craftedValueOf(r) * RECOVER_BASE));
     const totalBack = unitBack * (r.need || 1);
     const rate = craftRateOf(r.kind, r);
     const lock = !can || lack > 0;
@@ -10455,7 +10803,7 @@
       b += '<div class="small muted">一张也没有。先「学技艺」买一本技艺书——黄阶 200 石，学完自带该阶全部配方。</div>';
       b += '<ul class="opts" style="margin-top:8px">' +
         optRow('A', '去学技艺', { name: '平和', cls: 'peace' }, '200 石起', false, 'act:openCraftBook') +
-        optRow('B', '先去采集攒料', { name: '占一月', cls: 'peace' }, '', false, 'act:openGather') + '</ul>';
+        optRow('B', '先去采集攒料', { name: '占一旬', cls: 'peace' }, '', false, 'act:openGather') + '</ul>';
       return openModal('配方 · 制作', b);
     }
     ['dan', 'fu', 'qi', 'zhen'].forEach(function (a) {
@@ -10492,19 +10840,19 @@
     });
     b += '</ul>';
     b += '<div class="small" style="margin-top:8px">去哪弄：</div>';
-    b += '<div class="small muted">· <b>采集</b>：占一月，不花灵石，按境界出料<br>' +
+    b += '<div class="small muted">· <b>采集</b>：占一旬，不花灵石，按境界出料<br>' +
       '· <b>坊市</b>：材料页直接买，几十到上千石<br>' +
       '· <b>宗门任务</b>：采药/守炉/巡山/猎妖/镇守，做完给料<br>' +
       '· <b>家族</b>：有产业时每月出料</div>';
     b += '<ul class="opts" style="margin-top:10px">' +
-      optRow('A', '去采集', { name: '占一月', cls: 'peace' }, '', false, 'act:openGather') +
+      optRow('A', '去采集', { name: '占一旬', cls: 'peace' }, '', false, 'act:openGather') +
       optRow('B', '去坊市买', { name: '灵石', cls: 'chance' }, '', false, 'act:openShop') + '</ul>';
     openModal('缺料 · ' + esc(outNameOf(r)), b);
   };
 
   /* ---------- 采集：四艺的零门槛料源 ----------
      没有这个，散修（不入宗门就没有任务给料）一点材料都拿不到，
-     四艺在散修手里等于不存在。三个方向各有偏重，占一月。 */
+     四艺在散修手里等于不存在。三个方向各有偏重，占一旬。 */
   const GATHER_SPOTS = [
     { id: 'herb', name: '山野采药', want: '草木 · 炼丹主材',
       pool: ['buqiCao', 'lanyouCao', 'heshenHua', 'gulingHua', 'yuhuaYu'] },
@@ -10522,7 +10870,7 @@
     });
   }
   ACT.openGather = () => {
-    let b = '<div class="small">采集<b>占一个月</b>，不花灵石。境界越高能找的东西越好，灵气越足出稀有的概率越高。</div>';
+    let b = '<div class="small">采集<b>占一旬</b>，不花灵石。境界越高能找的东西越好，灵气越足出稀有的概率越高。</div>';
     b += '<div class="small muted" style="margin-top:4px">当前：' + esc(curPlace()) + ' · 灵气 ' + D.LINGQI[S.lingqi].name + '</div>' + divider();
     b += '<ul class="opts">';
     GATHER_SPOTS.forEach(function (sp) {
@@ -10537,7 +10885,7 @@
     });
     b += '</ul>';
     b += '<div class="hint">采到的东西会直接入库存，制作时点配方就能看见够不够。</div>';
-    openModal('采集 · 占一月', b);
+    openModal('采集 · 占一旬', b);
   };
   ACT.do_gather = (spot) => {
     const sp = GATHER_SPOTS.find(function (x) { return x.id === spot; });
@@ -10561,7 +10909,7 @@
     maybeEvent();
     render();
     if (!modalBusy()) {
-      flushGain('采集所得', '采集占去一个月。料在「四艺 → 材料库存」里，做东西时点配方就能看见够不够。');
+      flushGain('采集所得', '采集占去一旬。料在「四艺 → 材料库存」里，做东西时点配方就能看见够不够。');
     }
   };
 
@@ -10569,6 +10917,19 @@
   function bookReadCount(id) { return (S.bookRead || {})[id] || 0; }
   function bookLayerOk(layer) {
     const nd = layer.need || {};
+    /* v10.6：「悟性够 或 道心够」这种门槛，旧 need 表达不了——它只能全要。
+       写成 or:[{insight:14},{heart:15}]，任一组成立即通行。 */
+    if (nd.or) {
+      return nd.or.some(function (alt) {
+        return Object.keys(alt).every(function (k) {
+          if (k === 'insight') return st('insight') >= alt[k];
+          if (k === 'heart') return st('heart') >= alt[k];
+          if (k === 'realm') return S.xRealm >= alt[k];
+          if (k === 'pillar') return (S.pillar || 0) >= alt[k];
+          return true;
+        });
+      });
+    }
     if (nd.insight && st('insight') < nd.insight) return false;
     if (nd.heart && st('heart') < nd.heart) return false;
     if (nd.realm && S.xRealm < nd.realm) return false;
@@ -10660,6 +11021,11 @@
     const xiuGain = gain.match(/修为\s*\+\s*(\d+)/);
     if (xiuGain) gainXiuwei(parseInt(xiuGain[1], 10));
     if (/阅历/.test(gain)) S.insightXp = (S.insightXp || 0) + 1 + fateAdd('book');   // v9.0 M1：负薪问道
+    /* v10.6：有些真意不是数值，是一次改判或一条伏笔。
+       写在 fx 里，读的时候一并兑现——gain 那句话才有下文。 */
+    const fx = layer.fx || {};
+    if (fx.breakBonus) S.breakBonus = (S.breakBonus || 0) + fx.breakBonus;
+    if (fx.hook) pushHook(fx.hook);
     logLine('读 ' + bk.name + ' 第 ' + (rc + 1) + ' 层：' + gain, 'good');
     /* v9.0 M4：读到第二层起，书里可能夹着一条上古遗迹的方位。 */
     const _XBK = G.WXCS3_EXT;
@@ -10668,6 +11034,8 @@
     b += '<div class="ds-head">' + esc(bk.name) + '　<span class="muted small">第 ' + (rc + 1) + ' 读</span></div>';
     b += '<div class="ds-text">' + esc(layer.text).replace(/\n/g, '<br>') + '</div>';
     b += '<div class="ds-gain">' + esc(gain) + '</div>';
+    if (fx.breakBonus) b += '<div class="ds-gain">下次破境 +' + Math.round(fx.breakBonus * 100) + '%</div>';
+    if (fx.hook) b += '<div class="ds-gain">此事未了（记入人情）</div>';
     b += '</div>';
     const nextLayer = bk.layers[rc + 1];
     if (nextLayer) b += '<div class="small muted" style="margin-top:8px">再读下去需要：' + esc(nextLayer.needText) + '</div>';
@@ -10681,7 +11049,7 @@
     if (!keys.length) {
       b += '<div class="small muted">库中无料。三条路：<b>采集</b>（不花灵石）、<b>坊市买</b>、<b>宗门任务换</b>。</div>';
       b += '<ul class="opts" style="margin-top:8px">' +
-        optRow('A', '去采集', { name: '占一月', cls: 'peace' }, '', false, 'act:openGather') +
+        optRow('A', '去采集', { name: '占一旬', cls: 'peace' }, '', false, 'act:openGather') +
         optRow('B', '去坊市买料', { name: '灵石', cls: 'chance' }, '', false, 'act:openShop') +
         '</ul>';
       return openModal('材料库存', b);
@@ -10714,9 +11082,9 @@
     b += '<div class="small muted">用于配方：' + (used.length ? used.join('、') : '暂无') + '</div>';
     b += '<ul class="opts" style="margin-top:10px">';
     b += optRow('A', '卖一份', { name: '灵石', cls: 'chance' },
-      '+' + fmtNum(it ? sellPriceOf(it.price, 1) : 0) + ' 石（' + esc(sellCh().name) + '收价）', false, 'do;sellmat:' + k);
+      '+' + fmtNum(it ? sellPriceOf(it.price, sellMul().mat || 1) : 0) + ' 石（' + esc(sellCh().name) + '收价）', false, 'do;sellmat:' + k);
     b += optRow('B', '看配方', { name: '平和', cls: 'peace' }, '', false, 'act:openRecipeBook');
-    b += optRow('C', '去采集', { name: '占一月', cls: 'peace' }, '', false, 'act:openGather');
+    b += optRow('C', '去采集', { name: '占一旬', cls: 'peace' }, '', false, 'act:openGather');
     b += '</ul>';
     openModal('材料 · ' + esc(it ? it.name : k), b);
   };
@@ -10736,7 +11104,7 @@
     const p = craftRateParts(r.kind, r);
     const m = matsOf(r);
     const cost = matCostOf(r);
-    const sale = Math.max(1, Math.round(outPriceOf(r, { mul: 1 }) * RECOVER_BASE));
+    const sale = Math.max(1, Math.round(craftedValueOf(r) * RECOVER_BASE));
     const totalSale = sale * (r.need || 1);
     const a = D.CRAFT_ARTS.find(function (x) { return x.id === r.kind; });
     const statName = { insight: '悟性', qualify: '资质', sense: '神识' }[a ? a.stat : 'insight'] || '悟性';
@@ -10771,7 +11139,7 @@
       fmtNum(sale) + ' 石/份 ×' + r.need + '　净利约 ' + fmtNum(totalSale - cost) + ' 石</div>';
 
     b += divider();
-    b += '<div class="small muted">选一种火候。<b>无论成败都占一个月</b>，这一个月不能打坐。</div>';
+    b += '<div class="small muted">选一种火候。<b>无论成败都占一旬</b>，这一旬不能打坐。</div>';
     const wWen = clamp(p.total + 0.15, 0.10, 0.98);
     const wWu = clamp(p.total - 0.10, 0.10, 0.98);
     b += '<ul class="opts">';
@@ -10887,8 +11255,8 @@
       if (r.n <= 0) rows.shift();
     }
     if (S.craftedQ && Array.isArray(S.craftedQ[id])) S.craftedQ[id] = rows;
-    const out = rows.map(function (r) { return { q: r.q, n: r.n }; });
-    if (total - made > 0) out.push({ q: 'zhong', n: total - made });
+    const out = rows.map(function (r) { return { q: r.q, n: r.n, made: true }; });
+    if (total - made > 0) out.push({ q: 'zhong', n: total - made, made: false });
     return out;
   }
   function consumeQuality(id, qid) {
@@ -11164,7 +11532,37 @@
   function auctionOpen() { return S.year % 3 === 0; }
   function auctionPassed() { return sellCh().id !== 'auction' || rng() >= 0.15; }
   function sellMul() {
-    return (S.market && S.market.mul) || { dan: 1, qi: 1, fu: 1, zhen: 1 };
+    return (S.market && S.market.mul) || { dan: 1, qi: 1, fu: 1, zhen: 1, mat: 1 };
+  }
+  /* v10.5 P1·E4：坊市摆摊每月限件数。宗门身份越高，摊位越多。
+     黑市/宗门/拍卖不限件——黑市背业力，宗门折价，拍卖三年一次且会流拍。 */
+  function marketLimit() {
+    return 5 + (S.sect ? (S.sect.rank || 0) : 0);
+  }
+  function marketSold() {
+    return (S.sellMonth && S.sellMonth.market) || 0;
+  }
+  function marketFull() {
+    return sellCh().id === 'market' && marketSold() >= marketLimit();
+  }
+  function marketTake() {
+    S.sellMonth = S.sellMonth || { market: 0 };
+    S.sellMonth.market = (S.sellMonth.market || 0) + 1;
+  }
+  /* v10.5 P1·E8：买入价随行情波动，并与卖出共用「买入必须高于回收」的护栏。
+     最低买价 0.92×、宗门 0.97 折后仍有 0.8924×，
+     高于最高回收（黑市 0.6×1.45=0.87×），任何渠道都不再生出正套利。 */
+  function buyMulOf(cat) {
+    const key = cat === 'pill' ? 'dan' : cat === 'art' ? 'qi' : cat === 'mat' ? 'mat' : null;
+    if (!key || !S.market || !S.market.buy) return 1;
+    return clamp(S.market.buy[key] || 1, 0.92, 1.25);
+  }
+  function buyPriceOf(it) {
+    if (!it) return 0;
+    const base = it.price || 0;
+    let p = Math.round(base * buyMulOf(it.cat));
+    if (S.sect && (S.sect.rank || 0) >= 2) p = Math.round(p * 0.97);
+    return Math.max(1, p);
   }
   function sellCh() {
     const id = S.sellCh || 'market';
@@ -11195,6 +11593,11 @@
     if (S.sellCh === 'auction' && !auctionOpen()) S.sellCh = 'market';
     const ch = sellCh();
     let b = '<div class="row"><span class="lab">灵石</span><b style="color:var(--stone)">' + fmtNum(S.stones) + '</b></div>';
+    if (ch.id === 'market') {
+      const sold = marketSold(), lim = marketLimit();
+      b += '<div class="row"><span class="lab">本月摊位</span><b class="' + (sold >= lim ? 'danger' : '') + '">' +
+        sold + ' / ' + lim + '</b></div>';
+    }
     b += '<div class="shop-tabs">';
     D.SELL_CHANNELS.forEach(function (c) {
       const off = (c.need === 'sect' && !S.sect) || (c.id === 'auction' && !auctionOpen());
@@ -11211,13 +11614,18 @@
     function qualityBlock(title, kind, ids, defs, counts, marketKey) {
       b += '<div class="small muted" style="margin-top:6px">' + title + '</div><ul class="opts">';
       if (!ids.length) b += '<div class="small muted">无</div>';
+      const recKind = { dan: 'dan', tal: 'fu', art: 'qi' }[kind];
       ids.forEach(function (id) {
         const def = defs(id);
         if (!def) return;
+        const rec = D.RECIPES.find(function (r) { return r.out === id && r.kind === recKind; });
         qualityRows(id, counts(id)).forEach(function (qr) {
           const q = qualityDef(qr.q);
-          const price = sellPriceOf(def.price, sellMul()[marketKey] || 1, q.mul);
-          b += optRow('·', def.name + ' · ' + q.name, { name: title, cls: q.id === 'ji' ? 'chance' : 'peace' },
+          /* v10.5 P1·M2：亲手做的成品按「自制品相溢价」报价，与结算同源 */
+          const baseVal = (qr.made && rec) ? craftedValueOf(rec) : def.price;
+          const price = sellPriceOf(baseVal, sellMul()[marketKey] || 1, q.mul);
+          b += optRow('·', def.name + (qr.made ? ' · 自制' : '') + ' · ' + q.name,
+            { name: title, cls: q.id === 'ji' ? 'chance' : 'peace' },
             '×' + qr.n + ' · ' + fmtNum(price) + ' 石/件', false, 'do;sellitem:' + kind + ':' + id + ':' + q.id);
         });
       });
@@ -11259,6 +11667,7 @@
     const ch = sellCh();
     if (ch.need === 'sect' && !S.sect) { toast('未入宗门'); return; }
     if (ch.id === 'auction' && !auctionOpen()) { toast('拍卖会尚未开场'); return; }
+    if (marketFull()) { toast('本月摊位已满，去黑市/宗门，或等下月'); return; }
     let def, rec, disk = null, count = 0, base = 0, market = 1;
     if (kind === 'disk') {
       disk = (S.disks || [])[parseInt(id, 10)];
@@ -11266,7 +11675,7 @@
       def = D.ARRAY_DISKS.find(function (x) { return x.id === disk.id; });
       rec = D.RECIPES.find(function (r) { return r.out === disk.id; });
       if (!def || !rec) return;
-      qid = disk.q; count = 1; base = outPriceOf(rec, { mul: 1 }); market = sellMul().zhen || 1;
+      qid = disk.q; count = 1; base = craftedValueOf(rec); market = sellMul().zhen || 1;
     } else if (kind === 'dan') {
       def = D.PILL_EXT.find(function (x) { return x.id === id; });
       count = (S.bag || {})[id] || 0; if (def) { base = def.price; market = sellMul().dan || 1; }
@@ -11279,9 +11688,16 @@
       if (def) { base = def.price; market = sellMul().qi || 1; }
     }
     if (!def || count < 1) { toast('没有'); return; }
-    const available = kind === 'disk' ? [{ q: qid, n: 1 }] : qualityRows(id, count);
+    const available = kind === 'disk' ? [{ q: qid, n: 1, made: true }] : qualityRows(id, count);
     if (!qid) qid = available[0].q;
-    if (!available.some(function (x) { return x.q === qid && x.n > 0; })) { toast('这个品相已经没了'); return; }
+    const picked = available.find(function (x) { return x.q === qid && x.n > 0; });
+    if (!picked) { toast('这个品相已经没了'); return; }
+    /* 只有 craftedQ 里记着的行才享受自制品相溢价；坊市进货按表价回收 */
+    if (picked.made) {
+      const recKind = { dan: 'dan', tal: 'fu', art: 'qi' }[kind];
+      const rr = D.RECIPES.find(function (r) { return r.out === id && r.kind === recKind; });
+      if (rr) base = craftedValueOf(rr);
+    }
     if (!auctionPassed()) {
       toast('流拍，货物已带回');
       logLine(def.name + '在拍卖会上流拍，货未出手。', '');
@@ -11299,6 +11715,7 @@
       });
     } else if (kind === 'disk') S.disks.splice(parseInt(id, 10), 1);
     S.stones += price;
+    if (ch.id === 'market') marketTake();
     if (ch.id === 'black') S.karma += 3;
     if (ch.id === 'sect' && S.sect) S.sect.contrib = (S.sect.contrib || 0) + Math.round(price * 0.2);
     ledgerAdd('in', '卖 ' + def.name + '（' + q.name + '）', price);
@@ -11322,12 +11739,16 @@
   ACT.do_sellmat = (id) => {
     const it = D.MATERIAL_EXT.find(function (x) { return x.id === id; });
     if (!it || (S.bagMat[id] || 0) < 1) { toast('没有'); return; }
+    const ch = sellCh();
+    if (ch.need === 'sect' && !S.sect) { toast('未入宗门'); return; }
+    if (ch.id === 'auction' && !auctionOpen()) { toast('拍卖会尚未开场'); return; }
+    if (marketFull()) { toast('本月摊位已满，去黑市/宗门，或等下月'); return; }
     S.bagMat[id]--;
     /* v10.3 P0：材料也走同一条回收基准（原价 × RECOVER_BASE × 渠道）。
-       旧版写死 it.price × 0.8 再乘黑市 1.45，补气草 60 买 70 卖，同样是无风险正套利。 */
-    const ch = sellCh();
-    const price = sellPriceOf(it.price, 1);
+       v10.5 P1·E8：材料行情与丹药/符/器同源，不再恒为 1。 */
+    const price = sellPriceOf(it.price, sellMul().mat || 1);
     S.stones += price;
+    if (ch.id === 'market') marketTake();
     if (ch.id === 'black') S.karma += 3;
     ledgerAdd('in', '卖 ' + it.name, price);
     sellTally(price, ch.id);
@@ -11348,7 +11769,7 @@
     if (!(L.income || []).length && !(L.expense || []).length) return '';
     const n = ledgerNet();
     let b = '<div class="ledger">';
-    b += '<div class="lh">本月收支</div>';
+    b += '<div class="lh">本月收支<span style="float:right;font-weight:400;cursor:pointer;color:var(--jade-deep)" data-act="act:openLedger">全部 ›</span></div>';
     (L.income || []).slice(-4).forEach(function (x) {
       b += '<div class="lr"><span>' + esc(x.label) + '</span><b class="good">+' + fmtNum(x.amount) + '</b></div>';
     });
@@ -11362,20 +11783,59 @@
     return b;
   }
 
+  /* v10.5 P2·E10：本月账本全量明细。
+     左栏只留最近四条看趋势；要看「钱到底花在哪」时，从这里展开。 */
+  ACT.openLedger = () => {
+    const L = S.ledger || { income: [], expense: [] };
+    const inc = L.income || [], exp = L.expense || [];
+    const n = ledgerNet();
+    let b = '<div class="row"><span class="lab">本月收入</span><b class="good">+' + fmtNum(n.inc) + '</b></div>';
+    b += '<div class="row"><span class="lab">本月支出</span><b class="danger">−' + fmtNum(n.exp) + '</b></div>';
+    b += '<div class="row"><span class="lab">净入</span><b class="' + (n.net >= 0 ? 'good' : 'danger') + '">' +
+      (n.net >= 0 ? '+' : '') + fmtNum(n.net) + '</b></div>';
+    b += '<div class="row"><span class="lab">现余</span><b>' + fmtNum(S.stones) + '</b></div>';
+    b += divider();
+    function block(title, arr, cls) {
+      let s = '<div class="sechead">' + title + '　' + arr.length + ' 笔</div>';
+      if (!arr.length) return s + '<div class="small muted">无</div>';
+      s += '<ul class="gainlist">';
+      arr.forEach(function (x) {
+        s += '<li><span class="gn">' + esc(x.label) + '</span>' +
+          '<span class="gx ' + cls + '">' + (cls === 'good' ? '+' : '−') + fmtNum(x.amount) + '</span></li>';
+      });
+      return s + '</ul>';
+    }
+    b += block('收入', inc, 'good');
+    b += block('支出', exp, 'hno');
+    b += '<div class="hint">账本每月初一重置；所有灵石增减都走同一条账本。</div>';
+    openModal('账本 · 本月全部收支', b);
+  };
+
   /* ---------- 行情 ---------- */
   function tickMarket() {
-    if (!S.market) S.market = { mul: { dan: 1, qi: 1, fu: 1, zhen: 1 }, month: 0 };
+    if (!S.market) S.market = { mul: {}, buy: {}, month: 0 };
+    if (!S.market.mul) S.market.mul = {};
+    if (!S.market.buy) S.market.buy = {};
+    ['dan', 'qi', 'fu', 'zhen', 'mat'].forEach(function (k) {
+      if (typeof S.market.mul[k] !== 'number') S.market.mul[k] = 1;
+      if (typeof S.market.buy[k] !== 'number') S.market.buy[k] = 1;
+    });
     if (S.month === 1) {
-      const m = S.market.mul;
-      ['dan', 'qi', 'fu', 'zhen'].forEach(function (k) {
+      const m = S.market.mul, b = S.market.buy;
+      ['dan', 'qi', 'fu', 'zhen', 'mat'].forEach(function (k) {
         m[k] = clamp((m[k] || 1) + (rng() - 0.5) * 0.2, 0.7, 1.5);
+        b[k] = clamp((b[k] || 1) + (rng() - 0.5) * 0.16, 0.92, 1.25);
       });
     }
-    // 事件放大
+    // 事件放大：荒年丹药贵，可从「回收价高、买入价也高」两头体现
     if (S.marketEvent) {
       const e = S.marketEvent;
-      if (e === 'drought') { S.market.mul.dan *= 1.3; }
-      if (e === 'storm' || e === 'demon') { S.market.mul.qi *= 1.5; S.market.mul.fu *= 1.3; }
+      if (e === 'drought') { S.market.mul.dan *= 1.3; S.market.buy.dan = clamp((S.market.buy.dan || 1) * 1.12, 0.92, 1.25); }
+      if (e === 'storm' || e === 'demon') {
+        S.market.mul.qi *= 1.5; S.market.mul.fu *= 1.3;
+        S.market.buy.qi = clamp((S.market.buy.qi || 1) * 1.10, 0.92, 1.25);
+        S.market.buy.fu = clamp((S.market.buy.fu || 1) * 1.08, 0.92, 1.25);
+      }
       S.marketEvent = null;
     }
   }
@@ -12127,6 +12587,19 @@
     applyState,
     gainXiuwei,
     addGongfa,
+    /* v10.5 P0：上限/能力三分的只读与可驱动探针，供测试验「真改了上限」 */
+    recalcCaps,
+    capBase,
+    getDaogong,
+    artSpecOf,
+    learnArt,
+    hasArt,
+    applyMemory,
+    /* v10.5 P1/P2：经济与口径的只读探针，供回归测试验「显示价=结算价」 */
+    buyPriceOf, sellPriceOf, sellMul, marketLimit, marketSold,
+    hpRatio, craftedValueOf, pillHealOf, skillCostOf, shenTongCostOf,
+    gapMul, canGrantShenTong, ledgerNet, applyPill,
+    settleCombatWin,
     checkAch,
     clue,
     statTier,
@@ -12151,6 +12624,9 @@
     /* v9.0 M0：事件池探针。验的是「when 真的在筛事件」，
        否则条件字段又会变成写不读的死字段。 */
     eventSlot,
+    /* v10.6：事件结算探针。事件现在能落法宝、落 flag（eff.art / eff.flag），
+       验「写了就结算」必须能单发一条事件，而不是靠抽。 */
+    applyEvent,
     /* v9.0 第1步：给扩展文件用的最小工具面。
        只导出「写纪事 / 弹提示」两个，不给扩展开 render 与内部状态，
        避免扩展绕过既有渲染管线另起一套。
