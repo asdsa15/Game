@@ -155,7 +155,10 @@ setup({ daotong: null, shenTong: ['郁仪文'] });
 S.stKind['郁仪文'] = '术';
 S.combat = mkFoe(9e15);
 const rNone = cast('郁仪文');
-ok(rNone.cost === 40, '无道统时术神通耗灵仍为 40（旧存档零迁移）');
+/* v10.5 P1·C4：耗灵改为「下限 + 上限百分比」。无道统时即基础耗灵过兜底——
+   旧档不需要迁移，只是口径随上限一起抬，不再是固定值。 */
+ok(rNone.cost === Math.max(40, Math.round(S.mpMax * 0.08)),
+  '无道统时术神通耗灵按上限兜底（' + rNone.cost + '，上限 ' + S.mpMax + '）');
 
 /* 七支气质的附加效果各有一条可观察痕迹 */
 function temperMark(dt, st, pick) {

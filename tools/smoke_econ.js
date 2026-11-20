@@ -175,7 +175,7 @@ G.ACT.openSell(); G.ACT.do_selldan('pillHp');
 ok(S.stones === 44 && S.karma === 3, '黑市：44 石 + 业力 3（50×0.6×1.45）', S.stones + '/' + S.karma);
 S.stones = 0; S.bag.pillHp = 1; S.sellCh = 'sect'; S.sect.contrib = 0;
 G.ACT.openSell(); G.ACT.do_selldan('pillHp');
-ok(S.stones === 21 && S.sect.contrib === 4, '交宗门：21 石 + 贡献 4（50×0.6×0.7）', S.stones + '/' + S.sect.contrib);
+ok(S.stones === 24 && S.sect.contrib === 5, '交宗门：24 石 + 贡献 5（50×0.6×0.8）', S.stones + '/' + S.sect.contrib);
 
 /* v10.3 P0：任何渠道的回收价都必须低于进货价，否则就是无风险正套利。
    旧版坊市档 1.00、黑市 1.45 都乘在零售价上，回春丹 50 买 73 卖。 */

@@ -68,7 +68,7 @@ const sandbox = {
   Math, Object, Array, JSON, Number, String
 };
 vm.runInNewContext(
-  ['miaoUpCount', 'dArtRaw', 'dArtLv', 'dArtSealMul',
+  ['hpRatio', 'miaoUpCount', 'dArtRaw', 'dArtLv', 'dArtSealMul',
     'xiangBuyCap', 'xiangOutCap', 'maxXianghuo', 'monthXianghuo', 'shenStoneIncome']
     .map(grab).join('\n') +
   '\nthis.miaoUpCount=miaoUpCount;this.dArtRaw=dArtRaw;this.dArtLv=dArtLv;this.dArtSealMul=dArtSealMul;' +

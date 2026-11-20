@@ -200,7 +200,7 @@ setup({ xRealm: 3, place: 'beiyuan' });
 S.ruinsKnown.jianzhong = true;
 S.ruin = { site: 'jianzhong', seq: ['relic'], i: 0, tail: false };
 G.dispatch('do;ruin_take:gongfa'); rebind();
-ok(S.ownedGongfa.indexOf('xuanyuan') >= 0, '取走功法断篇');
+ok((S.ownedArts || []).indexOf('fa:xuanyuan') >= 0, '取走功法断篇（玄元剑经入术法池）');
 ok(S.ruinsCleared.jianzhong === true, '功法路线也能探尽');
 
 setup({ xRealm: 3, place: 'xisha' });

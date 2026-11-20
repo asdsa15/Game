@@ -411,7 +411,12 @@ S.combat = mkFoe(900000);
 const mpB2 = S.mp;
 G.ACT.do_cbt('shentong', encodeURIComponent('结璘章（命）'));
 const costS = mpB2 - S.mp;
-ok(costD > costS, '双属灵力消耗高于单属（' + costS + ' → ' + costD + '）');
+/* v10.5 P1·C4：耗灵改为「下限 + 上限百分比」。
+   上限大到下限盖过基础耗灵时，双属与单属会落在同一条下限上——
+   此时保「双属不低于单属」；下限不生效时仍必须严格更贵。 */
+const _floor = Math.round(S.mpMax * 0.08);
+ok(costD >= costS, '双属灵力消耗不低于单属（' + costS + ' → ' + costD + '）');
+ok(costD === Math.max(costS, _floor), '双属耗灵取「下限 + 上限百分比」较大者（' + costD + '，下限 ' + _floor + '）');
 
 console.log('\n结果：' + pass + ' 通过 / ' + fail + ' 失败');
 process.exit(fail ? 1 : 0);

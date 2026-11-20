@@ -314,6 +314,8 @@ console.log('=== 4b. 死钩子端到端（v10.4 P0）===');
 
 /* —— gongfaMpCap：换吞海功，灵力上限必须真的变大 —— */
 setup({ gongfa: ['juqi'], ownedGongfa: ['juqi', 'tunhai'] });
+/* v10.5：上限改为境界基数制，这条钩子断言放在胎息（基数 100）验比值 */
+S.xRealm = 0; S.xStage = 0;
 S.mpMax = 100; S.mp = 100; S.mpGfMul = 1;
 const mpBefore = S.mpMax;
 G.dispatch('do;setgf:tunhai');
@@ -402,7 +404,8 @@ ok(sum.indexOf('副') >= 0, '状态栏文案能显示副系：' + sum);
    六、UI：玩家真的看得见
    ============================================================ */
 console.log('=== 6. UI 可达性 ===');
-setup({ gongfa: ['tianhe'], ownedGongfa: ['juqi', 'tianhe'], root: 'true_', rootEls: ['metal', 'water', 'wood'] });
+/* v10.5：道基面板只列 dao；九寰天书（jiuhuan）是地阶 dao，仍带「实际结算」 */
+setup({ gongfa: ['jiuhuan'], ownedGongfa: ['juqi', 'jiuhuan'], root: 'true_', rootEls: ['metal', 'water', 'wood'] });
 G.ACT.openGongfa();
 const modalHtml = (function () {
   const m = document.getElementById('modals');
