@@ -393,9 +393,11 @@ S.combat = {
 };
 const cb = G.renderCombat() || '';
 const iFoe = cb.indexOf('敌方'), iMe = cb.indexOf('我方');
-/* 我方卡只取到行动区（dockrow）之前——行动区的调息按钮含「清一层迟滞」文案，
-   那是操作说明不是状态标签，不该算进「我方状态」断言。 */
-const iAct = cb.indexOf('dockrow', iMe);
+/* 我方卡只取到行动栏之前——行动区的调息按钮含「清一层迟滞」文案，
+   那是操作说明不是状态标签，不该算进「我方状态」断言。
+   v10.8 P0：行动区从底部通栏（dockrow）挪进右栏（col-acts），
+   边界跟着改；这里验的是「状态归属哪张卡」，与行动区在哪儿无关。 */
+const iAct = cb.indexOf('col-acts', iMe);
 const foeTxt = cb.slice(iFoe, iMe), myTxt = cb.slice(iMe, iAct > iMe ? iAct : undefined);
 ok(foeTxt.indexOf('破绽') >= 0, '破绽在敌方卡');
 ok(foeTxt.indexOf('压制') >= 0, '压制在敌方卡');

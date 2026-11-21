@@ -87,10 +87,11 @@ body{
 }
 
 /* --------------------------------------------------------------------------
-   7. 对战：手机上保持左右并排，不竖排（对峙感优先，也省高度）
+   7. 对战：v10.8 P0 起手机上改为单列（敌 → 我+战况），
+      七个基础行动固定在底部，不再靠左右并排省高度。
    -------------------------------------------------------------------------- */
 @media(max-width:880px){
-  .stage.stage-fight{grid-template-columns:1fr 1fr;gap:10px;padding:10px 10px 90px}
+  .stage.stage-fight{grid-template-columns:1fr;gap:10px;padding:10px 10px 110px}
   .stage.stage-fight .fighter .fname{font-size:15px;letter-spacing:1px}
   .stage.stage-fight .fighter .fsub{font-size:11px}
   .stage.stage-fight .fighter .frow{font-size:12px;gap:6px;padding:4px 0}
@@ -100,14 +101,9 @@ body{
   .stage.stage-fight .panel .ph{font-size:12px;padding:7px 11px}
   .stage.stage-fight .barnum{font-size:10.5px}
   .stage.stage-fight .vsline{font-size:11.5px;gap:6px}
-  /* 六键的说明不再用省略号截断：宁可多一行，也别让玩家看不到「符 2 张 · 丹」 */
-  .stage.stage-fight .fightacts .opt{flex-wrap:wrap;row-gap:1px;padding:8px 10px}
-  .stage.stage-fight .fightacts .opt .note{flex:1 1 100%;max-width:none;margin-left:0;
-    text-align:right;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35}
-  /* 战况：底部那块空白不如放最近四条，打完不用翻纪事 */
-  .fightlog{margin-top:10px;padding-top:8px;border-top:1px dotted #E6E0D2;
-    font-size:11.5px;line-height:1.7;color:var(--muted);max-height:7em;overflow:hidden}
-  .fightlog .fl{padding:1px 0}
+  /* 战况：桌面在中栏独立滚动；手机上整块收进我方卡下方 */
+  .fightlog{margin-top:6px;font-size:11.5px;line-height:1.7;color:var(--muted);max-height:12em}
+  .fightlog .fl{padding:2px 0}
   .fightlog .fl.danger{color:var(--cinnabar)}
   .fightlog .fl.good{color:var(--merit)}
 }

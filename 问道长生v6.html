@@ -375,14 +375,18 @@
   }
   .shop-chip.on{background:var(--jade-deep);border-color:var(--jade-deep);color:#fff}
 
-  /* ============ 斗法 · 左右双栏 ============ */
+  /* ============ 斗法 · 敌 / 我+战况 / 行动 三栏 ============ */
+  /* v10.8 P0：旧版两栏 + 行动区落在 870px 处，可视区只有 802px——
+     要选招就得往下滚，滚下去敌方卡（含「下回合意图」）就出屏。
+     现在左 320 敌方 / 中弹性 我方+战况 / 右 368 行动，
+     宽屏两侧不再各空 450px。（吸顶与窄屏规则见文件后段） */
   .stage.stage-fight{
-    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-    gap:16px; max-width:1020px;
+    grid-template-columns:320px minmax(0,1fr) 368px;
+    gap:14px; max-width:1480px;
   }
-  .stage.stage-fight .col{align-self:stretch}
+  .stage.stage-fight .col{align-self:start}
+  .stage.stage-fight .panel{height:auto}
   .stage.stage-fight .dockrow{grid-column:1/-1}
-  .stage.stage-fight .panel{height:100%}
   @media(max-width:880px){
     .stage.stage-fight{grid-template-columns:1fr}
   }
@@ -411,6 +415,12 @@
       overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   }
   .fightacts .opt{margin:0}
+  /* v10.8 P0：右栏行动格约 163px，说明必须单独一行。
+     照旧法挤在同一行，「调息」会被压成竖排、「术法1·神通」被切掉半截。 */
+  .fightacts .opt{flex-wrap:wrap;row-gap:1px;padding:8px 10px;min-height:50px}
+  .fightacts .opt .txt{white-space:nowrap}
+  .fightacts .opt .note{flex:1 1 100%;margin-left:0;font-size:10.5px;line-height:1.4;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
   .vsline{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted);
     letter-spacing:1px;margin-bottom:10px;flex-wrap:wrap}
   .vsline b{font-size:13.5px}
@@ -526,6 +536,71 @@
   .stage>.col-nav::-webkit-scrollbar-track,.stage>.col-state::-webkit-scrollbar-track{background:transparent}
   @supports (height:100dvh){
     .stage>.col-nav,.stage>.col-state{max-height:calc(100dvh - 84px)}
+  }
+
+  /* ============ v10.8 P0：斗法行动区常驻右栏 ============
+     必须排在 .stage>* 的 position:relative 之后（理由同上面左右栏吸顶）：
+     权重相同，写在前面的 sticky 会被静默压成 relative。
+     旧版行动区在文档流最底部，滚到敌方意图就看不见按钮；
+     现在它跟着视口停在右栏，滚谁都不会把选招甩出屏外。 */
+  .stage.stage-fight>.col-acts{position:sticky;top:70px;z-index:1}
+  .stage.stage-fight .col-foe,.stage.stage-fight .col-me{align-self:start;min-width:0}
+
+  /* 战况：只显示本场，独立滚动。旧版借全局日志且无样式，24 条挤成一坨 */
+  .fightlog{max-height:208px;overflow-y:auto;overscroll-behavior:contain;
+    scrollbar-width:thin;padding-right:2px}
+  .fightlog::-webkit-scrollbar{width:6px}
+  .fightlog::-webkit-scrollbar-thumb{background:rgba(90,80,60,.22);border-radius:3px}
+  .fightlog .fl{padding:4px 0;border-bottom:1px dotted #EFE9DC;font-size:12.5px;
+    line-height:1.5;color:#3A342C}
+  .fightlog .fl:last-child{border-bottom:none}
+  .fightlog .fl .t{display:block;color:var(--muted);font-size:10.5px;letter-spacing:.5px}
+  .fightlog .fl.good{color:var(--merit)}
+  .fightlog .fl.danger{color:var(--cinnabar)}
+  .fightlog--all{max-height:64vh}
+  .fightall{margin-top:6px;text-align:right;font-size:11.5px;color:var(--jade-deep);cursor:pointer}
+  .fightall:hover{text-decoration:underline}
+
+  /* 外物分组：兽令 / 本命法技不再与基础七项混排，且最多占 4 行 */
+  .fightgrp{margin:10px 0 6px;padding-top:8px;border-top:1px solid var(--edge);
+    font-size:11.5px;letter-spacing:2px;color:var(--muted)}
+  .fightacts--ext{grid-template-columns:1fr 1fr}
+  .fightacts .opt--more{justify-content:center;color:var(--muted);background:#FAF6EE}
+  .fightacts .opt--more .note{margin-left:auto}
+
+  /* 1280 附近三栏会挤（320+368 吃掉 688，中栏只剩 300）：降成两栏，
+     行动区改通栏铺在下面，四列一行放完全部基础动作。 */
+  @media(max-width:1199px){
+    .stage.stage-fight{grid-template-columns:300px minmax(0,1fr)}
+    .stage.stage-fight>.col-acts{grid-column:1/-1;position:static}
+    .stage.stage-fight .fightacts{grid-template-columns:repeat(4,minmax(0,1fr))}
+  }
+  /* 手机：行动区固定在底部，滚动时不离开视线。战斗页不渲染 .navmob，
+     所以这块底栏不会和五项导航打架（这一点必须保持）。 */
+  @media(max-width:880px){
+    .stage.stage-fight{grid-template-columns:1fr;padding-bottom:160px}
+    .stage.stage-fight>.col-acts{
+      position:fixed;top:auto;left:0;right:0;bottom:0;z-index:30;margin:0;
+      padding:6px 10px calc(6px + env(safe-area-inset-bottom));
+      background:#FAF6EE;border-top:1px solid var(--edge);
+    }
+    .stage.stage-fight>.col-acts .panel{border-radius:0;box-shadow:none;border:0;background:none}
+    .stage.stage-fight>.col-acts .panel .ph{display:none}
+    .stage.stage-fight>.col-acts .panel .pb{padding:0}
+    .stage.stage-fight>.col-acts .vsline{display:none}
+    /* 底栏空间贵重：战前准备这行收进「行动」面板，点一下仍能开（按钮在 vsline 下方） */
+    .stage.stage-fight>.col-acts [data-act="act:openPreFight"]{display:none}
+    /* 战斗横幅在手机上压到 84px：否则敌方卡 + 我方气血会被底栏挡住 */
+    .sceneart--combat{height:84px}
+    /* 手机不印「风险/平和」标签、不印说明（说明在桌面有，窄屏会把它挤成竖排），
+       四列两行把七个基础动作一次放完，底栏只占约 110px。 */
+    .stage.stage-fight .fightacts{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+    .stage.stage-fight .fightacts .opt{min-height:34px;padding:5px 6px;gap:5px}
+    .stage.stage-fight .fightacts .opt .tag{display:none}
+    .stage.stage-fight .fightacts .opt .key{width:18px;height:18px;line-height:18px;font-size:10.5px}
+    .stage.stage-fight .fightacts .opt .txt{font-size:12px}
+    .stage.stage-fight .fightacts .opt .note{display:none}
+    .stage.stage-fight .fightgrp{margin:5px 0 3px;padding-top:4px;font-size:10.5px}
   }
   /* ============ 窄屏：左导航收成底栏，只留「要务」 ============
      必须排在上面吸顶规则之后：那边的 .stage>.col-nav 权重更高，

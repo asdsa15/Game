@@ -774,7 +774,13 @@
   }
 
   function logLine(txt, cls) {
-    S.log.unshift({ t: timeLine(), txt, cls: cls || '' });
+    /* v10.8 P0：给每条纪事一个自增序号。
+       战斗页的「战况」只该显示本场发生的事，但 S.log 是一条全局流，
+       342 个调用点不可能逐个加类别。开战时记下当前序号（logFrom），
+       之后按 seq > logFrom 过滤，零成本把战况与全局纪事分开。
+       旧档条目没有 seq：undefined 参与比较为 false，自然不进战况。 */
+    S.logSeq = (S.logSeq || 0) + 1;
+    S.log.unshift({ t: timeLine(), txt, cls: cls || '', seq: S.logSeq });
     if (S.log.length > 200) S.log.pop();
     // 年谱：左栏事件流只留 200 条给现场看，年谱留全部，可导出成文件
     if (!Array.isArray(S.chronicle)) S.chronicle = [];
@@ -1242,22 +1248,29 @@
     const c = clockEl;
     if (c) c.textContent = S.started ? timeLine() : '天玄历 387 年 · 春';
     if (!stage) return;
+    /* v10.8 P0：整块重绘会丢掉栏内滚动位置（右栏看到一半，点个动作跳回顶部）。
+       先记各栏 scrollTop，innerHTML 之后再写回。按 class 定位，不按 children[i]——
+       三栏顺序以后变了也不会串栏。 */
+    const _snap = scrollSnap(stage);
+    function paint(html) {
+      stage.innerHTML = html;
+      enhanceA11y(stage);
+      scrollApply(stage, _snap);
+    }
 
     if (S.phase === 'create') {
       stage.className = 'stage-create';
-      stage.innerHTML = renderSceneArt('create', 'create') + renderCreate();
-      enhanceA11y(stage);
+      paint(renderSceneArt('create', 'create') + renderCreate());
       return;
     }
     stage.className = 'stage';
-    if (S.phase === 'over') { stage.innerHTML = renderOverArt() + renderOver(); enhanceA11y(stage); scheduleAutoSave(); return; }
-    if (S.phase === 'dying') { stage.innerHTML = renderSceneArt('dying', 'backdrop') + renderDying(); enhanceA11y(stage); scheduleAutoSave(); return; }
+    if (S.phase === 'over') { paint(renderOverArt() + renderOver()); scheduleAutoSave(); return; }
+    if (S.phase === 'dying') { paint(renderSceneArt('dying', 'backdrop') + renderDying()); scheduleAutoSave(); return; }
     if (S.phase === 'combat') {
       if (!S.combat) { S.phase = 'play'; }        // 脏状态直接降级，走下面的正常渲染
       else {
-        stage.className = 'stage stage-fight';     // 左右双栏
-        stage.innerHTML = renderSceneArt('combat', 'combat') + renderCombat();
-        enhanceA11y(stage);
+        stage.className = 'stage stage-fight';     // v10.8 P0：敌 / 我+战况 / 行动 三栏
+        paint(renderSceneArt('combat', 'combat') + renderCombat());
         scheduleAutoSave();
         return;
       }
@@ -1268,15 +1281,38 @@
        而左右两栏又各自不等高——于是「下面找不到、左右空着」。
        现在功能坞拆进左栏常驻，纪事与月账移到中栏主行动之后。 */
     const navG = navGroups();
-    stage.innerHTML =
+    paint(
       '<div class="col col-nav' +
       (navG.some(function (g) { return g.id === 'urgent' && g.items.length; }) ? '' : ' col-nav--quiet') + '">' +
       renderNavCol(navG) + '</div>' +
       '<div class="col col-main">' + renderMainCol() + renderChronCol() + '</div>' +
       '<div class="col col-state">' + renderStateCol() + '</div>' +
-      renderMobileNav(navG);
-    enhanceA11y(stage);
+      renderMobileNav(navG));
     scheduleAutoSave();
+  }
+
+  /* v10.8 P0：栏内滚动位置的存与取。
+     只认这几个 class：左导航 / 中栏 / 右栏 / 战斗三栏 / 战斗战况。
+     战斗页也走同一条 restore 路径，卷下去的敌方卡不会因为出一招就弹回顶部。 */
+  const SCROLL_SELS = ['.col-nav', '.col-main', '.col-state', '.col-foe', '.col-me', '.col-acts', '.fightlog'];
+  function scrollSnap(stage) {
+    const snap = {};
+    if (!stage || typeof stage.querySelector !== 'function') return snap;
+    SCROLL_SELS.forEach(function (sel) {
+      let el = null;
+      try { el = stage.querySelector(sel); } catch (e) { el = null; }
+      if (el && typeof el.scrollTop === 'number') snap[sel] = el.scrollTop;
+    });
+    return snap;
+  }
+  function scrollApply(stage, snap) {
+    if (!stage || typeof stage.querySelector !== 'function') return;
+    Object.keys(snap || {}).forEach(function (sel) {
+      if (!snap[sel]) return;                 // 0 不需要写回，省一次强制布局
+      let el = null;
+      try { el = stage.querySelector(sel); } catch (e) { el = null; }
+      if (el) el.scrollTop = snap[sel];
+    });
   }
 
   /* 防抖自动存档：避免每帧写 localStorage */
@@ -9141,6 +9177,9 @@
     if (S.preBuff) S.preBuff.rankUp = false;
     /* 首个意图在开战时选定并存入存档字段——读档后不重新随机 */
     S.combat.foeIntent = pickFoeIntent(S.combat);
+    /* v10.8 P0：本场战况的起点。序号大于它的纪事才属于这一场；
+       开战前发生的事（采集、破境、事件）不再混进战报。 */
+    S.combat.logFrom = S.logSeq || 0;
     /* v10.7 阶段二：本命被动在开战瞬间落一次（宝镜：照见破绽）。
        只走一个出口，免得各扩展在 startCombat 里各插一段。 */
     {
@@ -10128,36 +10167,27 @@
       for (let _i = 0; _i < _XF.fightInfoHooks.length; _i++) mb += _XF.fightInfoHooks[_i](c);
     }
 
-    /* —— 行动：10 项合成 6 项（手机一屏两列三行）——
-       攻 / 术 / 御 / 器 / 遁 / 谋
-       「战前准备」只在开打前那一次，不再留在回合内——否则「战前」这个概念就没了 */
-    let o = [];
-    const tals = Object.keys(S.talismans || {}).filter(function (k) { return (S.talismans[k] || 0) > 0; });
-    const qbN = isShen() ? 1 : 0;
-    const atkPct = Math.round(Math.max(0.10,
-      0.19 * Math.sqrt(computePower() / Math.max(1, c.foe.power))) *
-      (1 - clamp(deflectOf(c, 'foe') - artBonus('hit') * 0.5, 0, 0.55)) * 100);
-    o.push(optRow('1', '攻', { name: '风险', cls: 'risk' },
-      '必中 · 约' + atkPct + '% 伤害' + (artBonus('atk') ? ' ·宝+' + Math.round(artBonus('atk') * 100) + '%' : ''), false, 'do;cbt:attack'));
-    o.push(optRow('2', '术', { name: '平和', cls: 'peace' },
-      '术法' + equippedSkills().length + '·神通' + (S.shenTong || []).length, S.mp < 15, 'act:openSkills'));
-    o.push(optRow('3', '御', { name: '平和', cls: 'peace' },
-      '减伤 50%' + (artBonus('body') ? ' +法宝' : ''), false, 'do;cbt:defend'));
-    /* v10.7 阶段三：调息——仙道/双修的资源窗口。神道保留香火权柄，不机械复制。 */
-    if (!isShen() || isBoth()) {
-      const _restGain = Math.max(20, Math.round(S.mpMax * 0.12));
-      o.push(optRow('息', '调息', { name: '平和', cls: 'peace' },
-        '灵力 +' + _restGain + ' · 清一层迟滞 · 敌方仍行动', S.mp >= S.mpMax, 'do;cbt:rest'));
-    }
-    o.push(optRow('4', '器', { name: '机缘', cls: 'chance' },
-      '符 ' + (tals.length ? tals.reduce(function (a, k) { return a + (S.talismans[k] || 0); }, 0) + ' 张' : '无') +
-      (qbN ? ' · 权柄' : '') + ' · 丹', !tals.length && !hasUsablePill() && !qbN, 'act:openGear'));
-    o.push(optRow('5', '遁', { name: '风险', cls: 'risk' },
-      '遁速 ' + Math.round((0.4 + st('speed') * 0.035 + artBonus('move') + fateAdd('flee') + gongfaEscapeAdd()) * 100) + '%', false, 'do;cbt:flee'));
-    o.push(optRow('6', '谋', { name: '平和', cls: 'peace' }, '观察 / 交涉', false, 'act:openWits'));
-    /* v9.0 M2：兽令三式与本命法技从扩展里追加（注册数组；do;cbt:ext:* 走同一结算尾巴） */
-    if (_XF && _XF.fightRowsHooks) {
-      for (let _i = 0; _i < _XF.fightRowsHooks.length; _i++) o = o.concat(_XF.fightRowsHooks[_i]());
+    /* —— 行动：v10.8 P0 改为「单一真源」——
+       旧版在这里就地拼装 <li>，键盘完全拿不到同一份清单，于是
+       「按钮印着 1~6、按下去没反应」成了一句假承诺。
+       现在 combatActionList 只产出数据，渲染与键盘都读它；
+       扩展（兽令 / 本命法技）仍用 fightRowsHooks 注册，但会并入同一个数组。 */
+    const acts = combatActionList(c);
+    const baseActs = acts.filter(function (a) { return a.grp === 'base'; });
+    const extActs = acts.filter(function (a) { return a.grp === 'ext'; });
+    let actsHtml = '<ul class="opts fightacts">' + baseActs.map(renderCombatRow).join('') + '</ul>';
+    if (extActs.length) {
+      /* 外物组硬上限：基础 7 项之外最多再占 4 行，超出折叠成「其余 N 项」。
+         旧版直接把 hook 结果 concat，7 基础 + 5 扩展 = 12 项 = 6 行，
+         把行动区推到首屏之外——这是 bug D 的根，不是按钮太高。 */
+      const shown = extActs.length > FIGHT_EXT_MAX ? extActs.slice(0, FIGHT_EXT_MAX - 1) : extActs;
+      const fold = extActs.length > FIGHT_EXT_MAX
+        ? '<li class="opt opt--more" data-act="act:openFightExt"><span class="key">·</span>' +
+          '<span class="txt">其余 ' + (extActs.length - shown.length) + ' 项</span>' +
+          '<span class="note">展开 ›</span></li>'
+        : '';
+      actsHtml += '<div class="fightgrp">外物</div>' +
+        '<ul class="opts fightacts fightacts--ext">' + shown.map(renderCombatRow).join('') + fold + '</ul>';
     }
 
     let head = '<div class="vsline"><span>第 ' + (c.round + 1) + ' 回合</span>'
@@ -10166,22 +10196,179 @@
       + '<span class="' + ocls + '">' + esc(odds) + '</span></div>';
     if (c.round === 0 && !c.prepared) head += '<div class="small" data-act="act:openPreFight" style="cursor:pointer;color:var(--jade)">开战前：符、丹、随身阵，择一准备 →</div>';
 
-    // 战况：只留最近四条，新的在下
-    const fl = (S.log || []).slice(0, 4).reverse();
-    const fightLog = fl.length ? '<div class="fightlog">' + fl.map(function (l) {
-      return '<div class="fl ' + (l.cls || '') + '">' + l.txt + '</div>';
-    }).join('') + '</div>' : '';
+    /* 战况：只取本场（seq > logFrom）的六条，独立滚动。
+       旧版取全局日志前四条，于是「进山采药一趟」会出现在战报里（bug C）。
+       这里不再重复印时间戳（同一场里每条的「三月上旬」都一样），
+       时间留在「本场全部」里看。 */
+    const fl = fightLogOf(c);
+    const fightLog = (fl.length
+      ? '<div class="fightlog">' + fl.map(function (l) {
+        return '<div class="fl ' + (l.cls || '') + '">' + l.txt + '</div>';
+      }).join('') + '</div>'
+      : '<div class="muted">本场尚无战报。</div>')
+      + '<div class="fightall" data-act="act:openFightAll">本场全部 ›</div>';
 
-    return '<div class="col">'
+    /* v10.8 P0：敌 / 我+战况 / 行动 三栏。
+       行动独占右栏并吸顶，宽屏两侧不再各空 450px。 */
+    return '<div class="col col-foe">'
       + panel('敌方', '<div class="fighter">' + fb + '</div>', { cls: 'cinnabar', sub: odds })
       + '</div>'
-      + '<div class="col">'
+      + '<div class="col col-me">'
       + panel('我方', '<div class="fighter">' + mb + '</div>', { sub: tier })
+      + panel('战况', fightLog, { sub: '本场' })
       + '</div>'
-      + '<div class="dockrow">'
-      + panel('行动', head + '<ul class="opts fightacts">' + o.join('') + '</ul>' + fightLog, { sub: '生死在此' })
+      + '<div class="col col-acts">'
+      + panel('行动', head + actsHtml, { sub: '生死在此' })
       + '</div>';
   }
+
+  /* ============================================================
+     v10.8 P0：战斗行动清单的唯一真源
+     ------------------------------------------------------------
+     产出数据，不产出 HTML：
+       { key:'1', txt:'攻', tag:{name,cls}, note:'…', act:'do;cbt:attack',
+         dis:false, grp:'base' | 'ext', html:'（扩展自带的整行）' }
+     · renderCombat 只负责把数组转成 <li>；
+     · combatKeyAction 按 key 在同一个数组里找回 act；
+     · 以后加动作只改这一处，不会再出现「加了按钮没加键」。
+     ============================================================ */
+  /* 外物组（兽令 / 本命法技）最多占 4 行，超出折叠 */
+  const FIGHT_EXT_MAX = 4;
+
+  function combatItem(o) {
+    return {
+      key: '', txt: o.txt || '', tag: o.tag || null, note: o.note || '',
+      dis: !!o.dis, act: o.act || '', grp: o.grp || 'base', html: o.html || ''
+    };
+  }
+  /* 扩展仍用 optRow 产出字符串（不改它们的工作面），这里把整行拆回来：
+     动作串与可用性必须与画出来的那一条同源，否则键盘与按钮会各说各话。
+     hook 的返回值历史上既可能是字符串，也可能是字符串数组，两种都收。 */
+  function splitFightRows(html) {
+    const out = [];
+    const src = Array.isArray(html) ? html.join('') : String(html || '');
+    src.split('<li class="opt').forEach(function (seg, i) {
+      if (i === 0 || !seg) return;
+      const raw = '<li class="opt' + seg;
+      const act = (raw.match(/data-act="([^"]*)"/) || [])[1] || '';
+      const open = (raw.match(/^<li[^>]*>/) || [''])[0];
+      out.push(combatItem({
+        txt: '', act: act, dis: /\bdisabled\b/.test(open), grp: 'ext', html: raw
+      }));
+    });
+    return out;
+  }
+  /* 把整行里的键位换成统一编号：按钮上的数字与键盘因此永远一致 */
+  function rebindOptKey(html, key) {
+    return String(html).replace(/<span class="key">[^<]*<\/span>/,
+      '<span class="key">' + esc(key) + '</span>');
+  }
+  function renderCombatRow(it) {
+    if (it.html) return it.html;
+    /* 战斗行是窄格（右栏两列约 163px）：说明另起一行。
+       若照 optRow 把 note 挤在同一行，168px 里「调息」会被压成竖排。 */
+    const t = it.tag ? '<span class="tag ' + esc(it.tag.cls) + '">' + esc(it.tag.name) + '</span>' : '';
+    return '<li class="opt opt--fight"' + (it.dis ? ' disabled' : '') + ' data-act="' + esc(it.act) + '">' +
+      '<span class="key">' + esc(it.key) + '</span>' + t +
+      '<span class="txt">' + esc(it.txt) + '</span>' +
+      (it.note ? '<span class="note">' + esc(it.note) + '</span>' : '') + '</li>';
+  }
+
+  function combatActionList(c) {
+    c = c || S.combat;
+    if (!c) return [];
+    const out = [];
+    const tals = Object.keys(S.talismans || {}).filter(function (k) { return (S.talismans[k] || 0) > 0; });
+    const qbN = isShen() ? 1 : 0;
+    const atkPct = Math.round(Math.max(0.10,
+      0.19 * Math.sqrt(computePower() / Math.max(1, c.foe.power))) *
+      (1 - clamp(deflectOf(c, 'foe') - artBonus('hit') * 0.5, 0, 0.55)) * 100);
+    out.push(combatItem({ txt: '攻', tag: { name: '风险', cls: 'risk' },
+      note: '必中 · 约' + atkPct + '% 伤害' + (artBonus('atk') ? ' ·宝+' + Math.round(artBonus('atk') * 100) + '%' : ''),
+      dis: false, act: 'do;cbt:attack' }));
+    out.push(combatItem({ txt: '术', tag: { name: '平和', cls: 'peace' },
+      note: '术法' + equippedSkills().length + '·神通' + (S.shenTong || []).length,
+      dis: S.mp < 15, act: 'act:openSkills' }));
+    out.push(combatItem({ txt: '御', tag: { name: '平和', cls: 'peace' },
+      note: '减伤 50%' + (artBonus('body') ? ' +法宝' : ''), dis: false, act: 'do;cbt:defend' }));
+    /* v10.7 阶段三：调息——仙道/双修的资源窗口。神道保留香火权柄，不机械复制。 */
+    if (!isShen() || isBoth()) {
+      const _restGain = Math.max(20, Math.round(S.mpMax * 0.12));
+      out.push(combatItem({ txt: '调息', tag: { name: '平和', cls: 'peace' },
+        note: '灵力 +' + _restGain + ' · 清一层迟滞 · 敌方仍行动',
+        dis: S.mp >= S.mpMax, act: 'do;cbt:rest' }));
+    }
+    out.push(combatItem({ txt: '器', tag: { name: '机缘', cls: 'chance' },
+      note: '符 ' + (tals.length ? tals.reduce(function (a, k) { return a + (S.talismans[k] || 0); }, 0) + ' 张' : '无') +
+        (qbN ? ' · 权柄' : '') + ' · 丹',
+      dis: !tals.length && !hasUsablePill() && !qbN, act: 'act:openGear' }));
+    out.push(combatItem({ txt: '遁', tag: { name: '风险', cls: 'risk' },
+      note: '遁速 ' + Math.round((0.4 + st('speed') * 0.035 + artBonus('move') + fateAdd('flee') + gongfaEscapeAdd()) * 100) + '%',
+      dis: false, act: 'do;cbt:flee' }));
+    out.push(combatItem({ txt: '谋', tag: { name: '平和', cls: 'peace' },
+      note: '观察 / 交涉', dis: false, act: 'act:openWits' }));
+    /* v9.0 M2：兽令三式与本命法技从扩展里追加（do;cbt:ext:* 走同一结算尾巴） */
+    const XF = G.WXCS3_EXT;
+    if (XF && XF.fightRowsHooks) {
+      for (let i = 0; i < XF.fightRowsHooks.length; i++) {
+        const rows = (function () { try { return XF.fightRowsHooks[i](); } catch (e) { return ''; } })();
+        splitFightRows(rows).forEach(function (r) { out.push(r); });
+      }
+    }
+    /* 编号：动作按出现顺序吃 1~9；第十项起不给键位（写「·」），
+       不印一个按下去没反应的数字——本作最忌讳的正是假承诺。 */
+    let n = 0;
+    out.forEach(function (it) {
+      if (!it.act) { it.key = '·'; return; }
+      n += 1;
+      it.key = n <= 9 ? String(n) : '·';
+      if (it.html) it.html = rebindOptKey(it.html, it.key);
+    });
+    return out;
+  }
+
+  /* 键盘按 key 找回同一个动作；禁用项按下去与点不动一致（什么都不发生） */
+  function combatKeyAction(k) {
+    if (!S.combat) return null;
+    const kk = String(k === undefined || k === null ? '' : k).toLowerCase();
+    if (!kk) return null;
+    const list = combatActionList(S.combat);
+    for (let i = 0; i < list.length; i++) {
+      if (list[i].key === kk && list[i].act && !list[i].dis) return list[i].act;
+    }
+    return null;
+  }
+
+  /* 本场战况：只认 seq > logFrom 的条目（旧档条目没有 seq，自然排除） */
+  function fightLogOf(c) {
+    c = c || S.combat;
+    if (!c) return [];
+    const from = c.logFrom || 0;
+    return (S.log || []).filter(function (l) { return numOr(l.seq, 0) > from; })
+      .slice(0, 6).reverse();
+  }
+
+  /* 外物全集：折叠后仍要让玩家看得到、点得动 */
+  ACT.openFightExt = function () {
+    const c = S.combat;
+    if (!c) { toast('此刻不在战中'); return; }
+    const ext = combatActionList(c).filter(function (a) { return a.grp === 'ext'; });
+    if (!ext.length) { toast('此刻没有可用的外物'); return; }
+    openModal('外物 · 全部', '<ul class="opts fightacts fightacts--ext">' + ext.map(renderCombatRow).join('') + '</ul>');
+  };
+  /* 本场全部战况：战况区只留六条，完整场次在这里看 */
+  ACT.openFightAll = function () {
+    const c = S.combat;
+    if (!c) { toast('此刻不在战中'); return; }
+    const from = c.logFrom || 0;
+    const all = (S.log || []).filter(function (l) { return numOr(l.seq, 0) > from; })
+      .slice(0, 60).reverse();
+    openModal('本场战况', all.length
+      ? '<div class="fightlog fightlog--all">' + all.map(function (l) {
+        return '<div class="fl ' + (l.cls || '') + '"><span class="t">' + esc(l.t) + '</span>' + l.txt + '</div>';
+      }).join('') + '</div>'
+      : '<div class="muted">本场尚无战报。</div>');
+  };
 
   /* v10.7 阶段三：敌方回合改为「执行已保存的意图」。
      时序：持续伤害（foeStart）→ 气势 → 按意图行动 → 选下一意图 → 回合收尾。
@@ -12993,10 +13180,15 @@
       if (typing) dispatch('do;free');
       return;
     }
-    if (typing || S.phase !== 'play' || document.getElementById('modals').innerHTML) return;
-    // P3-25：A/B/C/D 与 1/2/3/4 直选
+    if (typing || document.getElementById('modals').innerHTML) return;
+    /* v10.8 P0：战斗中也要认键盘。
+       旧守卫写的是 `S.phase !== 'play'` 就 return，而战斗中 phase 是 'combat'——
+       按钮上印着 1~6，按下去一点反应都没有。现在按阶段分派：
+       战斗中走 combatKeyAction（与按钮读同一份 combatActionList），
+       平时走 mainKeyAction。 */
+    if (S.phase !== 'play' && S.phase !== 'combat') return;
     const k = e.key.toLowerCase();
-    const act = mainKeyAction(k);
+    const act = S.phase === 'combat' ? combatKeyAction(k) : mainKeyAction(k);
     if (act) { e.preventDefault(); dispatch(act); }
   });
 
@@ -13724,6 +13916,9 @@
     resolveEnding,
     noteCombatWin,
     renderCombat,
+    /* v10.8 P0：战斗行动的唯一真源与键盘分派探针。
+       验收要验「按钮顺序 == 键盘顺序」，没有出口就只能数 HTML。 */
+    combatActionList, combatKeyAction, fightLogOf, FIGHT_EXT_MAX,
     /* v10.7 P1：导航探针。
        回归测试要验「dockItems 的每个入口都在左导航里、且每个入口的动作都能派发」，
        没有探针就只能靠肉眼数按钮——那正是本轮要消灭的验证盲区。 */
