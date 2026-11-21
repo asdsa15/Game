@@ -3417,6 +3417,10 @@
         // 仙基 / 道印 / 神通这些面板放到「继续」之后——先出诗，再办手续
         S.afterBreak = [];
         if (nr.idx === 2) S.afterBreak.push('xianji');
+        /* v10.7 阶段二：筑基仪式的第三步——本命锻造。
+           只在「由练气晋入筑基」这一次排入；已有本命、纯神道不排。
+           仪式不查炼器等级、不额外占旬、不掷成功率（见 ext-40 openNatalForge）。 */
+        if (nr.idx === 2 && !S.benming && S.cultivation !== 'shen') S.afterBreak.push('forge');
         if (nr.idx >= 2 && (S.daoyin || []).length < 4) S.afterBreak.push('daoyin');
         if (canGrantShenTong('break')) S.afterBreak.push('shentong');
         /* v9.0 M1：命格是破境的第四道手续——无痕者排进队列（扩展判空） */
@@ -3498,24 +3502,62 @@
     maybeEvent(); render();
   };
 
-  /* 破境后的手续：仙基 → 道印 → 神通，一个一个来，不要全挤在一屏 */
-  ACT.do_afterbreak = () => {
-    closeModal();
-    const q = (S.afterBreak || []).slice();
-    S.afterBreak = [];
-    if (q.indexOf('xianji') >= 0) { S.afterBreak = q.filter(function (x) { return x !== 'xianji'; }); return openXianjiPick(); }
-    if (q.indexOf('daoyin') >= 0) { S.afterBreak = q.filter(function (x) { return x !== 'daoyin'; }); return tryOpenYin(); }
-    if (q.indexOf('shentong') >= 0) { S.afterBreak = q.filter(function (x) { return x !== 'shentong'; }); return openShentongPick(); }
-    /* v9.0 M1：择痕排在仙基/道印/神通之后。面板由扩展开，选完以 do;afterbreak 续上队列 */
-    if (q.indexOf('fate') >= 0) {
-      S.afterBreak = q.filter(function (x) { return x !== 'fate'; });
-      const FX = G.WXCS3_EXT;
-      if (FX && FX.openFateChoice) return FX.openFateChoice();
-    }
+  /* 破境后的手续：仙基 → 本命锻造 → 道印 → 神通 → 命格，一个一个来。
+     v10.7 阶段二：改成真正的 FIFO——每次只 shift() 当前一项，其余留在
+     S.afterBreak 里。旧版把整队取出再逐条 filter：一旦某一步自己不再回调
+     `do;afterbreak`（do_yin 选完道印直接 closeModal，do_st 只弹得物窗），
+     后面的神通/命格就永远丢了。新增锻造步骤更会把整条链吃掉。 */
+  function finishAfterBreak() {
     render();
     // 破境时挂起的奇遇，现在放行
     if (S.holdEvent) { S.holdEvent = false; maybeEvent(); render(); }
     else if (!modalBusy()) maybeTransmitNow();
+  }
+  /* 面板完成后的统一续接口（本命锻造等扩展也用这个出口） */
+  function afterBreakStepDone() {
+    if ((S.afterBreak || []).length) return ACT.do_afterbreak();
+    finishAfterBreak();
+  }
+  /* 摘掉「已完成」的那一步。默认只认队头——不按名字乱删，
+     防止某一步没做完就被别处的同名步骤顶掉。 */
+  function afterBreakPop(step) {
+    const q = (S.afterBreak || []).slice();
+    if (q.length && (!step || q[0] === step)) q.shift();
+    else if (step) {
+      const i = q.indexOf(step);
+      if (i >= 0) q.splice(i, 1);
+    }
+    S.afterBreak = q;
+  }
+  /* 完成当前一步 → 续接下一步。所有面板的选择动作都从这里回队列。 */
+  function afterBreakDone(step) {
+    afterBreakPop(step);
+    return afterBreakStepDone();
+  }
+  ACT.do_afterbreak_done = (step) => { closeModal(); afterBreakDone(step || null); };
+
+  ACT.do_afterbreak = () => {
+    closeModal();
+    if (!(S.afterBreak || []).length) { finishAfterBreak(); return; }
+    const step = S.afterBreak[0];       // peek：这一步完成前不摘，读档后仍可续
+    if (step === 'xianji') return openXianjiPick();
+    if (step === 'forge') {
+      const FX = G.WXCS3_EXT;
+      if (FX && FX.openNatalForge) return FX.openNatalForge();
+      afterBreakPop('forge');           // 扩展未加载：跳过，不堵队列
+      return ACT.do_afterbreak();
+    }
+    if (step === 'daoyin') { if (tryOpenYin()) return; afterBreakPop('daoyin'); return ACT.do_afterbreak(); }
+    if (step === 'shentong') { if (openShentongPick()) return; afterBreakPop('shentong'); return ACT.do_afterbreak(); }
+    /* v9.0 M1：择痕排在仙基/道印/神通之后。面板由扩展开，选完走 do;afterbreak_done:fate */
+    if (step === 'fate') {
+      const FX = G.WXCS3_EXT;
+      if (FX && FX.openFateChoice) return FX.openFateChoice();
+      afterBreakPop('fate');
+      return ACT.do_afterbreak();
+    }
+    afterBreakPop(step);                // 未知步骤：跳过而不是卡死
+    return ACT.do_afterbreak();
   };
 
   /* 筑基：铸仙基（自动定道统） */
@@ -3542,7 +3584,7 @@
     shown += `<div class="muted small" style="margin-top:4px">你采的这口气，有点像${esc(D.ELEMENTS[el] ? D.ELEMENTS[el].name : '某种东西')}。</div>`;
     b += shown;
     b += `<div class="hint">道途四印从此开始：每破一境得一枚，四枚须为二干二支且配成一对。</div>`;
-    b += `<div style="margin-top:10px"><button class="btn" data-act="do;afterbreak">继续</button></div>`;
+    b += `<div style="margin-top:10px"><button class="btn" data-act="do;afterbreak_done:xianji">继续</button></div>`;
     logLine(`筑基，铸 ${result}，道统显形：${dt}`, 'good');
     openModal('筑基 · 仙基与道统', b, true);
   }
@@ -6188,6 +6230,50 @@
   /* 把局面打包成能导入导出的信封 */
 
   /* 读回来时补齐缺失字段，免得旧档 / 残档把引擎打崩 */
+  /* ---------- v10.7 阶段二：本命独立化迁移 ----------
+     旧档 S.benming = {artId, name, tier, xp, dmg}：本命只是「某件普通法器的认主」，
+     与 S.arts/装备槽绑死。新结构 ver:2 不再引用普通法器，按物映射器形、保留培养。
+     迁移一次性、幂等：二次读档结果完全一致；不删普通物品、不重复发材料。 */
+  const NATAL_ART_FORMS = {
+    jiuzhuan: 'sword', wanyePiu: 'banner', wanlingfan: 'banner',
+    taiyinBao: 'mirror', guixibao: 'bell', qingyezhou: 'mirror'
+  };
+  function natalElKey(S2) {
+    const e = (S2 && S2.rootEls && S2.rootEls[0]) || null;
+    if (e && (D.ELEMENTS[e] || D.MUT_ELEMENTS[e])) return e;
+    return 'metal';
+  }
+  function migrateBenming(b, S2) {
+    if (!b || typeof b !== 'object') return null;
+    const forms = D.NATAL_FORMS || [];
+    const hasForm = function (id) { return forms.some(function (f) { return f.id === id; }); };
+    const out = (b.ver === 2) ? b : {
+      ver: 2,
+      form: NATAL_ART_FORMS[b.artId] || 'sword',
+      el: natalElKey(S2),
+      name: b.name || '',
+      tier: parseInt(b.tier, 10) || 1,
+      xp: Number(b.xp) || 0,
+      dmg: Number(b.dmg) || 0,
+      quality: 'normal',
+      forgedRealm: 2,
+      skillsUsed: 0,
+      legacyArtId: b.artId || null
+    };
+    /* 字段残缺按安全默认值修复（不因为一个坏字段把整件本命丢掉） */
+    out.ver = 2;
+    if (!hasForm(out.form)) out.form = NATAL_ART_FORMS[out.legacyArtId] || 'sword';
+    if (!out.el || !(D.ELEMENTS[out.el] || D.MUT_ELEMENTS[out.el])) out.el = natalElKey(S2);
+    out.name = String(out.name || '');
+    out.tier = clamp(parseInt(out.tier, 10) || 1, 1, 4);
+    out.xp = clamp(Number(out.xp) || 0, 0, 100);
+    out.dmg = Math.max(0, Number(out.dmg) || 0);
+    if (!out.quality) out.quality = 'normal';
+    out.forgedRealm = clamp(parseInt(out.forgedRealm, 10) || 2, 1, 9);
+    out.skillsUsed = Math.max(0, parseInt(out.skillsUsed, 10) || 0);
+    return out;
+  }
+
   function applyState(st) {
     if (!st || typeof st !== 'object') { toast('存档内容无效'); return false; }
     const base = newGame();
@@ -6254,7 +6340,7 @@
     /* v9.0 M2：外物有命。旧档无本命按未认主处理；主战兽栏序号越界归零；
        beastFedMonth 缺省 0＝从没喂过，第一个月结就会开始饥饿倒计时，
        与「旧档灵兽从无喂养记录」的语义一致。 */
-    out.benming = st.benming || null;
+    out.benming = migrateBenming(st.benming, out);
     if (Array.isArray(out.barn) && out.barn.length) {
       out.warBeast = clamp(parseInt(st.warBeast, 10) || 0, 0, out.barn.length - 1);
     } else { out.warBeast = 0; }
@@ -6576,10 +6662,22 @@
     } catch (e) { toast('存档失败：' + e.message); }
   }
 
+  /* v10.7 阶段二：读档后若破境手续未办完，回到队列继续。
+     「每一步读档都能继续」不能只靠 S.afterBreak 存着却没人读。 */
+  function resumeAfterBreak() {
+    if (!S || S.phase !== 'play') return false;
+    if (!Array.isArray(S.afterBreak) || !S.afterBreak.length) return false;
+    ACT.do_afterbreak();
+    return true;
+  }
+
   function loadFromSlot(i) {
     const st = slotRead(i);
     if (!st) { toast('槽位 ' + i + ' 是空的'); return; }
-    if (applyState(st)) { toast('已读取槽位 ' + i); logLine('读档 ← 槽位 ' + i + '。', ''); }
+    if (applyState(st)) {
+      toast('已读取槽位 ' + i); logLine('读档 ← 槽位 ' + i + '。', '');
+      resumeAfterBreak();
+    }
   }
 
   /* ---------- 存档面板 ---------- */
@@ -6625,7 +6723,7 @@
     if (!raw) { toast('没有自动存档'); return; }
     let st = null;
     try { const o = JSON.parse(raw); st = o && o.state ? o.state : o; } catch (e) { st = null; }
-    if (applyState(st)) toast('已读自动存档');
+    if (applyState(st)) { toast('已读自动存档'); resumeAfterBreak(); }
   };
 
   ACT.do_auto = () => { ACT.do_load(); };
@@ -6709,6 +6807,7 @@
       }
       applyState(st);
       toast(put ? ('已导入槽位 ' + put + ' 并载入：' + fname) : ('槽位已满，仅在本次载入：' + fname));
+      resumeAfterBreak();
     });
   };
 
@@ -6883,6 +6982,8 @@
     logLine('得' + (kind === 'gan' ? '干' : '支') + '印：' + nm + (ok ? '　四印成对。' : ''), ok ? 'good' : '');
     if (S.daoyin.length >= 4 && !ok) logLine('四印未配成对——证位时 −15。', 'danger');
     closeModal(); advanceXun(1); render();
+    /* v10.7 阶段二：选完这一枚要回到破境队列，否则后面的神通/命格丢在半路 */
+    afterBreakDone('daoyin');
   };
 
   /* ---------- P0-3 神通授予 ---------- */
@@ -7116,10 +7217,12 @@
   }
 
   function openShentongPick() {
+    /* v10.7 阶段二：返回布尔——破境队列据此判断「这一步是否真的打开了」。
+       旧版无返回值，队列会以为没开而把它跳过（神通被静默吞掉）。 */
     const lim = shenTongLimit();
-    if (S.shenTong.length >= lim) { toast('神通已满（仙基所限 ' + lim + '）'); return; }
+    if (S.shenTong.length >= lim) { toast('神通已满（仙基所限 ' + lim + '）'); return false; }
     const pool = daotongPool().filter(function (x) { return S.shenTong.indexOf(x) < 0; });
-    if (!pool.length) { toast('道统池已空'); return; }
+    if (!pool.length) { toast('道统池已空'); return false; }
     const choose = pickN(pool, Math.min(3, pool.length));
     let b = '<div class="small">道基有感，道统池中得一道神通。<b>三选一</b>。上限 ' + lim + '（仙基所限），已有 ' + S.shenTong.length + '。</div>';
     b += divider() + '<ul class="opts">';
@@ -7128,6 +7231,7 @@
     });
     b += '</ul>';
     openModal('神通 · 三选一', b, true);
+    return true;
   }
 
   ACT.do_st = (enc) => {
@@ -7152,12 +7256,20 @@
     logLine('得神通：' + stShort(nm) + '（' + sp0.kindName + '）—— 战力上升，交手时「术」里可用。', 'good');
     toast('神通 · ' + stShort(nm) + ' · ' + sp0.kindName);
     closeModal(); advanceXun(1); render();
+    /* v10.7 阶段二：这一步已经完成，立刻从队列摘掉——
+       否则在得物窗存档再读，会重新开一次「神通三选一」，等于白送一道。
+       得物窗的「继续」只负责回到队列，不再代表「完成」。 */
+    afterBreakPop('shentong');
+    const _hasNext = (S.afterBreak || []).length > 0;
     // 必须放在 closeModal 之后：先弹会被它自己关掉
     if (!modalBusy()) {
       openGain('得一道神通', [
         { name: stShort(nm), num: 0, note: sp0.kindName }
-      ], { note: sp0.desc, tail: '神通不占招式装配格，但每道每场只能出一次。战斗中点「术」就能看见它。' });
-    }
+      ], {
+        note: sp0.desc, tail: '神通不占招式装配格，但每道每场只能出一次。战斗中点「术」就能看见它。',
+        btn: _hasNext ? '继续' : '', act: _hasNext ? 'do;afterbreak_done:shentong' : ''
+      });
+    } else if (_hasNext) { afterBreakDone('shentong'); }
   };
 
   /* ---------- P0-7 神位十八品 ---------- */
@@ -8103,9 +8215,10 @@
       const a = D.ARTIFACT_EXT.find(function (x) { return x.id === e[slot]; });
       if (a && a.bonus && Number(a.bonus[kind])) v += Number(a.bonus[kind]);
     }
-    /* v9.0 M2：本命认主＝这一件的加持翻倍（ext-benming 把 bonus 再交一遍） */
-    const _X = G.WXCS3_EXT;
-    if (_X && _X.benmingArtBonus) v += _X.benmingArtBonus(kind);
+    /* v10.7 阶段二：本命不再借用普通法器 —— 普通法器加成只算一遍。
+       旧版这里把本命法器自己的 bonus 再交一遍（「认主翻倍」），
+       本命独立后这条双向计账必须消失，否则同一件法器的加成仍被算两次。
+       本命的能力走 ext-40 的独立口（被动/法技/器损），不经过 artBonus。 */
     return v;
   }
   function applyAttackArtCost() {
@@ -8926,6 +9039,12 @@
     };
     S.combat.rankUp = !!(S.preBuff && S.preBuff.rankUp);
     if (S.preBuff) S.preBuff.rankUp = false;
+    /* v10.7 阶段二：本命被动在开战瞬间落一次（宝镜：照见破绽）。
+       只走一个出口，免得各扩展在 startCombat 里各插一段。 */
+    {
+      const _XN = G.WXCS3_EXT;
+      if (_XN && _XN.natalOnCombatStart) _XN.natalOnCombatStart(S.combat);
+    }
     /* v10.4 P1·S4：入场态势在本场开局定下，之后可用 cbtpre:stance:* 切换 */
     S.combat.stance = stanceList()[0] || null;
     S.combat.stanceUsed = {};
@@ -9559,6 +9678,12 @@
     const _red = Math.max(c.defending ? 0.5 : 0, c.talShield || 0);
     if (_red > 0) dmg *= clamp(1 - _red, 0.05, 0.95);
     if (c.talShield) c.talShield = 0;
+    /* v10.7 阶段二：本命神钟的常驻减伤只在「总减伤上限」内生效——
+       与守势/护体取强后再乘，不叠加成隐式 95%。 */
+    {
+      const _XN = G.WXCS3_EXT;
+      if (_XN && _XN.natalIncomingMul) dmg *= _XN.natalIncomingMul(c);
+    }
     // 滑头：血量低于一半会试着跑
     if (c.foe.trait === 'slippery' && c.foe.hp <= c.foe.hpMax * 0.5 && rng() < 0.35) {
       if (c.noFoeFlee) {
@@ -9726,6 +9851,11 @@
          普攻 / 术法 / 符箓 / 神通统一乘 talBuffMul(c)。
          旧写法在这一行单独乘 mult，只增幅普攻，且每贴一张无限累加。 */
       let raw = c.foe.hpMax * Math.max(0.10, 0.19 * r) * mult * keK * (1 + artBonus('atk') + beastBonus) * fateMul('dmg') * talBuffMul(c) * _bmul;
+      /* v10.7 阶段二：本命被动（魂幡助对灼烧之敌）——普攻也吃，不只术法 */
+      {
+        const _XN = G.WXCS3_EXT;
+        if (_XN && _XN.natalDamageMul) raw *= _XN.natalDamageMul(null, c);
+      }
       raw *= (1 - defl);
       if (c.observed) raw *= 1.6;
       dmg = Math.round(raw * (0.94 + rng() * 0.12));
@@ -9766,6 +9896,11 @@
         ? G.WXCS3_EXT.gongfaSkillMul(sk) : null;
       const _gkm = (_gk && _gk.mul) ? _gk.mul : 1;
       let raw2 = c.foe.hpMax * Math.max(0.11, 0.21 * r2) * mul2 * _gkm * mult * keK * (1 + artBonus('atk') + beastBonus) * fateMul('dmg') * talBuffMul(c) * _bmul;
+      /* v10.7 阶段二：本命被动——飞剑助剑系术法，魂幡助对灼烧之敌 */
+      {
+        const _XN = G.WXCS3_EXT;
+        if (_XN && _XN.natalDamageMul) raw2 *= _XN.natalDamageMul(sk, c);
+      }
       raw2 *= (1 - defl2);
       if (c.observed) raw2 *= 1.6;
       dmg = Math.round(raw2 * (0.94 + rng() * 0.12));
@@ -10871,6 +11006,13 @@
     });
     b += '</ul>';
     if (o.tail) b += '<div class="small muted" style="margin-top:7px">' + o.tail + '</div>';
+    /* v10.7 阶段二：得物窗可以带一个「继续」出口。
+       破境队列中的神通步骤用它回到 do;afterbreak，避免得物窗一关就断链。 */
+    if (o.act) {
+      b += '<div style="margin-top:10px"><button class="btn" data-act="' + esc(o.act) + '">' + esc(o.btn || '继续') + '</button></div>';
+      openModal(title, b, true);
+      return;
+    }
     openModal(title, b);
   }
   /* 结算末尾调用：有东西才弹，没有就什么都不做（不打断节奏） */
@@ -12858,6 +13000,9 @@
        没有探针就只能靠肉眼数按钮——那正是本轮要消灭的验证盲区。 */
     dockItems, navGroups, navGroupOf,
     talBuffMul, preBoostMul, TAL_BUFF_TURNS,
+    /* v10.7 阶段二：破境 FIFO 与本命迁移探针。
+       测试要验「每一步都能续接」「迁移两次结果一致」，没有出口就只能靠点 UI。 */
+    afterBreakDone, afterBreakStepDone, migrateBenming,
     pageCount,
     setSeed,
     getSeed: currentSeed,

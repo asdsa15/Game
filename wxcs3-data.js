@@ -348,7 +348,7 @@
     { id: 'guixibao',   name: '护身玉符',   price: 600,   tier: 'huang', slot: 'body', bonus: { body: 0.08 }, eff: '斗法减伤 8%，常驻' },
     { id: 'duzuo',      name: '破宝锥',     price: 1200,  tier: 'xuan',  slot: 'once', eff: '一用：破境界之压，必开生路，可遁' },
     { id: 'wanyePiu',    name: '百魂幡',     price: 2400,  tier: 'xuan',  slot: 'atk', bonus: { atk: 0.15, hpCost: 5 }, eff: '斗法伤害 +15%，耗气血 5' },
-    { id: 'jiuzhuan',    name: '九转飞剑',   price: 3200,  tier: 'di',    slot: 'atk', bonus: { atk: 0.25 }, eff: '可为本命，攻击 +25%' },
+    { id: 'jiuzhuan',    name: '九转飞剑',   price: 3200,  tier: 'di',    slot: 'atk', bonus: { atk: 0.25 }, eff: '九转淬锋，攻击 +25%' },
     { id: 'taiyinBao',   name: '太阴宝鉴',   price: 4600,  tier: 'di',    slot: 'body', bonus: { hit: 0.10 }, eff: '照见虚妄，命中 +10，幻术立破' },
     { id: 'huoyuyuan',   name: '火云符',     price: 180,   tier: 'huang', slot: 'once', eff: '一用之符：斗法中火系术法伤害 +60%（限一次）' },
     { id: 'jinchuan',    name: '传音符',     price: 90,    tier: 'huang', slot: 'once', eff: '一用：传讯相识之人，好感 +5（平时即可用）' },
@@ -356,6 +356,49 @@
     { id: 'wuyun',       name: '五雷符',     price: 520,   tier: 'xuan',  slot: 'once', eff: '一用：斗法首击必中（无视卸力），伤害 +80%' },
     { id: 'hanhuo',      name: '祈雨符箓',   price: 160,   tier: 'huang', slot: 'once', eff: '神道：一场显圣，不耗香火' },
     { id: 'juxian',      name: '拘仙敕神符', price: 2800,  tier: 'di',    slot: 'once', eff: '一用：本场位格压制 +1 档（仙道 +1 阶／神道 +1 位），限一场' }
+  ];
+
+  /* ====== 本命器形（v10.7 阶段二） ======
+     本命不是商品：只在首次仙道筑基时亲手铸一件，终身不换、不进 `S.arts`、
+     不占普通装备槽、不可出售。这里只放「名、被动、法技、描述」四类静态数据；
+     结算逻辑在 `wxcs3-ext-40-benming.js`，按 form 分支。
+     数值首版取保守值，阶段三接入模拟后再调。 */
+  const NATAL_FORMS = [
+    {
+      id: 'sword', name: '本命飞剑', icon: 'jiuzhuan',
+      passive: '剑系术法伤害 +12%',
+      skill: '剑魄斩', skillCost: 12, skillDmg: 0.18,
+      skillNote: '单体高伤；目标已有破绽时追加收益',
+      desc: '三尺青锋，与你同息。剑在人在，剑折人亡。'
+    },
+    {
+      id: 'seal', name: '本命法印', icon: 'taiyinBao',
+      passive: '所施加的压制延长 1 回合',
+      skill: '镇岳印', skillCost: 10, skillDmg: 0.10,
+      skillNote: '小额伤害 + 压制；对负隅之敌更稳',
+      desc: '一方小印，压得住山，也压得住人。'
+    },
+    {
+      id: 'mirror', name: '本命宝镜', icon: 'taiyinBao',
+      passive: '开战即照见敌方破绽',
+      skill: '照影', skillCost: 8, skillDmg: 0.06,
+      skillNote: '看破破绽（下一击无视卸力并增伤）',
+      desc: '镜里照见的不是脸，是破口。'
+    },
+    {
+      id: 'bell', name: '本命神钟', icon: 'guixibao',
+      passive: '常驻减伤 6%（受全局减伤上限约束）',
+      skill: '钟鸣护体', skillCost: 10, skillDmg: 0,
+      skillNote: '获得一次护体（下次受击减伤 30%）',
+      desc: '钟不轻鸣，一鸣便是替你挡了一劫。'
+    },
+    {
+      id: 'banner', name: '本命魂幡', icon: 'wanyePiu',
+      passive: '对灼烧之敌伤害 +15%',
+      skill: '摄魂幡', skillCost: 12, skillDmg: 0.12,
+      skillNote: '施加灼烧 2 回合；可耗自身气血增势',
+      desc: '幡上无名，招来的都是你自己欠下的。'
+    }
   ];
 
   /* ====== 炼器 / 炼丹材料 ====== */
@@ -3804,7 +3847,7 @@
     UNLOCK_XIAN, UNLOCK_SHEN,
     SHOP, SHOP_GONGFA, SHOP_CATS, GATE, SHENWEI, EVENTS, ENDINGS, SCRIPTS,
     EXCHANGE, XIANG_GONG, MIAO_UP,
-    GONGFA_EXT, PILL_EXT, ARTIFACT_EXT, MATERIAL_EXT, SKILLS, ENCOUNTERS,
+    GONGFA_EXT, PILL_EXT, ARTIFACT_EXT, NATAL_FORMS, MATERIAL_EXT, SKILLS, ENCOUNTERS,
     LITURGY, TRANSMISSIONS,
     DAOGONG_CAP, SHENG, SECT, SKILL_PRICE, CLAN, DAOTONG_CLASS,
     RECIPES, TALISMANS, ARRAY_DISKS, CRAFT_LEVELS, CRAFT_REALM_GATE, CRAFT_BOOKS, CRAFT_ARTS,

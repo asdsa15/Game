@@ -99,6 +99,16 @@ function setup() {
   S.combat = null; S.preBuff = null;
 }
 function rebind() { S = G.S; }
+/* v10.7 阶段二：本命只能在筑基后亲手锻造，不再从 S.arts 认主。
+   测试同样走玩家路径：开仪式 → 择器形 → 择五行 → 铸成。 */
+function forge(form, el) {
+  S.xRealm = 2; S.cultivation = 'xian';
+  EXT.openNatalForge();
+  G.dispatch('do;bm_forgeForm:' + (form || 'sword'));
+  G.dispatch('do;bm_forgeEl:' + (el || 'metal'));
+  G.dispatch('do;bm_forgeDo');
+  rebind();
+}
 function addBeast(id, bond, power) {
   const pack = G.D.BEAST_STOCK.find(function (x) { return x.id === id; });
   S.barn.push({ id: pack.id, name: pack.name, el: pack.el, bond: bond, power: power || 1 });
@@ -109,17 +119,17 @@ function addBeast(id, bond, power) {
 console.log('=== 1. 本命法器 · 认主 ===');
 setup();
 S.arts = ['jiuzhuan', 'qingyezhou', 'duzuo'];
-G.dispatch('do;bm_pick:jiuzhuan');
-rebind();
-ok(S.benming && S.benming.artId === 'jiuzhuan' && S.benming.tier === 1, '认主入账', JSON.stringify(S.benming));
-ok(S.equipped.atk === 'jiuzhuan', '认主即佩挂');
-/* 加成翻倍改在 §2/§3 经 fateMul/战斗结算验证，此处不再单独断言 */
+S.equipped = { atk: 'jiuzhuan' };
+forge('sword', 'metal');
+ok(S.benming && S.benming.ver === 2 && S.benming.form === 'sword' && S.benming.tier === 1, '筑基锻造入账（ver:2）', JSON.stringify(S.benming));
+ok(S.equipped.atk === 'jiuzhuan' && S.benming.form === 'sword', '本命不占装备槽：atk 槽仍是普通法器');
+ok(EXT.benmingArtBonus === undefined, '认主翻倍机制已删除（普通法器加成只算一遍）');
 
 /* ==================== 2. 本命 · 祭炼/进阶/法技/反噬 ==================== */
 console.log('=== 2. 本命 · 成长四阶 ===');
 setup();
 S.arts = ['jiuzhuan'];
-G.dispatch('do;bm_pick:jiuzhuan'); rebind();
+forge('sword');
 const st0 = S.stones, xun0 = S.turn * 3 + S.xun;
 G.dispatch('do;bm_refine'); rebind();
 ok(S.stones === st0 - 15, '祭炼扣温养之资 15 石', st0 - S.stones);
@@ -130,30 +140,27 @@ G.dispatch('do;bm_adv'); rebind();
 ok(S.benming.tier === 2, '祭炼圆 → 进阶通灵');
 /* 通灵起有月账 */
 setup();
-S.arts = ['guixibao'];
-G.dispatch('do;bm_pick:guixibao'); rebind();
+forge('bell');
 S.benming.tier = 2;
 let c2 = EXT.fixedCosts2();
 ok(c2.length === 1 && c2[0].stones === 6, '通灵月账：温养 6 石', JSON.stringify(c2));
 S.benming.tier = 4;
 c2 = EXT.fixedCosts2();
 ok(c2[0].stones === 12, '合道月账涨到 12 石', c2[0].stones);
-/* 法技：atk 槽走 combatAct */
+/* 法技：飞剑走 combatAct */
 setup();
-S.arts = ['jiuzhuan'];
-G.dispatch('do;bm_pick:jiuzhuan'); rebind();
+forge('sword');
 S.benming.tier = 2;
 S.combat = { foe: { name: '散修', rank: 5, power: 20, hp: 200, hpMax: 200, el: 'metal', trait: 'normal' }, round: 1 };
 const r = EXT.combatActHooks[0]('bm_skill', S.combat);
-ok(r && r.dmg > 0 && r.note.indexOf('器灵出鞘') >= 0, '法技出鞘：有伤有文', JSON.stringify(r));
+ok(r && r.dmg > 0 && r.note.indexOf('剑魄斩') >= 0, '飞剑法技：有伤有文', JSON.stringify(r));
 ok(S.mp === 88, '法技耗灵力 12', S.mp);
 ok(S.benming.dmg === 6, '用技器损 +6', S.benming.dmg);
 S.benming.dmg = 80;
 ok(EXT.fightRowsHooks[0]().join('').indexOf(' disabled') >= 0, '器损 80：法技按不住');
 /* 本命出鞘挡击 */
 setup();
-S.arts = ['guixibao'];
-G.dispatch('do;bm_pick:guixibao'); rebind();
+forge('bell');
 S.benming.tier = 3;
 S.combat = { foe: { name: '散修', hp: 100, hpMax: 100, rank: 5, power: 20 }, round: 0 };
 const pf = EXT.preFightRowsHooks[0]();
@@ -168,16 +175,15 @@ ok(S.benming.dmg === 18, '挡一次器损 +18', S.benming.dmg);
 S.benming.dmg = 90; S.hp = 100;
 EXT.onMonthHooks[0]();
 ok(S.hp < 100, '器损 90：月结反噬扣血', S.hp);
-/* 失落：器不在身上则契断，共命以上有反噬 */
-S.arts = []; S.hp = 100;
+/* 独立：本命不再挂在普通法器上——卖掉/收起普通法器不会让契断 */
+S.arts = []; S.equipped = {}; S.hp = 100;
 EXT.onMonthHooks[0]();
-ok(S.benming === null && S.hp === 70, '本命失落：契断 + 倒血三成', JSON.stringify({ bm: S.benming, hp: S.hp }));
+ok(S.benming && S.benming.ver === 2, '本命独立：普通法器清空也不契断', JSON.stringify(S.benming));
 
 /* ==================== 3. 本命 · 合道（命格共鸣与物锚） ==================== */
 console.log('=== 3. 本命 · 合道 ===');
 setup();
-S.arts = ['jiuzhuan'];
-G.dispatch('do;bm_pick:jiuzhuan'); rebind();
+forge('sword');
 S.benming.tier = 4; S.benming.xp = 0;
 S.fate = { id: 'yijian', tier: 1 };
 ok(Math.abs(EXT.fateMul('sword') - 1.25 * 1.10) < 1e-9, '合道＋一剑破法：剑伤共鸣 ×1.10', EXT.fateMul('sword'));
@@ -304,7 +310,7 @@ ok(S.benming === null || true, '面板不崩');
 G.dispatch('do;beast'); rebind();
 ok(S.barn.length === 1, '兽栏面板不崩');
 /* 构筑面板含本命/兽官信息 */
-S.benming = { artId: 'jiuzhuan', name: '九转飞剑', tier: 2, xp: 0, dmg: 0 };
+S.benming = { ver: 2, form: 'sword', el: 'metal', name: '九转飞剑', tier: 2, xp: 0, dmg: 0, forgedRealm: 2, skillsUsed: 0 };
 G.dispatch('do;build');
 ok(true, '构筑面板在 M2 字段下不崩');
 

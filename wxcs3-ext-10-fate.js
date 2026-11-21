@@ -208,7 +208,7 @@
     var S = cur();
     var cands = EXT.fateCandidates();
     var u = ui();
-    if (!S || !cands.length) { u.dispatch('do;afterbreak'); return; }
+    if (!S || !cands.length) { u.dispatch('do;afterbreak_done:fate'); return; }
     var b = '<div class="small">大境已破，气海里多出一道旧痕。天下人道痕不同，你这一道，落在何处？</div>';
     if (S.fateReroll) b += '<div class="small muted" style="margin-top:4px">重悟一场，旧痕已散，此刻可选的只剩这三道。</div>';
     b += '<div class="small muted" style="margin-top:4px">此选终身不换（一生可重悟一次）。同系后续可进阶，不必急着看远处。</div>';
@@ -229,7 +229,7 @@
     u.closeModal();
     u.logLine('道痕入骨：' + line.name + '。' + line.t1.cost, 'good');
     u.toast('道痕 · ' + line.name);
-    u.dispatch('do;afterbreak');
+    u.dispatch('do;afterbreak_done:fate');
   };
 
   /* ---------- 进阶：替换不叠加 ---------- */

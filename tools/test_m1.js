@@ -274,7 +274,11 @@ setup();
 S.afterBreak = ['fate'];
 let threw2 = null;
 try { G.dispatch('do;afterbreak'); } catch (e) { threw2 = e; }
-ok(threw2 === null && S.afterBreak.length === 0, 'afterbreak 弹出择痕并清空队列', threw2 && threw2.message);
+/* v10.7 阶段二：改 FIFO 后「打开面板」不等于「完成」——这一步完成前仍留在队头，
+   选完才由 do;afterbreak_done:fate 摘掉。断言按新语义验：面板能开、选完队列清空。 */
+ok(threw2 === null && S.afterBreak.length === 1 && S.afterBreak[0] === 'fate', 'afterbreak 弹出择痕（完成前留队头）', threw2 && threw2.message);
+G.dispatch('do;fate_pick:shouzhuo'); rebind();
+ok(S.afterBreak.length === 0, '择痕完成 → 队列清空');
 
 /* ==================== 8. 旧档迁移 ==================== */
 console.log('=== 8. 旧档迁移 ===');

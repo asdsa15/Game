@@ -126,8 +126,17 @@ M2 发现：单个函数槽位（`EXT.fightRows = ...`）会被后加载的扩�
 
 注册者：40-benming（本命出鞘/血条/法技/挡击/反噬）与 50-beast（兽血条/兽令/护主反噬/叛逃）。
 顺序即加载序（文件名前缀），数组下标可测：foeHooks[0]=本命、[1]=灵兽。
-另有两个单件口不属于数组：`EXT.fixedCosts2()`（月账第二条缝，benming 温养 + beast 兽官俸禄）与
-`EXT.benmingArtBonus(kind)`（认主加持翻倍，game.js `artBonus` 里加回一遍）。
+另有两个单件口不属于数组：`EXT.fixedCosts2()`（月账第二条缝，benming 温养 + beast 兽官俸禄）。
+
+**v10.7 阶段二起，本命机制重写**：本命不再借用普通法器（`bm_pick` 认主与 `benmingArtBonus` 双倍加成均已删除），改为首次筑基锻造的独立器物。本命对战斗的介入走三个薄缝口（均在 `wxcs3-ext-40-benming.js`）：
+
+| 缝口 | 语义 | 用在哪 |
+|---|---|---|
+| `EXT.natalDamageMul(sk, c)` | 本命被动伤害乘区（如飞剑剑系 +12%、魂幡对灼烧 +15%） | 攻击结算处调用 |
+| `EXT.natalIncomingMul(c)` | 本命被动受击乘区（如神钟常驻减伤 6%） | 受击结算处调用 |
+| `EXT.natalOnCombatStart(c)` | 开战被动（如宝镜照见破绽） | 开战时调用 |
+
+另有 `openNatalForge`（筑基锻造仪式）与 `migrateBenming`（game.js `applyState` 内的旧档幂等迁移）。
 
 ### M3 扩展协作模式三：薄缝 + 链式包装
 
