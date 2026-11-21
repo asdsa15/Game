@@ -773,20 +773,56 @@
     }
   }
 
-  function logLine(txt, cls) {
+  /* ---------- 纪事分类（v10.8 P1） ----------
+     342 个 logLine 调用点不可能逐个改类别；改多了回归风险比收益大。
+     三层并行：热点显式传第三参数 → guessCat 关键词兜底 → 都没有就进 misc。
+     guessCat 只做「大致归堆」，不追求判对每一条：纪事是给人扫的，不是给人查的。 */
+  const LOG_CATS = D.LOG_CATS || [];
+  const LOG_CAT_RULES = [
+    /* 顺序即优先级：具体（四艺产物）先于笼统（打斗）。
+       「阵盘」「符箓」在两头都出现，归四艺更合适——它们是做出来的东西。 */
+    { id: 'craft', re: /一炉|成丹|炸炉|丹成|炼丹|制符|画符|画阵|布阵|阵盘|品相|配方|材料|采到|采集|技艺|淬体|开炉|残料/ },
+    { id: 'combat', re: /斩|受创|击中|中招|斗法|迎战|出手|遁走|卸力|破绽|守势|蓄力|定神|气血|伤势|敌手|败走|拦住|剑气|拳|掌|暗算|杀|护住|聚气|架势|虚晃/ },
+    { id: 'trade', re: /灵石|卖出|买入|坊市|价钱|市价|售出|购得|账|收支|兑换|契约|年供|抽成|香火钱|庙市/ },
+    { id: 'npc', re: /好感|来访|相识|拜师|收徒|道侣|人情|恩义|宗门|家族|族人|弟子|前辈|论道|送礼|交情|提亲|同门|师父|传法/ },
+    { id: 'cult', re: /修为|打坐|采气|破境|境界|突破|灵力|功法|参悟|静养|闭关|道基|术法|神通|寿元|灵气|灵根|破柱|升位|香火|信众|道心|心魔/ },
+    { id: 'enc', re: /奇遇|机缘|遗迹|洞天|秘境|拾得|遇见|遇上|撞见|古怪|古卷|残卷|异象|托梦/ },
+    { id: 'story', re: /岁月|流年|春|夏|秋|冬|听说|传言|传闻|世道|天灾|荒年|疫|朝廷|江湖|百姓|村镇|城中|庙宇|香客/ }
+  ];
+  function guessCat(txt, cls) {
+    const s = String(txt || '');
+    /* 红字多半是打斗与灾祸；但「炸炉」这类四艺事故不该算战事，
+       所以先看四艺关键词，再看 danger，最后才是普通关键词。 */
+    if (/炉|成丹|丹成|阵盘|符箓成|一品|品相/.test(s)) return 'craft';
+    if (cls === 'danger') return 'combat';
+    for (let i = 0; i < LOG_CAT_RULES.length; i++) {
+      if (LOG_CAT_RULES[i].re.test(s)) return LOG_CAT_RULES[i].id;
+    }
+    return 'misc';
+  }
+  function catName(id) {
+    const c = LOG_CATS.filter(function (x) { return x.id === id; })[0];
+    return c ? c.name : '杂记';
+  }
+
+  function logLine(txt, cls, cat) {
     /* v10.8 P0：给每条纪事一个自增序号。
        战斗页的「战况」只该显示本场发生的事，但 S.log 是一条全局流，
        342 个调用点不可能逐个加类别。开战时记下当前序号（logFrom），
        之后按 seq > logFrom 过滤，零成本把战况与全局纪事分开。
        旧档条目没有 seq：undefined 参与比较为 false，自然不进战况。 */
     S.logSeq = (S.logSeq || 0) + 1;
-    S.log.unshift({ t: timeLine(), txt, cls: cls || '', seq: S.logSeq });
+    /* 战斗期间产出的一切都算战事——包括战前摆阵/服药，
+       它们本来就是在战斗页点的。这一条上下文判定替掉了二十来处手动标注。 */
+    const inFight = !!(S && S.phase === 'combat' && S.combat);
+    const catId = cat || (inFight ? 'combat' : guessCat(txt, cls));
+    S.log.unshift({ t: timeLine(), txt, cls: cls || '', seq: S.logSeq, cat: catId });
     if (S.log.length > 200) S.log.pop();
     // 年谱：左栏事件流只留 200 条给现场看，年谱留全部，可导出成文件
     if (!Array.isArray(S.chronicle)) S.chronicle = [];
     S.chronicle.push({
       turn: S.turn, year: S.year, month: S.month, age: S.age,
-      realm: realmName(), cls: cls || '', txt: txt
+      realm: realmName(), cls: cls || '', txt: txt, cat: catId
     });
     if (S.chronicle.length > 4000) S.chronicle.shift();
   }
@@ -1279,13 +1315,17 @@
     /* v10.7 P1：桌面改为「左导航 / 中行事 / 右状态」。
        旧版底部那条通栏功能坞另起一行，必须滚过三栏才够得着，
        而左右两栏又各自不等高——于是「下面找不到、左右空着」。
-       现在功能坞拆进左栏常驻，纪事与月账移到中栏主行动之后。 */
+       现在功能坞拆进左栏常驻，纪事与月账移到中栏主行动之后。
+       v10.8 P1：横幅从「中栏里的 190px 大图」提为三栏之上通栏（132px），
+       气血/灵力/灵石/寿元叠在它的下沿——图更大，中栏反而空出 190px。
+       图键必须先取（只读标记），随后的 .scene 文本才消费 justBroke 等一次性标记。 */
     const navG = navGroups();
     paint(
+      '<div class="col col-banner">' + renderSceneArt(sceneArtKey(), 'banner') + renderVitals() + '</div>' +
       '<div class="col col-nav' +
       (navG.some(function (g) { return g.id === 'urgent' && g.items.length; }) ? '' : ' col-nav--quiet') + '">' +
       renderNavCol(navG) + '</div>' +
-      '<div class="col col-main">' + renderMainCol() + renderChronCol() + '</div>' +
+      '<div class="col col-main">' + renderMainCol() + '</div>' +
       '<div class="col col-state">' + renderStateCol() + '</div>' +
       renderMobileNav(navG));
     scheduleAutoSave();
@@ -1354,24 +1394,133 @@
     return b;
   }
 
-  /* ---------- 中栏：近期纪事 + 本月收支 ---------- */
-  /* v10.7 P1：纪事从左栏搬到中栏主行动之后。
-     默认给 5~8 条（够看清「刚才发生了什么」），要看全部走年谱。 */
-  function renderChronCol() {
-    const items = (S.log || []).slice(0, 7);
-    let b = '<div class="chhead"><span class="chn">近期纪事</span>' +
-      '<span class="chs" data-act="act:openChronicle">全部 ›</span></div>';
-    if (items.length) {
-      b += '<div class="logbox logbox--mid">' + items.map(function (l) {
-        return '<div class="ev ' + (l.cls || '') + '"><span class="t">' + esc(l.t) +
-          '</span><span class="x">' + l.txt + '</span></div>';
-      }).join('') + '</div>';
-    } else {
-      b += '<div class="muted">尚无纪事。</div>';
+  /* ---------- 中栏：分页工作区（v10.8 P1） ----------
+     中栏原来一条长卷：横幅 190 + 状态 44 + 主行动 295 + 提示 22 + 道基三行 106 + 纪事…
+     一屏 802 放不下，玩家选招要滚、滚下去就看不见时间和气血。
+     现在拆成四个 Tab（行事 / 纪事 / 账目 / 道基），横幅提到三栏之上通栏，
+     气血灵力叠在横幅下沿，中栏只剩一屏的量。
+     Tab 状态只存内存（_mainTab），不写档——读档后回到「行事」，与 SG_OPEN 同一惯例。 */
+  let _mainTab = 'act';
+  let _chronCat = 'all';        // 纪事筛选：'all' 或 LOG_CATS 的 id；纪事页与年谱共用
+  const MAIN_TABS = [
+    { id: 'act', name: '行事' },
+    { id: 'chron', name: '纪事' },
+    { id: 'ledger', name: '账目' },
+    { id: 'base', name: '道基' }
+  ];
+
+  /* 分类筛选的唯一入口：旧档条目没有 cat，读时用 guessCat 补，不回写存档。
+     筛选只影响渲染，绝不动 S.log / S.chronicle。 */
+  function chronOf(cat) {
+    const list = S.chronicle || [];
+    if (!cat || cat === 'all') return list;
+    return list.filter(function (e) { return (e.cat || guessCat(e.txt, e.cls)) === cat; });
+  }
+  function chronChips() {
+    let b = '<div class="cattabs">';
+    b += '<button class="cattab' + (_chronCat === 'all' ? ' on' : '') + '" data-act="do;mcat:all">全部</button>';
+    LOG_CATS.forEach(function (c) {
+      b += '<button class="cattab' + (_chronCat === c.id ? ' on' : '') + '" data-act="do;mcat:' +
+        c.id + '">' + esc(c.name) + '</button>';
+    });
+    b += '</div>';
+    return b;
+  }
+  function chronRows(list, n) {
+    const shown = n ? list.slice(-n).reverse() : list.slice().reverse();
+    if (!shown.length) {
+      return '<div class="muted">' + (_chronCat === 'all' ? '尚无纪事。' : '此类暂无纪事。') + '</div>';
     }
+    return shown.map(function (e) {
+      return '<div class="ev ' + (e.cls || '') + '"><span class="t">' + e.year + '·' +
+        ((e.month < 10 ? '0' : '') + e.month) + '　' + (e.age || 0) + '岁</span>' +
+        '<span class="x">' + esc(e.txt) + '</span></div>';
+    }).join('');
+  }
+  function renderMainTabs() {
+    let b = '<div class="tabbar">';
+    MAIN_TABS.forEach(function (t) {
+      b += '<button class="tabbtn' + (_mainTab === t.id ? ' on' : '') + '" data-act="do;mtab:' +
+        t.id + '">' + esc(t.name) + '</button>';
+    });
+    b += '</div>';
+    return b;
+  }
+  /* 底部薄条：不管停在哪个 Tab，最近三条纪事都看得见。
+     这条是硬要求——分页最容易犯的错就是把「刚才发生了什么」藏进 Tab。 */
+  function renderChronStrip() {
+    const recent = (S.log || []).slice(0, 3);
+    let b = '<div class="chronstrip" data-act="do;mtab:chron">';
+    b += '<span class="csk">纪事</span>';
+    if (recent.length) {
+      b += recent.map(function (l) {
+        return '<span class="csi ' + (l.cls || '') + '">' + esc(stripTags(l.txt)).slice(0, 34) + '</span>';
+      }).join('');
+    } else b += '<span class="csi muted">尚无</span>';
+    b += '<span class="csa">展开 ›</span></div>';
+    return b;
+  }
+  function stripTags(s) {
+    return String(s || '').replace(/<[^>]*>/g, '');
+  }
+
+  function renderChronCol() {
+    return '<div class="tabhead">纪事 · 日志<span class="chs" data-act="act:openChronicle">全部 ›</span></div>' +
+      chronChips() +
+      '<div class="logbox logbox--scroll">' + chronRows(chronOf(_chronCat), 8) + '</div>' +
+      '<div class="tabfoot"><span class="muted small">' + chronOf(_chronCat).length + ' 条' +
+      (_chronCat === 'all' ? '' : '（' + catName(_chronCat) + '）') + '</span>' +
+      '<span class="chs" data-act="act:openChronicle">看全部 ›</span></div>';
+  }
+  function renderLedgerTab() {
     const led = renderLedger();
-    if (led) b += divider() + led;
-    return panel('纪事 · 月账', b, { sub: '中' });
+    let b = '<div class="tabhead">账目 · 本月</div>';
+    b += led || '<div class="muted">本月尚无收支。</div>';
+    b += '<div style="margin-top:10px"><button class="btn ghost" data-act="act:openLedger">看本月全部明细</button></div>';
+    b += '<div class="hint">账本每月初一重置；所有灵石增减都走同一条账本。</div>';
+    return b;
+  }
+  function renderBaseTab() {
+    const g = getDaogong();
+    const cap = D.DAOGONG_CAP[g.tier] || D.DAOGONG_CAP.huang;
+    let b = '<div class="tabhead">道基 · 术法 · 神通</div>';
+    b += renderRealmBar();
+    b += '<div class="slotline"><span class="sk">道基</span>' +
+      '<span class="sv">' + esc(g.name) + '</span>' +
+      '<span class="tier" style="background:' + D.GONGFA_TIERS[g.tier].color + '">' +
+      esc(D.GONGFA_TIERS[g.tier].name) + ' ×' + D.GONGFA_TIERS[g.tier].mul + '</span></div>';
+    b += '<div class="slotnote">' + esc(g.eff) + '　｜　上限 ' + esc(cap.to) + '</div>';
+    const eqs = equippedSkills();
+    b += '<div class="slotline"><span class="sk">术法</span>' +
+      '<span class="sv">' + (eqs.length ? eqs.map(function (k) { return esc(k.name); }).join(' · ') : '无') + '</span>' +
+      '<span class="tier" style="background:#8B98A6">' + eqs.length + '/' + equipLimit() + '</span></div>';
+    const _stN = (S.shenTong || []);
+    b += '<div class="slotline"><span class="sk">神通</span>' +
+      '<span class="sv">' + (_stN.length ? _stN.map(function (nm) { return esc(stShort(nm)); }).join(' · ') : '无') + '</span>' +
+      '<span class="tier" style="background:#8B6FA8">' + _stN.length + ' 道</span></div>';
+    if (S.ownedGongfa && S.ownedGongfa.length > 1) {
+      b += '<div class="small muted" style="margin-top:5px">已习：' + S.ownedGongfa.map(function (id) {
+        const x = D.GONGFA.filter(function (z) { return z.id === id; })[0];
+        return x ? '<span style="color:' + D.GONGFA_TIERS[x.tier].color + '">' + esc(x.name) + '</span>' : '';
+      }).join(' · ') + '</div>';
+    }
+    b += '<div class="hint">道基定上限，术法定手段，神通定奇招。换道基会掉境界，想清楚再换。</div>';
+    return b;
+  }
+
+  /* Tab 切换：只改内存状态再整块重绘。
+     不写档，也不调 closeModal —— Tab 条不在弹窗里，重绘不会顶掉任何窗。 */
+  function doMtab(id) {
+    if (!MAIN_TABS.some(function (t) { return t.id === id; })) return;
+    _mainTab = id;
+    render();
+  }
+  /* 分类筛选：纪事页与年谱共用同一份状态 _chronCat。
+     年谱开着时点 chip 要重开年谱（否则筛选只改了背景页，用户看不见变化）。 */
+  function doMcat(id) {
+    _chronCat = (id === 'all' || LOG_CATS.some(function (c) { return c.id === id; })) ? id : 'all';
+    if (modalBusy() && ACT.openChronicle) ACT.openChronicle();
+    else render();
   }
 
   /* 移动端底部五项导航（桌面端整块隐藏）。
@@ -1753,13 +1902,10 @@
     return b;
   }
 
-  function renderMainCol() {
+  /* 行事页：场景句 + 旬条 + 主行动（两列）+ 自由输入。
+     横幅与气血已提到三栏之上（见 render()），道基三行搬进「道基」页。 */
+  function renderActTab() {
     let b = '';
-    /* 横幅先取图键（只读标记不消费），随后 .scene 文本才消费 justBroke 等一次性标记——
-       次序颠倒会出现「图是破境、文是山野」的错位。 */
-    b += renderSceneArt(sceneArtKey(), 'banner');
-    b += renderRealmBar();
-    b += renderVitals();
     b += renderGoalCard();
     b += '<div class="scene">' + esc(scene()) + '</div>';
     b += renderXunBar();
@@ -1809,37 +1955,28 @@
     o.push(optRow('E', isShen() ? '守庙静养' : '打坐疗伤', { name: '平和', cls: 'peace' },
       injuryLevel().name + ' · 回 ' + fmtNum(monthlyHeal()), false, 'act:openRest'));
 
-    b += '<ul class="opts">' + o.join('') + '</ul>';
-    b += '<div class="freebar"><input id="in-free" placeholder="自由输入行动，回车执行">' +
-      '<button class="btn ghost" data-act="do;free">执行</button></div>';
-    b += '<div class="hint">' + (isShen()
-      ? '权柄＝你被人求的那件事。河神管不了旱灾。'
-      : '仙道是与天争命——快，但天要收你。') + '</div>';
-
-    /* 能力三分后，中栏要一眼看出「道基 / 术法 / 神通」三条线 */
-    const g = getDaogong();
-    const cap = D.DAOGONG_CAP[g.tier] || D.DAOGONG_CAP.huang;
-    b += divider();
-    b += '<div class="slotline"><span class="sk">道基</span>' +
-      '<span class="sv">' + esc(g.name) + '</span>' +
-      '<span class="tier" style="background:' + D.GONGFA_TIERS[g.tier].color + '">' +
-      esc(D.GONGFA_TIERS[g.tier].name) + ' ×' + D.GONGFA_TIERS[g.tier].mul + '</span></div>';
-    b += '<div class="slotnote">' + esc(g.eff) + '　｜　上限 ' + esc(cap.to) + '</div>';
-    const eqs = equippedSkills();
-    b += '<div class="slotline"><span class="sk">术法</span>' +
-      '<span class="sv">' + (eqs.length ? eqs.map(function (k) { return esc(k.name); }).join(' · ') : '无') + '</span>' +
-      '<span class="tier" style="background:#8B98A6">' + eqs.length + '/' + equipLimit() + '</span></div>';
-    const _stN = (S.shenTong || []);
-    b += '<div class="slotline"><span class="sk">神通</span>' +
-      '<span class="sv">' + (_stN.length ? _stN.map(function (nm) { return esc(stShort(nm)); }).join(' · ') : '无') + '</span>' +
-      '<span class="tier" style="background:#8B6FA8">' + _stN.length + ' 道</span></div>';
-
-    if (S.ownedGongfa && S.ownedGongfa.length > 1) {
-      b += '<div class="small muted" style="margin-top:5px">已习：' + S.ownedGongfa.map(function (id) {
-        const x = D.GONGFA.filter(function (z) { return z.id === id; })[0];
-        return x ? '<span style="color:' + D.GONGFA_TIERS[x.tier].color + '">' + esc(x.name) + '</span>' : '';
-      }).join(' · ') + '</div>';
+    /* 两列紧凑网格：五项 = 两行 + 末项通栏，省下一屏 100px。
+       奇数项的末行单独占满，否则会留一个空格子看着像漏了一项。 */
+    if (o.length % 2 === 1) {
+      o[o.length - 1] = o[o.length - 1].replace('<li class="opt', '<li class="opt opt--wide');
     }
+    b += '<ul class="opts opts--grid">' + o.join('') + '</ul>';
+    b += '<div class="freebar"><input id="in-free" placeholder="自由输入行动，回车执行">' +
+      '<button class="btn ghost" data-act="do;free">执行</button>' +
+      '<span class="freehint">' + (isShen()
+        ? '权柄＝你被人求的那件事。河神管不了旱灾。'
+        : '仙道是与天争命——快，但天要收你。') + '</span></div>';
+    return b;
+  }
+
+  function renderMainCol() {
+    /* v10.8 P1：一屏一页。Tab 条吸顶在栏内（CSS 里排在 .stage>* 的 relative 之后）。 */
+    let body;
+    if (_mainTab === 'chron') body = renderChronCol();
+    else if (_mainTab === 'ledger') body = renderLedgerTab();
+    else if (_mainTab === 'base') body = renderBaseTab();
+    else body = renderActTab();
+    const strip = (_mainTab === 'chron') ? '' : renderChronStrip();
 
     // P2-20：按道途/境界切换标题，仙道不再显示「庙中」
     let title;
@@ -1847,7 +1984,8 @@
     else if (S.xRealm >= 4) title = '丹房 · ' + timeLine();
     else if (S.xRealm >= 2) title = '洞府 · ' + timeLine();
     else title = '山门 · ' + timeLine();
-    return panel(title, b, { cls: 'main-panel', sub: realmName() });
+    return panel(title, renderMainTabs() + '<div class="tabbody">' + body + '</div>' + strip,
+      { cls: 'main-panel', sub: realmName() });
   }
 
   /* ---------- 底部常驻指令区（三栏下方，等宽对齐） ---------- */
@@ -2877,6 +3015,9 @@
 
   /* ============ 行动 ============ */
   const ACT = {};
+  /* v10.8 P1：中栏 Tab 与纪事筛选（实现见 renderMainCol 一节，注册必须等 ACT 就位） */
+  ACT.do_mtab = doMtab;
+  ACT.do_mcat = doMcat;
   /* v9.0 第1步：扩展动作注册表。
      与 ACT 同形（key 不带 do_ 前缀亦可，dispatch 两处都会试），
      但由外部文件通过 G.WXCS3_EXT_ACT 写入。
@@ -2964,14 +3105,14 @@
     const span = left > 1 ? ('（余 ' + left + ' 旬一并坐过去）') : '';
     // 两套账：仙道打坐只出修为，香火一分也不该涨；神道坐庙只动香火
     if (isShen()) {
-      if (dh > 0) logLine(`坐庙温养到月末，香火 +${dh}`, 'good');
-      else logLine('香火已满，这些日子白坐。', '');
+      if (dh > 0) logLine(`坐庙温养到月末，香火 +${dh}`, 'good', 'cult');
+      else logLine('香火已满，这些日子白坐。', '', 'cult');
     } else if (isBoth() && dh > 0) {
-      logLine(`打坐到月末，修为 +${dx}，香火 +${dh}`, 'good');
+      logLine(`打坐到月末，修为 +${dx}，香火 +${dh}`, 'good', 'cult');
     } else if (dx > 0) {
-      logLine(XUN_SIT[xunNow] + span + `　修为 +${dx}`, 'good');
+      logLine(XUN_SIT[xunNow] + span + `　修为 +${dx}`, 'good', 'cult');
     } else {
-      logLine('本境修为已满，再坐也只是白坐——该破境了。', '');
+      logLine('本境修为已满，再坐也只是白坐——该破境了。', '', 'cult');
     }
     maybeEvent();
     render();
@@ -3045,7 +3186,7 @@
     b += `<div class="small">${unit} +${Math.round(total)}，当前 ${Math.round(cur())}/${goal() || '—'}</div>`;
     b += `<div class="small">年龄 ${S.age} 岁</div>`;
     if (stopped) { b += divider() + `<div class="small good">${esc(stopped)}</div>`; }
-    logLine(`${shen ? '守庙闭关' : '闭关'} ${y} 年，${unit} +${Math.round(total)}`, 'good');
+    logLine(`${shen ? '守庙闭关' : '闭关'} ${y} 年，${unit} +${Math.round(total)}`, 'good', 'cult');
     openModal('岁月流逝', b);
     render();
   };
@@ -3432,7 +3573,7 @@
         S.xStage++;
         S.xiuwei = 0;
         recalcCaps(true);   // v10.5：每小阶 +4% 的基数增长在这里落地
-        logLine('破境：晋 ' + realmName() + '。', 'good');
+        logLine('破境：晋 ' + realmName() + '。', 'good', 'cult');
         const sv = reciteVerse('breakStage');
         if (sv) logLine('· ' + sv, '');
         if (S.xRealm >= 2 && (S.daoyin || []).length < 4) tryOpenYin();
@@ -3453,7 +3594,7 @@
         if (nr.idx === 1) bumpUnlock('xian', 2);
         if (nr.idx === 2) bumpUnlock('xian', 3);
         if (nr.idx === 3) bumpUnlock('xian', 4);
-        logLine(`破境成功：晋入 ${nr.name}。`, 'good');
+        logLine(`破境成功：晋入 ${nr.name}。`, 'good', 'cult');
         const verse = reciteVerse('breakXian');
         if (verse) logLine('· ' + verse, 'good');   // 弹窗被奇遇顶掉时，纪事里至少还留一句
         // 仙基 / 道印 / 神通这些面板放到「继续」之后——先出诗，再办手续
@@ -3506,7 +3647,7 @@
       const fline = pick(D.VERSES.fail);
       logLine('· ' + fline, 'danger');
       S.lastLiturgy = fline;
-      logLine('破境未成，气血逆冲 −' + dmg + '，修为退至七成。', 'danger');
+      logLine('破境未成，气血逆冲 −' + dmg + '，修为退至七成。', 'danger', 'cult');
       if (S.trib) { tribFailPenalty(); S.trib = null; }
       S.holdEvent = true;
       S.breakPop = {
@@ -3627,7 +3768,7 @@
     b += shown;
     b += `<div class="hint">道途四印从此开始：每破一境得一枚，四枚须为二干二支且配成一对。</div>`;
     b += `<div style="margin-top:10px"><button class="btn" data-act="do;afterbreak_done:xianji">继续</button></div>`;
-    logLine(`筑基，铸 ${result}，道统显形：${dt}`, 'good');
+    logLine(`筑基，铸 ${result}，道统显形：${dt}`, 'good', 'cult');
     openModal('筑基 · 仙基与道统', b, true);
   }
 
@@ -3689,7 +3830,7 @@
     if (!npcHasMate() && !Object.keys(S.npcs || {}).some(function (k) {
       return (S.npcs[k] || {}).fav >= 40;
     })) bump('aloneCert');
-    logLine(`结丹得果位：${g.n}（${g.rank}）。以己心代天心。`, 'good');
+    logLine(`结丹得果位：${g.n}（${g.rank}）。以己心代天心。`, 'good', 'cult');
     toast('金丹 · ' + g.n);
     closeModal(); advanceXun(1); render();
   };
@@ -3816,7 +3957,7 @@
       }
       /* 神道：破柱后 pillar 已 ++，一柱对应 stage 1；创角处已置 1，故二柱起从 2 续上 */
       bumpUnlock('shen', Math.min(8, S.pillar + 1));
-      logLine(`破柱功成，晋入 ${realmName()}。`, 'good');
+      logLine(`破柱功成，晋入 ${realmName()}。`, 'good', 'cult');
       S.followers = Math.round(S.followers * 1.5);
       S.renGong = (S.renGong || 0) + 200;
       toast('破柱 · ' + realmName());
@@ -4028,7 +4169,7 @@
     mats.forEach(function (k) { S.votive[k] = votHave(k) - v.mats[k]; });
     S.votive[id] = votHave(id) + v.out;
     S.votMade = (S.votMade || 0) + 1;
-    logLine('开炉制成 ' + v.name + ' ×' + v.out + '。', 'good');
+    logLine('开炉制成 ' + v.name + ' ×' + v.out + '。', 'good', 'craft');
     toast(v.name + ' +' + v.out);
     render();
     ACT.openVotive();
@@ -4045,7 +4186,7 @@
     S.votSold = (S.votSold || 0) + 1;
     S.fame += 1;
     if (id === 'fuShui') { S.merit += 1; }
-    logLine('香客请走' + v.name + '，得灵石 ' + v.price + '。', 'good');
+    logLine('香客请走' + v.name + '，得灵石 ' + v.price + '。', 'good', 'trade');
     toast('灵石 +' + v.price);
     render();
     ACT.openVotive();
@@ -4179,7 +4320,7 @@
     S.gongfa[0] = id;
     S.daogong = id;
     const gname = g.name;
-    logLine('改修《' + gname + '》为道基（修炼功法）。', '');
+    logLine('改修《' + gname + '》为道基（修炼功法）。', '', 'cult');
     if (newCap < S.xRealm) {
       // 换低阶功法会把自己卡在当下——这是代价，得说清楚
       logLine('此功法只供得起' + (D.DAOGONG_CAP[g.tier] || D.DAOGONG_CAP.huang).to +
@@ -4368,7 +4509,7 @@
     if (!met.length) { toast('需一位好感≥40的人替你守庙'); return; }
     S.trustee = true;
     S.anchors.ren = 1;
-    logLine(`${D.NPC_POOL.find(x=>x.id===met[0]).name} 答应替你守庙。`, 'good');
+    logLine(`${D.NPC_POOL.find(x=>x.id===met[0]).name} 答应替你守庙。`, 'good', 'npc');
     closeModal(); render();
   };
 
@@ -4468,7 +4609,7 @@
     S.stones -= price;
     S.bag[id] = (S.bag[id] || 0) + 1;
     ledgerAdd('out', '香客代购 ' + p.name, price);
-    logLine('托香客代购' + p.name + '，耗灵石 ' + price + '。', 'good');
+    logLine('托香客代购' + p.name + '，耗灵石 ' + price + '。', 'good', 'trade');
     toast('购得 ' + p.name);
     closeModal(); ACT.openMiaoMarket('pill'); render();
   };
@@ -4485,7 +4626,7 @@
     S.stones -= cost;
     S.xianghuo = Math.min(maxXianghuo(), S.xianghuo + gain);
     ledgerAdd('out', '香烛', cost);
-    logLine('庙市买香，耗灵石 ' + cost + '，香火 +' + Math.round(gain) + '。', 'good');
+    logLine('庙市买香，耗灵石 ' + cost + '，香火 +' + Math.round(gain) + '。', 'good', 'trade');
     toast('香火 +' + Math.round(gain));
     closeModal(); ACT.openMiaoMarket('xiang'); render();
   };
@@ -4520,7 +4661,7 @@
     }
     S.stones += price;
     ledgerAdd('in', '香客代卖 ' + name, price);
-    logLine(name + '经香客出手，得灵石 ' + price + '。', 'good');
+    logLine(name + '经香客出手，得灵石 ' + price + '。', 'good', 'trade');
     closeModal(); ACT.openMiaoMarket('sell'); render();
   };
 
@@ -4885,7 +5026,7 @@
       /* 修 bug：旧代码写进 S.bag，而四艺查的是 S.bagMat。
          结果「在坊市花钱买的材料，炼丹永远显示没有」——四艺整条链断在这里。 */
       addMat(it.id, 1);
-      logLine('购得材料「' + it.name + '」。', 'good');
+      logLine('购得材料「' + it.name + '」。', 'good', 'trade');
       toast('购得 ' + it.name + ' · 余 ' + fmtNum(S.stones) + ' 石');
     } else if (it.cat === 'tal') {
       /* v10.7 阶段三：符箓唯一库存 S.talismans，不再进 S.arts */
@@ -5094,7 +5235,7 @@
     i = clamp(parseInt(i, 10) || 0, 0, D.SECT.halls.length - 1);
     S.sect = { rank: 0, contrib: 0, hall: i, peak: null, joinedTurn: S.turn, sworn: true };
     S.fame += 10;
-    logLine('入' + D.SECT.halls[i] + '做记名弟子，立下玄景之誓。', 'good');
+    logLine('入' + D.SECT.halls[i] + '做记名弟子，立下玄景之誓。', 'good', 'npc');
     toast('记名弟子 · ' + D.SECT.halls[i]);
     closeModal(); render();
   };
@@ -5380,7 +5521,7 @@
     S.clan = { name: nm, lv: 1, pop: 120, luck: 60, ident: 'di', rules: rules, founded: S.turn, peaks: null,
       ind: { farm: 0, work: 0, trade: 0, study: 0 },
       elder: pick(['shou', 'jin', 'li']) };
-    logLine('立祠堂，开族府。' + nm + '氏在这一带算是有了名。', 'good');
+    logLine('立祠堂，开族府。' + nm + '氏在这一带算是有了名。', 'good', 'npc');
     toast('立族 · ' + nm + '氏');
     advanceXun(1); if (S.phase !== 'play') return render();
     closeModal(); render();
@@ -5571,7 +5712,7 @@
     b += '</div>';
     b += '<div style="margin-top:10px"><button class="btn" data-act="modal:close">记下了</button></div>';
     openModal('初见 · ' + n.name, b);
-    logLine('遇见' + n.name + '。' + (n.role || ''), '');
+    logLine('遇见' + n.name + '。' + (n.role || ''), '', 'npc');
     return true;
   }
 
@@ -5884,8 +6025,8 @@
     if (kind === 'gift') line = npcCtxLine(n, 'together') || ('「收下了。」' + n.name + '把东西收进袖里。');
     else if (kind === 'adv') line = npcCtxLine(n, 'together');
     else line = npcStageLines(n)[0] || '';
-    if (line) logLine(`${n.name}：${line}（好感 +${d}）`, '');
-    else logLine(`与${n.name}相处，好感 +${d}`, '');
+    if (line) logLine(`${n.name}：${line}（好感 +${d}）`, '', 'npc');
+    else logLine(`与${n.name}相处，好感 +${d}`, '', 'npc');
     maybeEvent(); render();
   };
 
@@ -7990,7 +8131,7 @@
   function healOnMajorBreak() {
     S.hp = S.hpMax;
     S.mp = S.mpMax;
-    logLine('大境界既成，周身气血返本归元，尽复旧观。', 'good');
+    logLine('大境界既成，周身气血返本归元，尽复旧观。', 'good', 'cult');
   }
 
   /* ============================================================
@@ -8124,7 +8265,7 @@
     b += '</ul>';
     b += '<div class="hint">此法不传于坊市。得之是缘，失之是命。</div>';
     openModal('传法 · ' + t.name, b, true);
-    logLine('你遇上了「' + t.name + '」。', 'good');
+    logLine('你遇上了「' + t.name + '」。', 'good', 'enc');
   }
 
   /* 从指定品阶里给一本未学的功法 */
@@ -9064,7 +9205,7 @@
       default: msg = '什么也没发生。';
     }
 
-    if (msg) logLine(msg, cls);
+    if (msg) logLine(msg, cls, 'enc');
     afterCombatCheck();
     if (S.phase === 'play') { advanceXun(1); render(); }
     else render();
@@ -11132,7 +11273,7 @@
   function applyEvent(ev) {
     // 先把画面说出来，再结算数值
     if (ev && ev.text) {
-      logLine(ev.log || ev.name, ev.kind === 'good' ? 'good' : 'danger');
+      logLine(ev.log || ev.name, ev.kind === 'good' ? 'good' : 'danger', 'story');
       S.lastEventText = ev.text;
       S.lastEventAfter = ev.after || '';
       if (rng() < 0.35) {
@@ -11219,12 +11360,22 @@
     });
   }
   let modalFocusReturn = null;
+  /* v10.8 P1（顺手修 5）：战斗中开「术/器/谋」不该整屏盖住敌我状态。
+     ≥880 时改用右栏侧滑面板（宽 368，只压住行动栏）；窄屏仍然整屏——
+     390 宽再侧滑就只剩 360，等于没省。判定放在 openModal 一处，
+     ACT:openSkills / openGear / openWits 一行都不用改。 */
+  function sidePanelFight() {
+    return !!(S && S.phase === 'combat' && S.combat && typeof window !== 'undefined' &&
+      (window.innerWidth || 0) >= 880);
+  }
   function openModal(title, body, noClose) {
     const active = document.activeElement;
     if (active && active !== document.body) modalFocusReturn = active;
     document.body.classList.add('modal-open');
     const box = document.getElementById('modals');
-    box.innerHTML = `<div class="modal"${noClose ? ' data-noclose="1"' : ''}><div class="box">
+    const side = sidePanelFight();
+    box.innerHTML = `<div class="modal${side ? ' modal--side' : ''}"${noClose ? ' data-noclose="1"' : ''}>` +
+      `<div class="box">${side ? '<div class="sidegrip"></div>' : ''}
       <h3 id="modal-title">${esc(title)}</h3>${body}
       ${noClose ? '' : '<div style="margin-top:12px"><button class="btn ghost" data-act="modal:close">关闭</button></div>'}
     </div></div>`;
@@ -11718,16 +11869,20 @@
     } catch (e) { toast('导出失败：' + e.message); }
   }
 
-  /* v10.2：年谱越长弹窗越卡，先给最近 60 条，按需往前翻 */
+  /* v10.2：年谱越长弹窗越卡，先给最近 60 条，按需往前翻。
+     v10.8 P1：与中栏「纪事」页共用同一套 chips 与同一份筛选状态（_chronCat），
+     两处若各维护一份口径，玩家迟早会发现「年谱里筛出来的和纪事页不一样」。 */
   let _chronShown = 60;
   ACT.openChronicle = () => {
-    const list = S.chronicle || [];
+    const all = S.chronicle || [];
+    const list = chronOf(_chronCat);
     const shown = Math.min(_chronShown, list.length);
-    let b = '<div class="small">共 ' + list.length + ' 条纪事' +
-      (list.length > shown ? '，已显示最近 ' + shown + ' 条' : '') +
-      '。左栏只显示最近 24 条，这里能往前翻。</div>' + divider();
+    let b = '<div class="small">共 ' + all.length + ' 条纪事' +
+      (_chronCat === 'all' ? '' : '，' + catName(_chronCat) + ' ' + list.length + ' 条') +
+      (list.length > shown ? '，已显示最近 ' + shown + ' 条' : '') + '。</div>';
+    b += chronChips() + '<div style="height:6px"></div>';
     b += '<div class="chron">';
-    if (!list.length) b += '<div class="muted">尚无纪事。</div>';
+    if (!list.length) b += '<div class="muted">' + (_chronCat === 'all' ? '尚无纪事。' : '此类暂无纪事。') + '</div>';
     else {
       // 倒序展示，先给 60 条，避免一开就渲染几百个节点
       list.slice(-shown).reverse().forEach(function (e) {
@@ -11924,10 +12079,20 @@
       openModal(title, b, true);
       return;
     }
+    /* v10.8 P1（顺手修 9）：采集/炼制的结算窗给一个「再来一次」，
+       直接复用刚才的采集点与配方+火候，不用退回菜单重点三下。
+       参数由调用方编码成 do;retry:<kind>:<a>:<b>，这里只负责摆按钮。 */
+    if (o.retry) {
+      b += '<div style="margin-top:10px"><button class="btn" data-act="' + esc(o.retry) + '">再来一次</button></div>';
+    }
     openModal(title, b);
   }
+  ACT.do_retry = (kind, a, b) => {
+    if (kind === 'gather') { ACT.do_gather(a); return; }
+    if (kind === 'craft') { ACT.do_craftgo(a, b); return; }
+  };
   /* 结算末尾调用：有东西才弹，没有就什么都不做（不打断节奏） */
-  function flushGain(title, tail, force) {
+  function flushGain(title, tail, force, retry) {
     let q = S.gainQueue || [];
     S.gainQueue = [];
     /* 默认只弹「第一次见到这种东西」——在坊市连买十份料不该弹十次窗。
@@ -11940,7 +12105,7 @@
       map[g.name].num += (g.num || 0);
       if (!map[g.name].note && g.note) map[g.name].note = g.note;
     });
-    openGain(title || '所得', order.map(function (k) { return map[k]; }), { tail: tail });
+    openGain(title || '所得', order.map(function (k) { return map[k]; }), { tail: tail, retry: retry });
     return true;
   }
   /* 面板里已经有东西开着，就别再顶掉它 */
@@ -12195,11 +12360,12 @@
       const top = pool[pool.length - 1];
       addMat(top, 1);
     }
-    logLine('进山' + sp.name.replace('山野', '').replace('溪畔', '').replace('废弃', '') + '一趟，收获见下。', '');
+    logLine('进山' + sp.name.replace('山野', '').replace('溪畔', '').replace('废弃', '') + '一趟，收获见下。', '', 'craft');
     maybeEvent();
     render();
     if (!modalBusy()) {
-      flushGain('采集所得', '采集占去一旬。料在「四艺 → 材料库存」里，做东西时点配方就能看见够不够。');
+      flushGain('采集所得', '采集占去一旬。料在「四艺 → 材料库存」里，做东西时点配方就能看见够不够。', false,
+        'do;retry:gather:' + sp.id);
     }
   };
 
@@ -12512,7 +12678,7 @@
       if (r.kind !== 'zhen') addQuality(r.out, q.id, r.need);
       cls = 'good';
     }
-    logLine(msg, cls);
+    logLine(msg, cls, 'craft');
     toast(ok ? '成器' : '毁弃');
     // v6.6：四艺记账（成败都计炉数，只有成功的才计品相）
     bump('craft');
@@ -12529,7 +12695,8 @@
     if (!modalBusy()) {
       flushGain(ok ? ('炼制所得 · ' + q.name) : '这一炉废了',
         ok ? '卖出去找「坊市 → 卖出」。自用则直接生效。'
-           : '剩下的残料已回库。武火更容易炸炉，文火更稳。', true);
+           : '剩下的残料已回库。武火更容易炸炉，文火更稳。', true,
+        'do;retry:craft:' + id + ':' + (mode || 'zhong'));
     }
   };
 
@@ -13919,6 +14086,12 @@
     /* v10.8 P0：战斗行动的唯一真源与键盘分派探针。
        验收要验「按钮顺序 == 键盘顺序」，没有出口就只能数 HTML。 */
     combatActionList, combatKeyAction, fightLogOf, FIGHT_EXT_MAX,
+    /* v10.8 P1：纪事分类与中栏分页的探针。
+       验收要验「兜底命中率」与「筛选不改数据」，只能在进程内直接读分类结果。 */
+    guessCat, catName, chronOf, sidePanelFight, logLine, maybeEvent,
+    logCats: function () { return LOG_CATS; },
+    mainTabNow: function () { return _mainTab; },
+    chronCatNow: function () { return _chronCat; },
     /* v10.7 P1：导航探针。
        回归测试要验「dockItems 的每个入口都在左导航里、且每个入口的动作都能派发」，
        没有探针就只能靠肉眼数按钮——那正是本轮要消灭的验证盲区。 */

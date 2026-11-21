@@ -223,7 +223,7 @@
   .tag.warn{background:var(--warnink)}
 
   /* ============ 事件流（左栏） ============ */
-  .logbox{max-height:calc(100vh - 300px);overflow:auto;font-size:13px;line-height:1.75;padding-right:2px}
+  .logbox{font-size:13px;line-height:1.75;padding-right:2px}
   .logbox .ev{padding:6px 0;border-bottom:1px dotted #EFE9DC}
   .logbox .ev:last-child{border-bottom:none}
   .logbox .ev .t{display:block;color:var(--muted);font-size:11px;letter-spacing:.5px;margin-bottom:2px}
@@ -895,6 +895,126 @@
     .achrow{grid-template-columns:13px 30px minmax(0,1fr) auto;font-size:12px;gap:5px}
     .achrow .ameta{grid-column:auto;justify-self:end;margin-top:0;font-size:11px}
   }
+
+  /* ============ v10.8 P1：中栏分页 / 横幅通栏 / 日志分类 ============
+     中栏原本是一条长卷（横幅 190 + 状态 44 + 主行动 295 + 提示 22 + 道基 106 + 纪事），
+     一屏 802 塞不下。这里把横幅提到三栏之上、状态叠在图下沿，其余按 Tab 分页。 */
+
+  /* --- 横幅通栏 --- */
+  .stage>.col-banner{
+    grid-column:1/-1;
+    position:relative;z-index:1;
+    margin-bottom:-6px;            /* 与下面三栏贴紧，不留一条空缝 */
+    min-width:0;
+  }
+  .stage>.col-banner .sceneart{margin-bottom:0;border-radius:8px}
+  .sceneart--banner{height:132px}
+  /* 气血/灵力/灵石/寿元 叠在横幅下沿：半透明纸底 + 压深字色，
+     图再花也读得清；这是 44px 从哪儿省下来的答案。 */
+  .stage>.col-banner .vitals{
+    position:absolute;left:10px;right:10px;bottom:0;
+    padding:4px 12px 5px;border-radius:6px 6px 0 0;
+    background:rgba(250,246,238,.88);backdrop-filter:blur(2px);
+    border-bottom:2px solid var(--jade);
+  }
+  @media(max-width:880px){
+    .sceneart--banner{height:118px}
+    .stage>.col-banner{margin-bottom:0}
+  }
+
+  /* --- Tab 条与内容区 --- */
+  .tabbar{display:flex;gap:2px;margin:-2px 0 10px;border-bottom:1px solid var(--edge);
+    position:sticky;top:58px;z-index:2;background:var(--panel)}
+  .tabbtn{
+    flex:1 1 0;min-width:0;padding:6px 4px 7px;border:0;border-bottom:2px solid transparent;
+    background:none;color:var(--muted);font-size:12.5px;letter-spacing:3px;cursor:pointer;
+    font-family:inherit;transition:color .12s,border-color .12s;
+  }
+  .tabbtn:hover{color:var(--jade-deep)}
+  .tabbtn.on{color:var(--strong);font-weight:700;border-bottom-color:var(--jade-deep)}
+  .tabbtn:focus-visible{outline:2px solid var(--jade-deep);outline-offset:-2px}
+  .tabbody{min-height:0}
+  .tabhead{display:flex;align-items:baseline;font-size:12.5px;color:var(--muted);
+    letter-spacing:2px;margin-bottom:6px}
+  .tabhead .chs,.tabfoot .chs{margin-left:auto;font-size:12px;color:var(--jade-deep);
+    cursor:pointer;letter-spacing:0}
+  .tabhead .chs:hover,.tabfoot .chs:hover{text-decoration:underline}
+  .tabfoot{display:flex;align-items:baseline;margin-top:7px;font-size:12px}
+
+  /* --- 纪事分类 chips --- */
+  .cattabs{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 8px}
+  .cattab{
+    padding:2px 9px;border:1px solid var(--edge);border-radius:11px;background:#fff;
+    color:var(--muted);font-size:11.5px;letter-spacing:1px;cursor:pointer;font-family:inherit;
+    transition:all .12s;
+  }
+  .cattab:hover{border-color:var(--jade);color:#326B60}
+  .cattab.on{background:var(--jade-deep);border-color:var(--jade-deep);color:#fff;font-weight:700}
+  .cattab:focus-visible{outline:2px solid var(--jade-deep);outline-offset:1px}
+
+  /* --- 底部薄条：最近三条纪事，任何 Tab 都看得见 --- */
+  .chronstrip{
+    display:flex;align-items:baseline;gap:8px;margin-top:10px;padding-top:7px;
+    border-top:1px dotted #E3DCCB;cursor:pointer;font-size:11.5px;color:var(--muted);
+    overflow:hidden;
+  }
+  .chronstrip:hover .csa{text-decoration:underline}
+  .chronstrip .csk{flex:0 0 auto;letter-spacing:2px;color:var(--jade-deep)}
+  .chronstrip .csi{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap}
+  .chronstrip .csi.good{color:var(--merit)}
+  .chronstrip .csi.danger{color:var(--cinnabar)}
+  .chronstrip .csa{flex:0 0 auto;color:var(--jade-deep)}
+
+  /* --- 主行动两列紧凑网格（五项 = 两行 + 末项通栏） --- */
+  .opts--grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px}
+  .opts--grid .opt{margin:0;padding:7px 9px;min-height:0}
+  .opts--grid .opt .key{width:22px;height:22px;line-height:22px;font-size:11.5px}
+  .opts--grid .opt .txt{font-size:13.5px;line-height:1.45}
+  .opts--grid .opt .note{font-size:11px;margin-left:6px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;max-width:48%}
+  .opt--wide{grid-column:1/-1}
+  /* 提示句并到自由输入行右侧：同一行 22px 又省下来了 */
+  .freebar{align-items:center}
+  .freebar .freehint{flex:0 1 auto;min-width:0;font-size:11px;color:var(--muted);
+    line-height:1.4;letter-spacing:.2px}
+  @media(max-width:1199px){
+    .freebar .freehint{display:none}
+  }
+  @media(max-width:560px){
+    .opts--grid{grid-template-columns:1fr}
+    .opts--grid .opt .note{max-width:56%}
+    .tabbtn{letter-spacing:1px;font-size:12px}
+  }
+
+  /* --- 日志组件：不再用「视口高度 - 300px」这种魔法数 ---
+     旧口径在 900 高的屏上给 600px，在 700 高的屏上给 400px，
+     同一份内容在不同机器上截断位置都不一样。
+     现在改成「按条数取，容器内滚」：纪事页 8 条、年谱 60 条，高度交给条数决定。 */
+  .logbox{max-height:none;overflow:visible}
+  .logbox--scroll{max-height:min(58vh,440px);overflow-y:auto;overscroll-behavior:contain;
+    scrollbar-width:thin;padding-right:2px}
+  .logbox--scroll::-webkit-scrollbar{width:6px}
+  .logbox--scroll::-webkit-scrollbar-thumb{background:rgba(90,80,60,.22);border-radius:3px}
+  .logbox .ev .x{display:block;margin-top:1px}
+  .logbox .t{font-size:11px}
+
+  /* --- 战斗内弹窗改右栏侧滑（≥880 才生效，见 openModal 的 sidePanelFight） ---
+     宽 368 与行动栏同宽，只压住行动区，敌我状态全程可见。 */
+  .modal--side{justify-content:flex-end;align-items:stretch;
+    background:linear-gradient(to right,rgba(31,27,22,.10),rgba(31,27,22,.34))}
+  .modal--side .box{
+    width:368px;max-width:44vw;margin:70px 10px 12px 0;
+    height:calc(100vh - 82px);max-height:none;overflow-y:auto;
+    border-radius:8px;box-shadow:-6px 0 24px rgba(31,27,22,.16);
+    animation:sideIn .16s ease both;
+  }
+  @supports (height:100dvh){
+    .modal--side .box{height:calc(100dvh - 82px)}
+  }
+  @keyframes sideIn{from{transform:translateX(18px);opacity:.6}to{transform:none;opacity:1}}
+  .modal--side .sidegrip{width:34px;height:3px;border-radius:2px;background:var(--edge);
+    margin:0 auto 8px}
 </style>
 </head>
 <body>

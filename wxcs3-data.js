@@ -4039,6 +4039,20 @@
     { id: 'ins_speed', stat: 'speed',   min: 13, text: '他的步法右重左轻，右腿有旧伤。' }
   ];
 
+  /* v10.8 P1：纪事分类。
+     八个类别是「够用且不碎」的上限：再多就会有人开始纠结「这条算经营还是算人事」。
+     id 用于存档与筛选状态，name 只用于显示；顺序就是筛选条上的顺序。 */
+  const LOG_CATS = [
+    { id: 'combat', name: '战事' },
+    { id: 'cult', name: '修行' },
+    { id: 'craft', name: '四艺' },
+    { id: 'trade', name: '经营' },
+    { id: 'npc', name: '人事' },
+    { id: 'enc', name: '奇遇' },
+    { id: 'story', name: '世情' },
+    { id: 'misc', name: '杂记' }
+  ];
+
   /* ====== 导出 ====== */
   G.WXCS3_DATA = {
     STATS, CULTIVATION,
@@ -4049,7 +4063,7 @@
     PILLARS, POSITIONS, PIETY, CAP_BASE, CAP_STAGE_STEP, SHENTONG_GRANT, MIAO_COEFF, QIHE, FOLLOW_LIMIT, BREAK_BASE, QUENCH, FIXED_COST, TRIBULATION, TRIB_WEIGHT,
     BEAST_STOCK, BEAST_BARN, BEAST_BOND, BEAST_CARE,
     DISCIPLE_LIMIT, DISCIPLE_TEACH, DISCIPLE_STAGE,
-    STAT_TIER, INSIGHT_LINES,
+    STAT_TIER, INSIGHT_LINES, LOG_CATS,
     TIANJIANG, DIZHA, GUOWEI, GUOWEI_RANK,
     ANCHOR_TYPES, ANCHOR_STATES, ANCHOR_STATUS, RITUALS,
     LU, DAOTONG, SANXUAN, SHENTONG, SHENTONG_GRANT, DAOTONG_TEMPER,

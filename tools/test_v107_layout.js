@@ -141,10 +141,11 @@ ok(h.indexOf('navitem') > 0, '导航条目已渲染');
 ok(h.indexOf('dockrow') < 0, '底部通栏功能坞已下线');
 ok(h.indexOf('dockbtn') < 0, '旧坞按钮样式已下线');
 
-/* 纪事移到中栏：面板标题在 nav 之后、state 之前 */
+/* 纪事在中栏：v10.8 P1 把「纪事 · 月账」拆成 Tab + 底部薄条，
+   断言随之改成「薄条在中栏里」——纪事仍然不进左右两栏，这是本条的本意。 */
 const iNav = h.indexOf('col-nav'), iMain = h.indexOf('col-main'), iState = h.indexOf('col-state');
 ok(iNav >= 0 && iNav < iMain && iMain < iState, '三栏顺序：左导航 → 中栏 → 右栏');
-ok(h.indexOf('纪事 · 月账') > iMain && h.indexOf('纪事 · 月账') < iState, '纪事已移到中栏');
+ok(h.indexOf('chronstrip') > iMain && h.indexOf('chronstrip') < iState, '纪事已移到中栏（底部薄条）');
 
 /* 入口零丢失：dockItems() 的每一条都要在左导航里出现，且动作可派发 */
 const items = G.dockItems();

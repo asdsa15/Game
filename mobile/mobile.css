@@ -53,7 +53,9 @@ body{
    4. 视口单位：手机地址栏会伸缩，100vh 会导致跳动 → 优先 dvh
    -------------------------------------------------------------------------- */
 @supports (height:100dvh){
-  .logbox{max-height:calc(100dvh - 300px)}
+  /* v10.8 P1：日志不再用「视口高度 - 300px」这种魔法数——
+     改成按条数取（纪事页 8 条 / 年谱 60 条），容器自己滚。 */
+  .logbox--scroll{max-height:52dvh}
   .modal .box{max-height:86dvh}
 }
 
@@ -80,10 +82,11 @@ body{
   .stage:not(.stage-fight){grid-template-columns:1fr;gap:12px;padding:12px 12px 96px}
   /* v10.7 P1：左导航在手机上只剩「要务」（无要务时整块隐藏），
      其余入口收进底部五项底栏。顺序＝要务 → 主行动 → 状态。 */
+  .stage:not(.stage-fight) > .col-banner{order:0}
   .stage:not(.stage-fight) > .col-nav{order:1}
   .stage:not(.stage-fight) > .col-main{order:2}
   .stage:not(.stage-fight) > .col-state{order:3}
-  .stage:not(.stage-fight) .logbox{max-height:220px}
+  .stage:not(.stage-fight) .logbox--scroll{max-height:260px}
 }
 
 /* --------------------------------------------------------------------------
