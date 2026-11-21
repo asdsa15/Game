@@ -103,11 +103,18 @@ function setup(opts) {
   Object.assign(S, opts);
   return S;
 }
-/* 造一场「打不坏也打不死」的战斗，用来观察单回合结算 */
+/* 造一场「打不坏也打不死」的战斗，用来观察单回合结算。
+   v10.7 阶段三：补全状态生命周期字段，意图固定为普通攻击（避免蓄力/护体干扰减伤对照）。 */
 function mkFoe(hp) {
   return {
-    foe: { name: '石傀', hp: hp, hpMax: hp, power: 300, rank: 12, el: 'tu', trait: 'normal' },
-    round: 1, observed: false, defending: false, stUsed: {}, stanceUsed: {}
+    foe: { name: '石傀', hp: hp, hpMax: hp, power: 300, rank: 12, el: 'earth', trait: 'normal', style: 'sword' },
+    round: 1, observed: false, defending: false, stUsed: {}, stanceUsed: {},
+    foePoison: 0, foeShred: 0, foeStun: 0, foeCalm: 0, foeGuard: 0, foeCounter: 0,
+    meGuard: 0, meGuardTurns: 0, meDodge: false, meMpSave: false, meBurst: false,
+    meRegen: 0, mePoison: 0, meBurn: 0, meSlow: 0, meLock: 0,
+    pillCount: 0, lastPillId: null, lastPillRound: -9,
+    talCd: {}, foeCd: {}, foeCharging: null,
+    foeIntent: { id: 'sw_atk', name: '疾剑', type: 'attack', mul: 1.0, intent: '疾剑直刺', srcId: 'sw_atk' }
   };
 }
 function lastLog(re) {
@@ -319,14 +326,14 @@ ok(rBoth > 0.36 && rBoth < 0.44, '守势+金刚符：总减伤 60%（×' + rBoth
 /* 旧写法 red = 0.5 − 0.6 → 落到 0.05 下限，这里会是 ×0.1 左右 */
 ok(rVsGuard > 0.7, '护体与守势不叠乘（相对守势 ×' + rVsGuard.toFixed(3) + '）');
 
-/* —— 五雷符：+80% 必须兑现 —— */
-setup({ arts: ['wuyun'] });
+/* —— 五雷符：+80% 必须兑现（v10.7 阶段三：从符箓库存消耗） —— */
+setup({ talismans: { wuyun: 1 } });
 S.hp = 1e9; S.hpMax = 1e9;
 S.combat = mkFoe(9000000);
 S.preBuff = {};
 G.ACT.do_cbtpre('wuyun');
 ok(S.preBuff && S.preBuff.boost === 0.8, '五雷符：战前写下 +80%（' + (S.preBuff ? S.preBuff.boost : '-') + '）');
-ok(S.arts.indexOf('wuyun') < 0, '五雷符：用掉即消耗');
+ok((S.talismans.wuyun || 0) === 0, '五雷符：用掉即消耗');
 
 function atkDmgWithBoost() {
   setup({});
@@ -346,8 +353,8 @@ G.ACT.do_cbt('attack', '');
 const plainDmg = dmgOf();
 ok(boostDmg > plainDmg * 1.6, '五雷符：首击伤害 +80%（' + boostDmg + ' vs ' + plainDmg + '）');
 
-/* —— 拘仙敕神符：作用于当前这一场 —— */
-setup({ arts: ['juxian'] });
+/* —— 拘仙敕神符：作用于当前这一场（v10.7 阶段三：从符箓库存消耗） —— */
+setup({ talismans: { juxian: 1 } });
 S.hp = 1e9; S.hpMax = 1e9;
 S.combat = mkFoe(9000000);
 S.preBuff = {};
@@ -355,17 +362,17 @@ G.ACT.do_cbtpre('juxian');
 ok(S.combat.rankUp === true, '拘仙敕神符：当场位格压制生效');
 ok(!(S.preBuff && S.preBuff.rankUp), '拘仙敕神符：不再残留给下一场');
 
-/* —— 传音符：平时可用，好感 +5 —— */
-setup({ arts: ['jinchuan'], npcs: {} });
+/* —— 传音符：平时可用，好感 +5（v10.7 阶段三：从符箓库存消耗） —— */
+setup({ talismans: { jinchuan: 1 }, npcs: {} });
 const npc0 = D.NPC_POOL[0];
 S.npcs[npc0.id] = { fav: 10, met: true };
 const favBefore = S.npcs[npc0.id].fav;
 G.ACT.do_useart('jinchuan');
-ok(S.arts.indexOf('jinchuan') < 0, '传音符：用掉即消耗');
+ok((S.talismans.jinchuan || 0) === 0, '传音符：用掉即消耗');
 ok(S.npcs[npc0.id].fav === favBefore + 5, '传音符：好感 +5（' + favBefore + ' → ' + S.npcs[npc0.id].fav + '）');
 
 /* 传音符不该出现在战前菜单里（非战斗物不该被无效消耗） */
-setup({ arts: ['jinchuan', 'wuyun'] });
+setup({ talismans: { jinchuan: 1, wuyun: 1 } });
 S.hp = 1e9; S.hpMax = 1e9;
 S.combat = mkFoe(9000000);
 G.ACT.openPreFight();
@@ -386,7 +393,10 @@ S.combat = {
 };
 const cb = G.renderCombat() || '';
 const iFoe = cb.indexOf('敌方'), iMe = cb.indexOf('我方');
-const foeTxt = cb.slice(iFoe, iMe), myTxt = cb.slice(iMe);
+/* 我方卡只取到行动区（dockrow）之前——行动区的调息按钮含「清一层迟滞」文案，
+   那是操作说明不是状态标签，不该算进「我方状态」断言。 */
+const iAct = cb.indexOf('dockrow', iMe);
+const foeTxt = cb.slice(iFoe, iMe), myTxt = cb.slice(iMe, iAct > iMe ? iAct : undefined);
 ok(foeTxt.indexOf('破绽') >= 0, '破绽在敌方卡');
 ok(foeTxt.indexOf('压制') >= 0, '压制在敌方卡');
 ok(foeTxt.indexOf('灼烧') >= 0, '灼烧在敌方卡');

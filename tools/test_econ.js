@@ -38,7 +38,7 @@ ok(Array.isArray(D.XIANG_GONG) && D.XIANG_GONG.length >= 3, '庙市有香供货�
 ok(Array.isArray(D.MIAO_UP) && D.MIAO_UP.length >= 4, '庙市有庙产货架');
 ok(!!D.EXCHANGE, '等价参数存在');
 ok(!(D.SHOP || []).some(x => x.type === 'xiang'), '仙道坊市不售信香');
-ok((D.SHOP || []).every(x => ['pill', 'art', 'mat'].includes(x.cat)), '仙道坊市只含丹药/法器/材料');
+ok((D.SHOP || []).every(x => ['pill', 'tal', 'art', 'mat'].includes(x.cat)), '仙道坊市含丹药/符箓/法器/材料（v10.7 阶段三符箓入货架）');
 ok(!(D.SHOP || []).some(x => (x.name || '').indexOf('香') >= 0 && x.cat === 'pill'), '仙道丹药页无香火类');
 
 /* ---------- 2. 等价：不能左手买右手卖套利 ---------- */

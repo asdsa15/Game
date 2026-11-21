@@ -49,7 +49,7 @@
 │  └─ 99_归档/               过期文档（含 v6-v8_历史版本记录/、v9-v10_落地执行记录/、早期审查轮次/ 三个子库，各带 README）
 │
 ├─ tools/                   测试与检查
-│  ├─ test_*.js             断言：v80 / play / econ / hooks / loops / text / m1 / m2 / m3 / m4 / beast_disciple / rank / tier2 / tier3 / gate_e2e / reachability / save / p1 / p0_v104 / p1_v104 / p2_v104 / caps / shop_flow / econ_fix / ability
+│  ├─ test_*.js             断言：v80 / play / econ / hooks / loops / text / m1 / m2 / m3 / m4 / beast_disciple / rank / tier2 / tier3 / gate_e2e / reachability / save / p1 / p0_v104 / p1_v104 / p2_v104 / caps / shop_flow / econ_fix / ability / v105_p1p2 / v106_story / v107_layout / v107_natal / v107_combat / v107_consumables
 │  ├─ smoke_econ.js         DOM 桩真跑运行时（经济面 32 项，含四渠道无套利）
 │  ├─ check_ach.js         成就可达性
 │  ├─ check_actions.py     动作分发覆盖
@@ -137,6 +137,20 @@ M2 发现：单个函数槽位（`EXT.fightRows = ...`）会被后加载的扩�
 | `EXT.natalOnCombatStart(c)` | 开战被动（如宝镜照见破绽） | 开战时调用 |
 
 另有 `openNatalForge`（筑基锻造仪式）与 `migrateBenming`（game.js `applyState` 内的旧档幂等迁移）。
+
+**v10.7 阶段三起，战斗决策层落地**（均在 `wxcs3-game.js`，扩展只读状态字段不另建系统）：
+
+| 缝口 | 语义 |
+|---|---|
+| `applyCombatEffect(side, ef, c)` | 状态写入/刷新/取最高/定神免疫唯一入口。新增状态走这里，不直接赋值字段 |
+| `tickCombatEffects(side, timing, c)` | `foeStart` 敌方持续伤害（DoT 致死走胜利出口）/ `roundEnd` 全体递减+我方恢复+冷却+回合数 |
+| `consumeCombatEffect(side, id, c)` | 一次性效果消费（护体/神行/聚灵/烈元/敌方护体/反击/硬控） |
+| `renderCombatEffects(side, c)` | 按归属渲染状态标签（敌方卡/我方卡） |
+| `applySkillEffects(sk, c)` | 术法 `SKILLS.effects` 解释器 |
+| `pickFoeIntent(c)` / `foeTurn()` | 敌方四路数（`FOE_STYLES`）意图选定与执行；蓄力跨回合、定神防连控 |
+| `combatLoot(c)` / `migrateTalismans(out)` | 战利品按路数掉四艺材料（`FOE_LOOT`）；符箓唯一库存迁移 |
+
+本命法印法技在阶段三接入真实蓄力打断（对 charge 意图直接打断进入定神）；魂幡/神钟改走统一状态入口。
 
 ### M3 扩展协作模式三：薄缝 + 链式包装
 

@@ -61,6 +61,15 @@ const PILL_MAP = {
   heart: 'pill_heart', xin: 'pill_heart',
   break: 'pill_break', pojing: 'pill_break',
   cult: 'pill_cult', xiang: 'pill_cult', xiuxian: 'pill_cult',
+  // v10.7 阶段三：8 种新丹的战术类型
+  guard: 'pill_cure',      // 护脉丹：防御护体
+  cleanseCtl: 'pill_mp',   // 清神丹：清控制复灵
+  antidote: 'pill_cure',   // 解毒丹：解毒疗伤
+  burst: 'pill_hp',        // 烈元丹：爆发（耗气血）
+  regen: 'pill_hp_big',    // 生生丹：持续恢复
+  mix: 'pill_hp_big',      // 归元丹：混合恢复
+  cultXun: 'pill_cult',    // 开脉丹：修炼增益
+  insight: 'pill_heart',   // 悟心丹：悟道
 };
 
 // 丹 type 未列出的兜底：按名称关键字
@@ -190,10 +199,19 @@ for (const m of T.MATERIAL_EXT) {
   put(key, 'MATERIAL_EXT', m.id, m.name, reason);
 }
 
-/* --- 符 5 --- */
+/* --- 符 17（v10.7 阶段三：12 战斗符 + 5 功能符）---
+   功能符（战前/平时）统一归 fn_talisman；战斗符按战术分类 cat 归并：
+   攻→fn_atk、防→fn_def、控→fn_control、助→fn_buff。 */
+const TAL_CAT_MAP = { '攻': 'fn_atk', '防': 'fn_def', '控': 'fn_control', '助': 'fn_buff' };
 for (const t of T.TALISMANS) {
-  const key = FN_MAP[t.kind] || 'fn_atk';
-  put(key, 'TALISMANS', t.id, t.name, '符箓类型 kind=' + t.kind);
+  let key, reason;
+  if (t.use === 'preCombat' || t.use === 'outCombat') {
+    key = 'fn_talisman'; reason = '功能符 use=' + t.use;
+  } else {
+    key = TAL_CAT_MAP[t.cat] || FN_MAP[t.kind] || 'fn_atk';
+    reason = '战斗符分类 cat=' + t.cat;
+  }
+  put(key, 'TALISMANS', t.id, t.name, reason);
 }
 
 /* --- 法宝 12 --- */

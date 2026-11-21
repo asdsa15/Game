@@ -226,21 +226,27 @@
       note += '剑魄斩，光如匹练';
     } else if (b.form === 'seal') {
       dmg = Math.round(c.foe.hpMax * numOr(f.skillDmg, 0.10) * (0.9 + G.WXCS3.rng() * 0.2));
-      /* 器形被动：所施加的压制延长 1 回合（2 回合而不是 1） */
-      c.foeWeaken = Math.max(c.foeWeaken || 0, 2);
-      note = '镇岳印压下其势（压制 2 回合）';
+      /* v10.7 阶段三：法印对蓄力之敌更稳——蓄力时直接打断（进入定神），
+         非蓄力时压制 2 回合（器形被动：所施加压制延长 1 回合）。走统一状态入口。 */
+      if (c.foeIntent && c.foeIntent.type === 'charge') {
+        G.WXCS3.applyCombatEffect('foe', { type: 'interrupt' }, c);
+        note = '镇岳印打断其蓄力！';
+      } else {
+        G.WXCS3.applyCombatEffect('foe', { type: 'weaken', turns: 2 }, c);
+        note = '镇岳印压下其势（压制 2 回合）';
+      }
     } else if (b.form === 'mirror') {
       dmg = Math.round(c.foe.hpMax * numOr(f.skillDmg, 0.06) * (0.9 + G.WXCS3.rng() * 0.2));
       c.observed = true;
       c.foeMark = Math.max(c.foeMark || 0, 2);
       note = '照影——破绽毕现（下一击无视卸力）';
     } else if (b.form === 'bell') {
-      c.talShield = Math.max(c.talShield || 0, 0.30);
+      G.WXCS3.applyCombatEffect('me', { type: 'shield', v: 0.30 }, c);
       note = '钟鸣护体，罩住周身（下次受击减伤 30%）';
     } else { /* banner */
       dmg = Math.round(c.foe.hpMax * numOr(f.skillDmg, 0.12) * (0.9 + G.WXCS3.rng() * 0.2));
-      c.foeBurn = Math.max(c.foeBurn || 0, 2);
-      c.foeBurnMul = Math.max(c.foeBurnMul || 0, 1);
+      /* v10.7 阶段三：灼烧走统一入口，点火当回合不落伤（与术法/符箓口径一致） */
+      G.WXCS3.applyCombatEffect('foe', { type: 'burn', turns: 2, mul: 1 }, c);
       note = '摄魂幡招来余焰（灼烧 2 回合）';
     }
     return { dmg: dmg, note: note + '（' + escHtml(b.name || '本命') + '）' };

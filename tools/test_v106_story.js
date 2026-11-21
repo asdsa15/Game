@@ -155,7 +155,7 @@ ok(withFlag.indexOf('yinqinYiYi') >= 0, '「祖宗不认」之后，「阴亲之
 /* 事件真的改账：不告而别给法宝，伪箓事发给符纸 */
 setup({ cultivation: 'xian' });
 G.applyEvent && G.applyEvent(D.EVENTS.find(function (x) { return x.id === 'bugaoErbie'; }));
-ok((S.arts || []).indexOf('jinchuan') >= 0, '「不告而别」把旧物（传音符）放进包袱', JSON.stringify(S.arts));
+ok((S.talismans || {}).jinchuan >= 1, '「不告而别」把旧物（传音符）放进符箓库存（v10.7 阶段三迁移）', JSON.stringify(S.talismans));
 
 /* ==================== 3. 奇遇：十五个分支的收益 ==================== */
 console.log('=== 3. 五处奇遇 ===');

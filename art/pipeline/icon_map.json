@@ -1,7 +1,7 @@
 {
  "_note": "条目 → 图标键映射。由 art/pipeline/build_icon_map.js 生成，勿手改。",
  "_stats": {
-  "totalEntries": 268,
+  "totalEntries": 321,
   "usedIcons": 83,
   "byTable": [
    {
@@ -10,31 +10,31 @@
    },
    {
     "table": "EVENTS",
-    "count": 38
+    "count": 45
+   },
+   {
+    "table": "RECIPES",
+    "count": 43
    },
    {
     "table": "ENCOUNTERS",
-    "count": 25
+    "count": 30
    },
    {
     "table": "PILL_EXT",
-    "count": 19
+    "count": 27
    },
    {
     "table": "MATERIAL_EXT",
     "count": 19
    },
    {
-    "table": "RECIPES",
+    "table": "TALISMANS",
     "count": 17
    },
    {
     "table": "SKILLS",
     "count": 14
-   },
-   {
-    "table": "ARTIFACT_EXT",
-    "count": 12
    },
    {
     "table": "CRAFT_BOOKS",
@@ -57,12 +57,12 @@
     "count": 8
    },
    {
-    "table": "PATHS",
-    "count": 6
+    "table": "ARTIFACT_EXT",
+    "count": 7
    },
    {
-    "table": "TALISMANS",
-    "count": 5
+    "table": "PATHS",
+    "count": 6
    },
    {
     "table": "CRAFT_ARTS",
@@ -183,6 +183,11 @@
     "table": "ENCOUNTERS",
     "id": "mirrorLake",
     "name": "镜湖照影"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "weiluzhiwen",
+    "name": "伪箓之问"
    }
   ],
   "amb_enc_shen": [
@@ -195,6 +200,11 @@
     "table": "ENCOUNTERS",
     "id": "storm",
     "name": "荒村大旱"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "sanzhuxiang",
+    "name": "三炷香"
    }
   ],
   "amb_enc_xian": [
@@ -212,6 +222,21 @@
     "table": "ENCOUNTERS",
     "id": "scripture",
     "name": "残页天书"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "shiyeguanji",
+    "name": "石液观机"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "sanguandanghun",
+    "name": "三关·荡魂"
+   },
+   {
+    "table": "ENCOUNTERS",
+    "id": "mingdengzhiwen",
+    "name": "命灯之问"
    }
   ],
   "amb_ev_good": [
@@ -314,6 +339,11 @@
     "table": "EVENTS",
     "id": "neighborGod",
     "name": "邻神托梦"
+   },
+   {
+    "table": "EVENTS",
+    "id": "bugaoErbie",
+    "name": "不告而别"
    }
   ],
   "amb_ev_risk": [
@@ -406,6 +436,36 @@
     "table": "EVENTS",
     "id": "incenseGuild",
     "name": "香头行会"
+   },
+   {
+    "table": "EVENTS",
+    "id": "jisiShiQi",
+    "name": "祭祀失期"
+   },
+   {
+    "table": "EVENTS",
+    "id": "weiluShiFa",
+    "name": "伪箓事发"
+   },
+   {
+    "table": "EVENTS",
+    "id": "huotangBuRen",
+    "name": "火塘不认"
+   },
+   {
+    "table": "EVENTS",
+    "id": "yinqinYiYi",
+    "name": "阴亲之议"
+   },
+   {
+    "table": "EVENTS",
+    "id": "tiancaiZhiShang",
+    "name": "天才之殇"
+   },
+   {
+    "table": "EVENTS",
+    "id": "zhirenYeKu",
+    "name": "纸人夜哭"
    }
   ],
   "array_zhenJuLing": [
@@ -813,6 +873,16 @@
     "name": "雷符"
    },
    {
+    "table": "TALISMANS",
+    "id": "fuPo",
+    "name": "破甲符"
+   },
+   {
+    "table": "TALISMANS",
+    "id": "fuLeiHuo",
+    "name": "雷火符"
+   },
+   {
     "table": "ARTIFACT_EXT",
     "id": "wanyePiu",
     "name": "百魂幡"
@@ -844,6 +914,16 @@
    },
    {
     "table": "RECIPES",
+    "id": "fu_po",
+    "name": "破甲符"
+   },
+   {
+    "table": "RECIPES",
+    "id": "fu_leihuo",
+    "name": "雷火符"
+   },
+   {
+    "table": "RECIPES",
     "id": "qi_jiuzhuan",
     "name": "九转飞剑"
    }
@@ -858,20 +938,70 @@
   "fn_buff": [
    {
     "table": "TALISMANS",
+    "id": "fuDun",
+    "name": "遁符"
+   },
+   {
+    "table": "TALISMANS",
     "id": "fuZeng",
     "name": "增益符"
+   },
+   {
+    "table": "TALISMANS",
+    "id": "fuJing",
+    "name": "净符"
+   },
+   {
+    "table": "TALISMANS",
+    "id": "fuJu",
+    "name": "聚灵符"
+   },
+   {
+    "table": "RECIPES",
+    "id": "fu_dun",
+    "name": "遁符"
    },
    {
     "table": "RECIPES",
     "id": "fu_zeng",
     "name": "增益符"
+   },
+   {
+    "table": "RECIPES",
+    "id": "fu_jing",
+    "name": "净符"
+   },
+   {
+    "table": "RECIPES",
+    "id": "fu_ju",
+    "name": "聚灵符"
    }
   ],
   "fn_control": [
    {
+    "table": "TALISMANS",
+    "id": "fuBing",
+    "name": "冰封符"
+   },
+   {
+    "table": "TALISMANS",
+    "id": "fuFu",
+    "name": "缚灵符"
+   },
+   {
     "table": "SKILLS",
     "id": "zhentian",
     "name": "镇压八方"
+   },
+   {
+    "table": "RECIPES",
+    "id": "fu_bing",
+    "name": "冰封符"
+   },
+   {
+    "table": "RECIPES",
+    "id": "fu_fu",
+    "name": "缚灵符"
    }
   ],
   "fn_def": [
@@ -879,6 +1009,11 @@
     "table": "TALISMANS",
     "id": "fuJin",
     "name": "金刚符"
+   },
+   {
+    "table": "TALISMANS",
+    "id": "fuShen",
+    "name": "神行符"
    },
    {
     "table": "ARTIFACT_EXT",
@@ -897,25 +1032,20 @@
    },
    {
     "table": "RECIPES",
+    "id": "fu_shen",
+    "name": "神行符"
+   },
+   {
+    "table": "RECIPES",
     "id": "qi_hushen",
     "name": "护身玉符"
    }
   ],
   "fn_escape": [
    {
-    "table": "TALISMANS",
-    "id": "fuDun",
-    "name": "遁符"
-   },
-   {
     "table": "ARTIFACT_EXT",
     "id": "qingyezhou",
     "name": "青叶舟"
-   },
-   {
-    "table": "RECIPES",
-    "id": "fu_dun",
-    "name": "遁符"
    },
    {
     "table": "RECIPES",
@@ -932,34 +1062,59 @@
   ],
   "fn_talisman": [
    {
-    "table": "ARTIFACT_EXT",
-    "id": "duzuo",
-    "name": "破宝锥"
-   },
-   {
-    "table": "ARTIFACT_EXT",
+    "table": "TALISMANS",
     "id": "huoyuyuan",
     "name": "火云符"
    },
    {
-    "table": "ARTIFACT_EXT",
-    "id": "jinchuan",
-    "name": "传音符"
-   },
-   {
-    "table": "ARTIFACT_EXT",
+    "table": "TALISMANS",
     "id": "wuyun",
     "name": "五雷符"
    },
    {
-    "table": "ARTIFACT_EXT",
+    "table": "TALISMANS",
+    "id": "juxian",
+    "name": "拘仙敕神符"
+   },
+   {
+    "table": "TALISMANS",
+    "id": "jinchuan",
+    "name": "传音符"
+   },
+   {
+    "table": "TALISMANS",
     "id": "hanhuo",
     "name": "祈雨符箓"
    },
    {
     "table": "ARTIFACT_EXT",
-    "id": "juxian",
+    "id": "duzuo",
+    "name": "破宝锥"
+   },
+   {
+    "table": "RECIPES",
+    "id": "fu_huoyun",
+    "name": "火云符"
+   },
+   {
+    "table": "RECIPES",
+    "id": "fu_wuyun",
+    "name": "五雷符"
+   },
+   {
+    "table": "RECIPES",
+    "id": "fu_juxian",
     "name": "拘仙敕神符"
+   },
+   {
+    "table": "RECIPES",
+    "id": "fu_jinchuan",
+    "name": "传音符"
+   },
+   {
+    "table": "RECIPES",
+    "id": "fu_hanhuo",
+    "name": "祈雨符箓"
    }
   ],
   "fx_g1": [
@@ -1473,6 +1628,16 @@
     "table": "PILL_EXT",
     "id": "ningYing",
     "name": "凝婴丹"
+   },
+   {
+    "table": "RECIPES",
+    "id": "dan_xiaopo",
+    "name": "小破障丹"
+   },
+   {
+    "table": "RECIPES",
+    "id": "dan_zhuji",
+    "name": "筑基丹"
    }
   ],
   "pill_cult": [
@@ -1485,6 +1650,16 @@
     "table": "PILL_EXT",
     "id": "xiang",
     "name": "信香"
+   },
+   {
+    "table": "PILL_EXT",
+    "id": "kaiMai",
+    "name": "开脉丹"
+   },
+   {
+    "table": "RECIPES",
+    "id": "dan_kaimai",
+    "name": "开脉丹"
    }
   ],
   "pill_cure": [
@@ -1497,6 +1672,36 @@
     "table": "PILL_EXT",
     "id": "jiebang",
     "name": "接骨膏"
+   },
+   {
+    "table": "PILL_EXT",
+    "id": "huMai",
+    "name": "护脉丹"
+   },
+   {
+    "table": "PILL_EXT",
+    "id": "jieDu",
+    "name": "解毒丹"
+   },
+   {
+    "table": "RECIPES",
+    "id": "dan_liaoshang",
+    "name": "疗伤药"
+   },
+   {
+    "table": "RECIPES",
+    "id": "dan_jiegu",
+    "name": "接骨膏"
+   },
+   {
+    "table": "RECIPES",
+    "id": "dan_humai",
+    "name": "护脉丹"
+   },
+   {
+    "table": "RECIPES",
+    "id": "dan_jiedu",
+    "name": "解毒丹"
    }
   ],
   "pill_heart": [
@@ -1511,9 +1716,19 @@
     "name": "凝神散"
    },
    {
+    "table": "PILL_EXT",
+    "id": "wuXin",
+    "name": "悟心丹"
+   },
+   {
     "table": "RECIPES",
     "id": "dan_qingxin",
     "name": "清心丹"
+   },
+   {
+    "table": "RECIPES",
+    "id": "dan_wuxin",
+    "name": "悟心丹"
    }
   ],
   "pill_hp": [
@@ -1528,6 +1743,11 @@
     "name": "生肌续骨丹"
    },
    {
+    "table": "PILL_EXT",
+    "id": "lieYuan",
+    "name": "烈元丹"
+   },
+   {
     "table": "RECIPES",
     "id": "dan_huichun",
     "name": "回春丹"
@@ -1536,6 +1756,11 @@
     "table": "RECIPES",
     "id": "dan_shengji",
     "name": "生肌续骨丹"
+   },
+   {
+    "table": "RECIPES",
+    "id": "dan_lieyuan",
+    "name": "烈元丹"
    }
   ],
   "pill_hp_big": [
@@ -1553,6 +1778,31 @@
     "table": "PILL_EXT",
     "id": "huichun",
     "name": "九转回春散"
+   },
+   {
+    "table": "PILL_EXT",
+    "id": "shengSheng",
+    "name": "生生丹"
+   },
+   {
+    "table": "PILL_EXT",
+    "id": "guiYuan",
+    "name": "归元丹"
+   },
+   {
+    "table": "RECIPES",
+    "id": "dan_fuyuan",
+    "name": "复原丹"
+   },
+   {
+    "table": "RECIPES",
+    "id": "dan_shengsheng",
+    "name": "生生丹"
+   },
+   {
+    "table": "RECIPES",
+    "id": "dan_guiyuan",
+    "name": "归元丹"
    }
   ],
   "pill_life": [
@@ -1579,6 +1829,11 @@
     "name": "玉华灵水"
    },
    {
+    "table": "PILL_EXT",
+    "id": "qingShen",
+    "name": "清神丹"
+   },
+   {
     "table": "RECIPES",
     "id": "dan_juhui",
     "name": "聚气丹"
@@ -1587,6 +1842,16 @@
     "table": "RECIPES",
     "id": "dan_yuhua",
     "name": "玉华灵水"
+   },
+   {
+    "table": "RECIPES",
+    "id": "dan_huiling",
+    "name": "回灵散"
+   },
+   {
+    "table": "RECIPES",
+    "id": "dan_qingshen",
+    "name": "清神丹"
    }
   ]
  },
@@ -1635,38 +1900,10 @@
   },
   {
    "table": "ARTIFACT_EXT",
-   "id": "hanhuo",
-   "name": "祈雨符箓",
-   "icon": "fn_talisman",
-   "reason": "法宝部位 slot=once"
-  },
-  {
-   "table": "ARTIFACT_EXT",
-   "id": "huoyuyuan",
-   "name": "火云符",
-   "icon": "fn_talisman",
-   "reason": "法宝部位 slot=once"
-  },
-  {
-   "table": "ARTIFACT_EXT",
-   "id": "jinchuan",
-   "name": "传音符",
-   "icon": "fn_talisman",
-   "reason": "法宝部位 slot=once"
-  },
-  {
-   "table": "ARTIFACT_EXT",
    "id": "jiuzhuan",
    "name": "九转飞剑",
    "icon": "fn_atk",
    "reason": "法宝部位 slot=atk"
-  },
-  {
-   "table": "ARTIFACT_EXT",
-   "id": "juxian",
-   "name": "拘仙敕神符",
-   "icon": "fn_talisman",
-   "reason": "法宝部位 slot=once"
   },
   {
    "table": "ARTIFACT_EXT",
@@ -1695,13 +1932,6 @@
    "name": "百魂幡",
    "icon": "fn_atk",
    "reason": "法宝部位 slot=atk"
-  },
-  {
-   "table": "ARTIFACT_EXT",
-   "id": "wuyun",
-   "name": "五雷符",
-   "icon": "fn_talisman",
-   "reason": "法宝部位 slot=once"
   },
   {
    "table": "BODIES",
@@ -1978,6 +2208,13 @@
   },
   {
    "table": "ENCOUNTERS",
+   "id": "mingdengzhiwen",
+   "name": "命灯之问",
+   "icon": "amb_enc_xian",
+   "reason": "机缘类别 kind=xian"
+  },
+  {
+   "table": "ENCOUNTERS",
    "id": "mirrorLake",
    "name": "镜湖照影",
    "icon": "amb_enc_common",
@@ -2034,8 +2271,29 @@
   },
   {
    "table": "ENCOUNTERS",
+   "id": "sanguandanghun",
+   "name": "三关·荡魂",
+   "icon": "amb_enc_xian",
+   "reason": "机缘类别 kind=xian"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "sanzhuxiang",
+   "name": "三炷香",
+   "icon": "amb_enc_shen",
+   "reason": "机缘类别 kind=shen"
+  },
+  {
+   "table": "ENCOUNTERS",
    "id": "scripture",
    "name": "残页天书",
+   "icon": "amb_enc_xian",
+   "reason": "机缘类别 kind=xian"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "shiyeguanji",
+   "name": "石液观机",
    "icon": "amb_enc_xian",
    "reason": "机缘类别 kind=xian"
   },
@@ -2059,6 +2317,13 @@
    "name": "荒村大旱",
    "icon": "amb_enc_shen",
    "reason": "机缘类别 kind=shen"
+  },
+  {
+   "table": "ENCOUNTERS",
+   "id": "weiluzhiwen",
+   "name": "伪箓之问",
+   "icon": "amb_enc_common",
+   "reason": "机缘类别 kind=common"
   },
   {
    "table": "ENCOUNTERS",
@@ -2092,6 +2357,13 @@
    "table": "EVENTS",
    "id": "brotherLeaves",
    "name": "师兄下山",
+   "icon": "amb_ev_good",
+   "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "bugaoErbie",
+   "name": "不告而别",
    "icon": "amb_ev_good",
    "reason": "事件类别 kind=good"
   },
@@ -2153,8 +2425,22 @@
   },
   {
    "table": "EVENTS",
+   "id": "huotangBuRen",
+   "name": "火塘不认",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
    "id": "incenseGuild",
    "name": "香头行会",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "jisiShiQi",
+   "name": "祭祀失期",
    "icon": "amb_ev_risk",
    "reason": "事件类别 kind=risk"
   },
@@ -2328,10 +2614,38 @@
   },
   {
    "table": "EVENTS",
+   "id": "tiancaiZhiShang",
+   "name": "天才之殇",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
    "id": "wander",
    "name": "游方道士",
    "icon": "amb_ev_good",
    "reason": "事件类别 kind=good"
+  },
+  {
+   "table": "EVENTS",
+   "id": "weiluShiFa",
+   "name": "伪箓事发",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "yinqinYiYi",
+   "name": "阴亲之议",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
+  },
+  {
+   "table": "EVENTS",
+   "id": "zhirenYeKu",
+   "name": "纸人夜哭",
+   "icon": "amb_ev_risk",
+   "reason": "事件类别 kind=risk"
   },
   {
    "table": "FAXIANG",
@@ -2737,28 +3051,28 @@
    "id": "buqiCao",
    "name": "补气草",
    "icon": "mat_alchemy",
-   "reason": "材料用途 eff=炼丹主材：回灵类丹药"
+   "reason": "材料用途 eff=炼丹主材：回灵诸丹"
   },
   {
    "table": "MATERIAL_EXT",
    "id": "fuZhi",
    "name": "符纸",
    "icon": "mat_talisman",
-   "reason": "材料用途 eff=制符承载之物，一张一符"
+   "reason": "材料用途 eff=制符所载，一纸一符"
   },
   {
    "table": "MATERIAL_EXT",
    "id": "gulingHua",
    "name": "骨灵花",
    "icon": "mat_herb",
-   "reason": "材料用途 eff=疗伤类丹药引子"
+   "reason": "材料用途 eff=疗伤诸丹之引"
   },
   {
    "table": "MATERIAL_EXT",
    "id": "heshenHua",
    "name": "合神花",
    "icon": "mat_alchemy",
-   "reason": "材料用途 eff=炼丹主材：宁神类丹药"
+   "reason": "材料用途 eff=炼丹主材：宁神诸丹"
   },
   {
    "table": "MATERIAL_EXT",
@@ -2772,21 +3086,21 @@
    "id": "jidaoGuo",
    "name": "剑道果",
    "icon": "mat_spirit",
-   "reason": "材料用途 eff=剑修大成之果，剑系功法效率 +20%"
+   "reason": "材料用途 eff=剑修大成之果，剑属功法之效 +20%"
   },
   {
    "table": "MATERIAL_EXT",
    "id": "jinLing",
    "name": "金灵砂",
    "icon": "mat_artifact",
-   "reason": "材料用途 eff=炼器刻阵用，导灵"
+   "reason": "材料用途 eff=炼器刻阵所用，善导灵气"
   },
   {
    "table": "MATERIAL_EXT",
    "id": "lanyouCao",
    "name": "蓝幽草",
    "icon": "mat_herb",
-   "reason": "材料用途 eff=最常见的疗伤草药"
+   "reason": "材料用途 eff=疗伤常草，山野多有"
   },
   {
    "table": "MATERIAL_EXT",
@@ -2800,14 +3114,14 @@
    "id": "mudanYao",
    "name": "妖丹",
    "icon": "mat_beast",
-   "reason": "材料用途 eff=妖兽内丹，炼器炼丹通用"
+   "reason": "材料用途 eff=妖兽内丹，器丹两用"
   },
   {
    "table": "MATERIAL_EXT",
    "id": "qunfangSui",
    "name": "群芳髓",
    "icon": "mat_spirit",
-   "reason": "材料用途 eff=双修与容颜之物"
+   "reason": "材料用途 eff=双修、驻颜之物"
   },
   {
    "table": "MATERIAL_EXT",
@@ -2828,21 +3142,21 @@
    "id": "tieMu",
    "name": "铁木心",
    "icon": "mat_artifact",
-   "reason": "材料用途 eff=器胚主材，坚韧"
+   "reason": "材料用途 eff=器胚主材，坚而韧"
   },
   {
    "table": "MATERIAL_EXT",
    "id": "wulianXue",
    "name": "万炼血",
    "icon": "mat_spirit",
-   "reason": "材料用途 eff=魔门血炼主材，业力 +5 但威力可观"
+   "reason": "材料用途 eff=魔门血炼主材，业力 +5，其威亦可观"
   },
   {
    "table": "MATERIAL_EXT",
    "id": "wuxingling",
    "name": "五行灵果",
    "icon": "mat_spirit",
-   "reason": "材料用途 eff=五行俱全，补灵根偏废"
+   "reason": "材料用途 eff=五行俱备，补灵根之偏"
   },
   {
    "table": "MATERIAL_EXT",
@@ -2856,14 +3170,14 @@
    "id": "zhenQi",
    "name": "阵旗",
    "icon": "mat_array",
-   "reason": "材料用途 eff=布阵必须，可重复使用"
+   "reason": "材料用途 eff=布阵所必需，可再用"
   },
   {
    "table": "MATERIAL_EXT",
    "id": "zhuSha",
    "name": "朱砂",
    "icon": "mat_talisman",
-   "reason": "材料用途 eff=制符定属性，赤色最灵"
+   "reason": "材料用途 eff=制符定属，赤者最灵"
   },
   {
    "table": "ORIGINS",
@@ -3000,6 +3314,13 @@
   },
   {
    "table": "PILL_EXT",
+   "id": "guiYuan",
+   "name": "归元丹",
+   "icon": "pill_hp_big",
+   "reason": "丹药类型 type=mix"
+  },
+  {
+   "table": "PILL_EXT",
    "id": "heal",
    "name": "疗伤药",
    "icon": "pill_cure",
@@ -3021,10 +3342,38 @@
   },
   {
    "table": "PILL_EXT",
+   "id": "huMai",
+   "name": "护脉丹",
+   "icon": "pill_cure",
+   "reason": "丹药类型 type=guard"
+  },
+  {
+   "table": "PILL_EXT",
    "id": "jiebang",
    "name": "接骨膏",
    "icon": "pill_cure",
    "reason": "丹药类型 type=cure"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "jieDu",
+   "name": "解毒丹",
+   "icon": "pill_cure",
+   "reason": "丹药类型 type=antidote"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "kaiMai",
+   "name": "开脉丹",
+   "icon": "pill_cult",
+   "reason": "丹药类型 type=cultXun"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "lieYuan",
+   "name": "烈元丹",
+   "icon": "pill_hp",
+   "reason": "丹药类型 type=burst"
   },
   {
    "table": "PILL_EXT",
@@ -3056,10 +3405,31 @@
   },
   {
    "table": "PILL_EXT",
+   "id": "qingShen",
+   "name": "清神丹",
+   "icon": "pill_mp",
+   "reason": "丹药类型 type=cleanseCtl"
+  },
+  {
+   "table": "PILL_EXT",
    "id": "shengji",
    "name": "复原丹",
    "icon": "pill_hp_big",
    "reason": "丹药类型 type=hpPct"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "shengSheng",
+   "name": "生生丹",
+   "icon": "pill_hp_big",
+   "reason": "丹药类型 type=regen"
+  },
+  {
+   "table": "PILL_EXT",
+   "id": "wuXin",
+   "name": "悟心丹",
+   "icon": "pill_heart",
+   "reason": "丹药类型 type=insight"
   },
   {
    "table": "PILL_EXT",
@@ -3112,6 +3482,20 @@
   },
   {
    "table": "RECIPES",
+   "id": "dan_fuyuan",
+   "name": "复原丹",
+   "icon": "pill_hp_big",
+   "reason": "按产出物 shengji 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "dan_guiyuan",
+   "name": "归元丹",
+   "icon": "pill_hp_big",
+   "reason": "按产出物 guiYuan 归并"
+  },
+  {
+   "table": "RECIPES",
    "id": "dan_huichun",
    "name": "回春丹",
    "icon": "pill_hp",
@@ -3119,10 +3503,66 @@
   },
   {
    "table": "RECIPES",
+   "id": "dan_huiling",
+   "name": "回灵散",
+   "icon": "pill_mp",
+   "reason": "按产出物 huiLing 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "dan_humai",
+   "name": "护脉丹",
+   "icon": "pill_cure",
+   "reason": "按产出物 huMai 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "dan_jiedu",
+   "name": "解毒丹",
+   "icon": "pill_cure",
+   "reason": "按产出物 jieDu 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "dan_jiegu",
+   "name": "接骨膏",
+   "icon": "pill_cure",
+   "reason": "按产出物 jiebang 归并"
+  },
+  {
+   "table": "RECIPES",
    "id": "dan_juhui",
    "name": "聚气丹",
    "icon": "pill_mp",
    "reason": "按产出物 pillMp 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "dan_kaimai",
+   "name": "开脉丹",
+   "icon": "pill_cult",
+   "reason": "按产出物 kaiMai 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "dan_liaoshang",
+   "name": "疗伤药",
+   "icon": "pill_cure",
+   "reason": "按产出物 heal 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "dan_lieyuan",
+   "name": "烈元丹",
+   "icon": "pill_hp",
+   "reason": "按产出物 lieYuan 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "dan_qingshen",
+   "name": "清神丹",
+   "icon": "pill_mp",
+   "reason": "按产出物 qingShen 归并"
   },
   {
    "table": "RECIPES",
@@ -3140,6 +3580,27 @@
   },
   {
    "table": "RECIPES",
+   "id": "dan_shengsheng",
+   "name": "生生丹",
+   "icon": "pill_hp_big",
+   "reason": "按产出物 shengSheng 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "dan_wuxin",
+   "name": "悟心丹",
+   "icon": "pill_heart",
+   "reason": "按产出物 wuXin 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "dan_xiaopo",
+   "name": "小破障丹",
+   "icon": "pill_break",
+   "reason": "按产出物 xiaoPo 归并"
+  },
+  {
+   "table": "RECIPES",
    "id": "dan_yuhua",
    "name": "玉华灵水",
    "icon": "pill_mp",
@@ -3147,10 +3608,38 @@
   },
   {
    "table": "RECIPES",
+   "id": "dan_zhuji",
+   "name": "筑基丹",
+   "icon": "pill_break",
+   "reason": "按产出物 zhuji 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "fu_bing",
+   "name": "冰封符",
+   "icon": "fn_control",
+   "reason": "按产出物 fuBing 归并"
+  },
+  {
+   "table": "RECIPES",
    "id": "fu_dun",
    "name": "遁符",
-   "icon": "fn_escape",
+   "icon": "fn_buff",
    "reason": "按产出物 fuDun 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "fu_fu",
+   "name": "缚灵符",
+   "icon": "fn_control",
+   "reason": "按产出物 fuFu 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "fu_hanhuo",
+   "name": "祈雨符箓",
+   "icon": "fn_talisman",
+   "reason": "按产出物 hanhuo 归并"
   },
   {
    "table": "RECIPES",
@@ -3161,6 +3650,13 @@
   },
   {
    "table": "RECIPES",
+   "id": "fu_huoyun",
+   "name": "火云符",
+   "icon": "fn_talisman",
+   "reason": "按产出物 huoyuyuan 归并"
+  },
+  {
+   "table": "RECIPES",
    "id": "fu_jin",
    "name": "金刚符",
    "icon": "fn_def",
@@ -3168,10 +3664,66 @@
   },
   {
    "table": "RECIPES",
+   "id": "fu_jinchuan",
+   "name": "传音符",
+   "icon": "fn_talisman",
+   "reason": "按产出物 jinchuan 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "fu_jing",
+   "name": "净符",
+   "icon": "fn_buff",
+   "reason": "按产出物 fuJing 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "fu_ju",
+   "name": "聚灵符",
+   "icon": "fn_buff",
+   "reason": "按产出物 fuJu 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "fu_juxian",
+   "name": "拘仙敕神符",
+   "icon": "fn_talisman",
+   "reason": "按产出物 juxian 归并"
+  },
+  {
+   "table": "RECIPES",
    "id": "fu_lei",
    "name": "雷符",
    "icon": "fn_atk",
    "reason": "按产出物 fuLei 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "fu_leihuo",
+   "name": "雷火符",
+   "icon": "fn_atk",
+   "reason": "按产出物 fuLeiHuo 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "fu_po",
+   "name": "破甲符",
+   "icon": "fn_atk",
+   "reason": "按产出物 fuPo 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "fu_shen",
+   "name": "神行符",
+   "icon": "fn_def",
+   "reason": "按产出物 fuShen 归并"
+  },
+  {
+   "table": "RECIPES",
+   "id": "fu_wuyun",
+   "name": "五雷符",
+   "icon": "fn_talisman",
+   "reason": "按产出物 wuyun 归并"
   },
   {
    "table": "RECIPES",
@@ -3329,38 +3881,122 @@
   },
   {
    "table": "TALISMANS",
+   "id": "fuBing",
+   "name": "冰封符",
+   "icon": "fn_control",
+   "reason": "战斗符分类 cat=控"
+  },
+  {
+   "table": "TALISMANS",
    "id": "fuDun",
    "name": "遁符",
-   "icon": "fn_escape",
-   "reason": "符箓类型 kind=escape"
+   "icon": "fn_buff",
+   "reason": "战斗符分类 cat=助"
+  },
+  {
+   "table": "TALISMANS",
+   "id": "fuFu",
+   "name": "缚灵符",
+   "icon": "fn_control",
+   "reason": "战斗符分类 cat=控"
   },
   {
    "table": "TALISMANS",
    "id": "fuHuo",
    "name": "火符",
    "icon": "fn_atk",
-   "reason": "符箓类型 kind=atk"
+   "reason": "战斗符分类 cat=攻"
   },
   {
    "table": "TALISMANS",
    "id": "fuJin",
    "name": "金刚符",
    "icon": "fn_def",
-   "reason": "符箓类型 kind=def"
+   "reason": "战斗符分类 cat=防"
+  },
+  {
+   "table": "TALISMANS",
+   "id": "fuJing",
+   "name": "净符",
+   "icon": "fn_buff",
+   "reason": "战斗符分类 cat=助"
+  },
+  {
+   "table": "TALISMANS",
+   "id": "fuJu",
+   "name": "聚灵符",
+   "icon": "fn_buff",
+   "reason": "战斗符分类 cat=助"
   },
   {
    "table": "TALISMANS",
    "id": "fuLei",
    "name": "雷符",
    "icon": "fn_atk",
-   "reason": "符箓类型 kind=atk"
+   "reason": "战斗符分类 cat=攻"
+  },
+  {
+   "table": "TALISMANS",
+   "id": "fuLeiHuo",
+   "name": "雷火符",
+   "icon": "fn_atk",
+   "reason": "战斗符分类 cat=攻"
+  },
+  {
+   "table": "TALISMANS",
+   "id": "fuPo",
+   "name": "破甲符",
+   "icon": "fn_atk",
+   "reason": "战斗符分类 cat=攻"
+  },
+  {
+   "table": "TALISMANS",
+   "id": "fuShen",
+   "name": "神行符",
+   "icon": "fn_def",
+   "reason": "战斗符分类 cat=防"
   },
   {
    "table": "TALISMANS",
    "id": "fuZeng",
    "name": "增益符",
    "icon": "fn_buff",
-   "reason": "符箓类型 kind=buff"
+   "reason": "战斗符分类 cat=助"
+  },
+  {
+   "table": "TALISMANS",
+   "id": "hanhuo",
+   "name": "祈雨符箓",
+   "icon": "fn_talisman",
+   "reason": "功能符 use=outCombat"
+  },
+  {
+   "table": "TALISMANS",
+   "id": "huoyuyuan",
+   "name": "火云符",
+   "icon": "fn_talisman",
+   "reason": "功能符 use=preCombat"
+  },
+  {
+   "table": "TALISMANS",
+   "id": "jinchuan",
+   "name": "传音符",
+   "icon": "fn_talisman",
+   "reason": "功能符 use=outCombat"
+  },
+  {
+   "table": "TALISMANS",
+   "id": "juxian",
+   "name": "拘仙敕神符",
+   "icon": "fn_talisman",
+   "reason": "功能符 use=preCombat"
+  },
+  {
+   "table": "TALISMANS",
+   "id": "wuyun",
+   "name": "五雷符",
+   "icon": "fn_talisman",
+   "reason": "功能符 use=preCombat"
   },
   {
    "table": "VOTIVE_ITEMS",

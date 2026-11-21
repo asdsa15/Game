@@ -328,18 +328,72 @@
     { id: 'ningYing', name: '凝婴丹',     price: 12000, tier: 'di',    type: 'break', v: 0.35, desc: '金丹证元婴一关，成事 +35%' },
     /* 增益 */
     { id: 'xiaoXuan', name: '日月玄浆',   price: 2400,  tier: 'di',    type: 'cult', desc: '服之，闭关所得 +30%（一月）' },
-    { id: 'xiang',    name: '信香',       price: 30,    tier: 'huang', type: 'xiang', v: 20, desc: '香火 +20（神道用）' }
+    { id: 'xiang',    name: '信香',       price: 30,    tier: 'huang', type: 'xiang', v: 20, desc: '香火 +20（神道用）' },
+    /* —— v10.7 阶段三·批次D：8 种战术/修炼丹 ——
+       战斗丹每场最多 2 次、同种不可连续两回合；同类型增益不叠加；
+       已满状态不能使用以避免浪费；烈元丹代价不致死；生生丹战斗结束清除。 */
+    { id: 'huMai',    name: '护脉丹',     price: 160,   tier: 'huang', type: 'guard', v: 0.2, turns: 2, combat: true,
+      desc: '2 回合受击伤害 −20%（与守势取强，不叠乘）' },
+    { id: 'qingShen', name: '清神丹',     price: 150,   tier: 'huang', type: 'cleanseCtl', combat: true,
+      desc: '清除锁灵/迟滞等控制，并恢复少量灵力' },
+    { id: 'jieDu',    name: '解毒丹',     price: 130,   tier: 'huang', type: 'antidote', combat: true,
+      desc: '清除中毒与灼烧，恢复少量气血（平时亦可服）' },
+    { id: 'lieYuan',  name: '烈元丹',     price: 380,   tier: 'xuan',  type: 'burst', v: 0.35, combat: true,
+      desc: '下一门攻击术法 +35%；服用时损失气血上限 5%（不致死）' },
+    { id: 'shengSheng', name: '生生丹',   price: 320,   tier: 'xuan',  type: 'regen', v: 0.04, turns: 3, combat: true,
+      desc: '3 回合内每回合恢复气血上限 4%（战斗结束清除）' },
+    { id: 'guiYuan',  name: '归元丹',     price: 520,   tier: 'di',    type: 'mix', v: 0.18, combat: true,
+      desc: '同时恢复气血与灵力各 18%（单项弱于专用高阶丹）' },
+    { id: 'kaiMai',   name: '开脉丹',     price: 280,   tier: 'xuan',  type: 'cultXun', v: 0.2, turns: 3,
+      desc: '接下来 3 旬修炼收益 +20%（与日月玄浆取强，不叠加）' },
+    { id: 'wuXin',    name: '悟心丹',     price: 300,   tier: 'xuan',  type: 'insight', v: 3,
+      desc: '下一次读书或论道的悟道收益 +3（接入悟道点，不加破境率）' }
   ];
 
   /* ====== 符箓（制符产物，战斗中一次性消耗） ======
      v10.7 P1·战斗口径：eff 里的每一句都要能在结算里找到对应，
      文案与实际对不上，比没有文案更坏——玩家会照着空头支票做决策。 */
+  /* v10.7 阶段三·批次D：TALISMANS 是所有符箓的唯一配置表，S.talismans 是唯一库存。
+     火云符/传音符/五雷符/祈雨符箓/拘仙敕神符从一次性法器迁入（破宝锥仍是法器）。
+     use: combat 战中 / preCombat 战前 / outCombat 平时；cat: 攻/防/控/助（器物弹窗分类）。
+     effect 由统一解释器兑现；同种符用后冷却 1 回合，防无限叠同一状态。 */
   const TALISMANS = [
-    { id: 'fuHuo',  name: '火符',   tier: 'huang', price: 110, eff: '一用即焚，火伤 0.9，不耗灵力', kind: 'atk', v: 0.9,  el: 'fire' },
-    { id: 'fuJin',  name: '金刚符', tier: 'huang', price: 130, eff: '下一次受击总减伤 60%（与守势取强，不叠乘）', kind: 'def', v: 0.6 },
-    { id: 'fuDun',  name: '遁符',   tier: 'huang', price: 150, eff: '必遁，境界之压不能阻（遁走无战利品）', kind: 'escape' },
-    { id: 'fuZeng', name: '增益符', tier: 'xuan',  price: 240, eff: '三回合内直接伤害 +30%（刷新不叠层）', kind: 'buff', v: 0.30 },
-    { id: 'fuLei',  name: '雷符',   tier: 'xuan',  price: 320, eff: '雷伤 ×1.3，无视卸力，不耗灵力', kind: 'atk', v: 1.3, el: 'thunder' }
+    /* —— 12 种战斗符 —— */
+    { id: 'fuHuo',  name: '火符',   tier: 'huang', price: 110, use: 'combat', cat: '攻', kind: 'atk', v: 0.9, el: 'fire',
+      eff: '火伤 ×0.9，附灼烧 2 回合（刷新不叠层），不耗灵力', effect: { type: 'burn', turns: 2, mul: 1 } },
+    { id: 'fuJin',  name: '金刚符', tier: 'huang', price: 130, use: 'combat', cat: '防', kind: 'def', v: 0.6,
+      eff: '下一次受击总减伤 60%（与守势取强，不叠乘）', effect: { type: 'shield', v: 0.6 } },
+    { id: 'fuDun',  name: '遁符',   tier: 'huang', price: 150, use: 'combat', cat: '助', kind: 'escape',
+      eff: '必遁，境界之压不能阻（遁走无战利品）', effect: { type: 'escape' } },
+    { id: 'fuZeng', name: '增益符', tier: 'xuan',  price: 240, use: 'combat', cat: '助', kind: 'buff', v: 0.30,
+      eff: '三回合内直接伤害 +30%（刷新不叠层）', effect: { type: 'buff', v: 0.3, turns: 3 } },
+    { id: 'fuLei',  name: '雷符',   tier: 'xuan',  price: 320, use: 'combat', cat: '攻', kind: 'atk', v: 1.3, el: 'thunder',
+      eff: '雷伤 ×1.3，必中半无视卸力，可打断蓄力；对灼烧之敌引爆余焰', effect: { type: 'interrupt' } },
+    { id: 'fuBing', name: '冰封符', tier: 'xuan',  price: 260, use: 'combat', cat: '控', kind: 'atk', v: 0.7, el: 'water',
+      eff: '水伤 ×0.7，迟滞 2 回合（其出手 ×0.85）', effect: { type: 'slow', turns: 2 } },
+    { id: 'fuFu',   name: '缚灵符', tier: 'xuan',  price: 280, use: 'combat', cat: '控', kind: 'ctrl',
+      eff: '压制 2 回合（其出手 ×0.7）；对蓄力目标改为打断', effect: { type: 'weaken', turns: 2, v: 0.3, interrupt: true } },
+    { id: 'fuPo',   name: '破甲符', tier: 'xuan',  price: 300, use: 'combat', cat: '攻', kind: 'ctrl',
+      eff: '破甲 2 回合：敌方受到伤害 +20%', effect: { type: 'shred', turns: 2, v: 0.2 } },
+    { id: 'fuJing', name: '净符',   tier: 'huang', price: 120, use: 'combat', cat: '助', kind: 'cleanse',
+      eff: '清除自身一个可净化负面（中毒/灼烧/迟滞/锁灵）；无负面时不可用', effect: { type: 'cleanse' } },
+    { id: 'fuJu',   name: '聚灵符', tier: 'xuan',  price: 250, use: 'combat', cat: '助', kind: 'buff',
+      eff: '下一门术法耗灵降低 50%（不叠加）', effect: { type: 'mpSave', v: 0.5 } },
+    { id: 'fuShen', name: '神行符', tier: 'xuan',  price: 270, use: 'combat', cat: '防', kind: 'def',
+      eff: '规避下一次直接攻击（对持续伤害无效，不等于必遁）', effect: { type: 'dodge' } },
+    { id: 'fuLeiHuo', name: '雷火符', tier: 'di',  price: 620, use: 'combat', cat: '攻', kind: 'atk', v: 1.5, el: 'thunder',
+      eff: '雷火伤 ×1.5；有灼烧时引爆剩余层数追加伤害，无灼烧时为普通雷火', effect: { type: 'detonate' } },
+    /* —— 5 种功能符（自一次性法器迁入，不占战斗符数量） —— */
+    { id: 'huoyuyuan', name: '火云符',   tier: 'huang', price: 180, use: 'preCombat', cat: '助', kind: 'pre',
+      eff: '战前用：本场火系术法伤害 +60%（限一次）', effect: { type: 'preFire', v: 0.6 } },
+    { id: 'wuyun',     name: '五雷符',   tier: 'xuan',  price: 520, use: 'preCombat', cat: '助', kind: 'pre',
+      eff: '战前用：本场首击必中（无视卸力），伤害 +80%', effect: { type: 'preBoost', v: 0.8 } },
+    { id: 'juxian',    name: '拘仙敕神符', tier: 'di',  price: 2800, use: 'preCombat', cat: '助', kind: 'pre',
+      eff: '战前用：本场位格压制 +1 档（仙道 +1 阶／神道 +1 位），限一场', effect: { type: 'preRank' } },
+    { id: 'jinchuan',  name: '传音符',   tier: 'huang', price: 90,  use: 'outCombat', cat: '助', kind: 'out',
+      eff: '平时用：传讯相识之人，好感 +5（占一旬）', effect: { type: 'favor', v: 5 } },
+    { id: 'hanhuo',    name: '祈雨符箓', tier: 'huang', price: 160, use: 'outCombat', cat: '助', kind: 'out',
+      eff: '神道平时用：下一场显圣不耗香火', effect: { type: 'freeXiansheng' } }
   ];
 
   /* ====== 法器 / 法宝（扩充） ====== */
@@ -350,12 +404,9 @@
     { id: 'wanyePiu',    name: '百魂幡',     price: 2400,  tier: 'xuan',  slot: 'atk', bonus: { atk: 0.15, hpCost: 5 }, eff: '斗法伤害 +15%，耗气血 5' },
     { id: 'jiuzhuan',    name: '九转飞剑',   price: 3200,  tier: 'di',    slot: 'atk', bonus: { atk: 0.25 }, eff: '九转淬锋，攻击 +25%' },
     { id: 'taiyinBao',   name: '太阴宝鉴',   price: 4600,  tier: 'di',    slot: 'body', bonus: { hit: 0.10 }, eff: '照见虚妄，命中 +10，幻术立破' },
-    { id: 'huoyuyuan',   name: '火云符',     price: 180,   tier: 'huang', slot: 'once', eff: '一用之符：斗法中火系术法伤害 +60%（限一次）' },
-    { id: 'jinchuan',    name: '传音符',     price: 90,    tier: 'huang', slot: 'once', eff: '一用：传讯相识之人，好感 +5（平时即可用）' },
-    { id: 'wanlingfan',  name: '万灵幡',     price: 8600,  tier: 'tian',  slot: 'atk', bonus: { atk: 0.40 }, eff: '万灵归幡，斗法伤害 +40%，可收妖' },
-    { id: 'wuyun',       name: '五雷符',     price: 520,   tier: 'xuan',  slot: 'once', eff: '一用：斗法首击必中（无视卸力），伤害 +80%' },
-    { id: 'hanhuo',      name: '祈雨符箓',   price: 160,   tier: 'huang', slot: 'once', eff: '神道：一场显圣，不耗香火' },
-    { id: 'juxian',      name: '拘仙敕神符', price: 2800,  tier: 'di',    slot: 'once', eff: '一用：本场位格压制 +1 档（仙道 +1 阶／神道 +1 位），限一场' }
+    { id: 'wanlingfan',  name: '万灵幡',     price: 8600,  tier: 'tian',  slot: 'atk', bonus: { atk: 0.40 }, eff: '万灵归幡，斗法伤害 +40%，可收妖' }
+    /* v10.7 阶段三：火云符/传音符/五雷符/祈雨符箓/拘仙敕神符已迁入 TALISMANS（唯一符箓配置表）。
+       破宝锥（duzuo）仍是法器——「一次性」不等于「符」。旧档迁移见 game.js migrateTalismans。 */
   ];
 
   /* ====== 本命器形（v10.7 阶段二） ======
@@ -448,6 +499,50 @@
     { id: 'dan_yuhua',   kind: 'dan', name: '玉华灵水', tier: 'di', lv: 5,
       mats: { buqiCao: 1, heshenHua: 1, yuhuaYu: 1 }, out: 'yuhuaShui', need: 1, base: 0.55, risk: 'explode',
       note: '三味同炉，灵力顷刻复满' },
+    /* —— v10.7 阶段三·批次D：补 6 个现有高需求丹方（炼丹 5 → 11 → 19） —— */
+    { id: 'dan_liaoshang', kind: 'dan', name: '疗伤药', tier: 'huang', lv: 1,
+      mats: { lanyouCao: 2 }, out: 'heal', need: 1, base: 0.78, risk: 'explode',
+      note: '蓝幽草为主，新手段可及' },
+    { id: 'dan_jiegu',   kind: 'dan', name: '接骨膏',   tier: 'xuan', lv: 2,
+      mats: { lanyouCao: 1, gulingHua: 1 }, out: 'jiebang', need: 1, base: 0.68, risk: 'explode',
+      note: '断肢可续，重伤转轻' },
+    { id: 'dan_fuyuan',  kind: 'dan', name: '复原丹',   tier: 'xuan', lv: 3,
+      mats: { lanyouCao: 1, gulingHua: 1, buqiCao: 1 }, out: 'shengji', need: 1, base: 0.62, risk: 'explode',
+      note: '三味同炉，复气血五成' },
+    { id: 'dan_huiling', kind: 'dan', name: '回灵散',   tier: 'xuan', lv: 3,
+      mats: { buqiCao: 2, heshenHua: 1 }, out: 'huiLing', need: 1, base: 0.62, risk: 'explode',
+      note: '补气草合神花，复灵力四成' },
+    { id: 'dan_xiaopo',  kind: 'dan', name: '小破障丹', tier: 'xuan', lv: 4,
+      mats: { heshenHua: 2, wuxingling: 1 }, out: 'xiaoPo', need: 1, base: 0.55, risk: 'explode',
+      note: '破境之机 +12%，材料不菲' },
+    { id: 'dan_zhuji',   kind: 'dan', name: '筑基丹',   tier: 'xuan', lv: 5,
+      mats: { heshenHua: 2, wuxingling: 1, mudanYao: 1 }, out: 'zhuji', need: 1, base: 0.50, risk: 'explode',
+      note: '助筑基 +15%。妖丹为引，不能廉价量产' },
+    /* —— v10.7 阶段三·批次D：8 种新丹方 —— */
+    { id: 'dan_humai',   kind: 'dan', name: '护脉丹',   tier: 'huang', lv: 2,
+      mats: { lanyouCao: 1, buqiCao: 1 }, out: 'huMai', need: 1, base: 0.72, risk: 'explode',
+      note: '护住经脉，受击减伤两成' },
+    { id: 'dan_qingshen', kind: 'dan', name: '清神丹',  tier: 'huang', lv: 2,
+      mats: { heshenHua: 1, buqiCao: 1 }, out: 'qingShen', need: 1, base: 0.72, risk: 'explode',
+      note: '清控制、复灵力，针对锁灵迟滞' },
+    { id: 'dan_jiedu',   kind: 'dan', name: '解毒丹',   tier: 'huang', lv: 1,
+      mats: { lanyouCao: 2 }, out: 'jieDu', need: 1, base: 0.78, risk: 'explode',
+      note: '解百毒，兼清余焰' },
+    { id: 'dan_lieyuan', kind: 'dan', name: '烈元丹',   tier: 'xuan', lv: 3,
+      mats: { buqiCao: 2, mudanYao: 1 }, out: 'lieYuan', need: 1, base: 0.60, risk: 'explode',
+      note: '爆发有代价：服时损气血上限 5%' },
+    { id: 'dan_shengsheng', kind: 'dan', name: '生生丹', tier: 'xuan', lv: 3,
+      mats: { lanyouCao: 2, heshenHua: 1 }, out: 'shengSheng', need: 1, base: 0.62, risk: 'explode',
+      note: '生生不息，三回合缓复气血' },
+    { id: 'dan_guiyuan', kind: 'dan', name: '归元丹',   tier: 'di', lv: 4,
+      mats: { buqiCao: 2, heshenHua: 1, gulingHua: 1 }, out: 'guiYuan', need: 1, base: 0.55, risk: 'explode',
+      note: '气血灵力同复各 18%' },
+    { id: 'dan_kaimai',  kind: 'dan', name: '开脉丹',   tier: 'xuan', lv: 3,
+      mats: { buqiCao: 2, wuxingling: 1 }, out: 'kaiMai', need: 1, base: 0.60, risk: 'explode',
+      note: '开脉三旬，修炼收益 +20%' },
+    { id: 'dan_wuxin',   kind: 'dan', name: '悟心丹',   tier: 'xuan', lv: 3,
+      mats: { heshenHua: 2, lanyouCao: 1 }, out: 'wuXin', need: 1, base: 0.60, risk: 'explode',
+      note: '下一次读书论道，悟道 +3' },
     /* —— 制符 —— */
     { id: 'fu_huo',  kind: 'fu', name: '火符',   tier: 'huang', lv: 1,
       mats: { fuZhi: 1, zhuSha: 1 }, out: 'fuHuo', need: 3, base: 0.72, risk: 'ruin',
@@ -464,6 +559,44 @@
     { id: 'fu_lei',  kind: 'fu', name: '雷符',   tier: 'xuan', lv: 4,
       mats: { fuZhi: 3, zhuSha: 3, jinLing: 1 }, out: 'fuLei', need: 3, base: 0.55, risk: 'ruin',
       note: '必中破甲，诸符之贵者' },
+    /* —— v10.7 阶段三·批次D：7 种新战斗符方（符纸+朱砂+一种功能材料） —— */
+    { id: 'fu_bing', kind: 'fu', name: '冰封符', tier: 'xuan', lv: 3,
+      mats: { fuZhi: 2, zhuSha: 2, lanyouCao: 1 }, out: 'fuBing', need: 3, base: 0.60, risk: 'ruin',
+      note: '寒水凝符，迟滞其身' },
+    { id: 'fu_fu',   kind: 'fu', name: '缚灵符', tier: 'xuan', lv: 3,
+      mats: { fuZhi: 2, zhuSha: 2, heshenHua: 1 }, out: 'fuFu', need: 3, base: 0.60, risk: 'ruin',
+      note: '缚其灵台，压其出手；蓄力者直接打断' },
+    { id: 'fu_po',   kind: 'fu', name: '破甲符', tier: 'xuan', lv: 4,
+      mats: { fuZhi: 2, zhuSha: 3, jinLing: 1 }, out: 'fuPo', need: 3, base: 0.56, risk: 'ruin',
+      note: '金灵导气，破其甲防' },
+    { id: 'fu_jing', kind: 'fu', name: '净符',   tier: 'huang', lv: 2,
+      mats: { fuZhi: 1, zhuSha: 1, lanyouCao: 1 }, out: 'fuJing', need: 3, base: 0.70, risk: 'ruin',
+      note: '低阶净秽，解一重负面' },
+    { id: 'fu_ju',   kind: 'fu', name: '聚灵符', tier: 'xuan', lv: 3,
+      mats: { fuZhi: 2, zhuSha: 2, buqiCao: 1 }, out: 'fuJu', need: 3, base: 0.60, risk: 'ruin',
+      note: '聚气于符，下一门术法省灵一半' },
+    { id: 'fu_shen', kind: 'fu', name: '神行符', tier: 'xuan', lv: 3,
+      mats: { fuZhi: 2, zhuSha: 2, huanShi: 1 }, out: 'fuShen', need: 3, base: 0.60, risk: 'ruin',
+      note: '幻属迷踪，避一刀之厄' },
+    { id: 'fu_leihuo', kind: 'fu', name: '雷火符', tier: 'di', lv: 5,
+      mats: { fuZhi: 3, zhuSha: 3, jinLing: 1, mudanYao: 1 }, out: 'fuLeiHuo', need: 3, base: 0.50, risk: 'ruin',
+      note: '雷火相激，引余焰而爆之。高阶制符/寻仇所得' },
+    /* —— v10.7 阶段三：5 种功能符配方（自一次性法器迁入符箓体系） —— */
+    { id: 'fu_huoyun', kind: 'fu', name: '火云符', tier: 'huang', lv: 2,
+      mats: { fuZhi: 1, zhuSha: 2 }, out: 'huoyuyuan', need: 3, base: 0.68, risk: 'ruin',
+      note: '战前焚符，火系术法增威六成' },
+    { id: 'fu_wuyun', kind: 'fu', name: '五雷符', tier: 'xuan', lv: 4,
+      mats: { fuZhi: 3, zhuSha: 3, jinLing: 1 }, out: 'wuyun', need: 3, base: 0.54, risk: 'ruin',
+      note: '五雷正法，首击必中增伤八成' },
+    { id: 'fu_juxian', kind: 'fu', name: '拘仙敕神符', tier: 'di', lv: 5,
+      mats: { fuZhi: 3, zhuSha: 3, heshenHua: 2, starSand: 1 }, out: 'juxian', need: 3, base: 0.48, risk: 'ruin',
+      note: '敕令位格，压其一档。材料极贵' },
+    { id: 'fu_jinchuan', kind: 'fu', name: '传音符', tier: 'huang', lv: 1,
+      mats: { fuZhi: 1, zhuSha: 1 }, out: 'jinchuan', need: 3, base: 0.75, risk: 'ruin',
+      note: '传讯故人之用，平时即焚' },
+    { id: 'fu_hanhuo', kind: 'fu', name: '祈雨符箓', tier: 'huang', lv: 2,
+      mats: { fuZhi: 1, zhuSha: 2, lanyouCao: 1 }, out: 'hanhuo', need: 3, base: 0.68, risk: 'ruin',
+      note: '神道祈雨，下一场显圣不耗香火' },
     /* —— 炼器 —— */
     { id: 'qi_qingye', kind: 'qi', name: '青叶舟', tier: 'huang', lv: 2,
       mats: { tieMu: 2, jinLing: 1 }, out: 'qingyezhou', need: 1, base: 0.65, risk: 'ruin',
@@ -473,7 +606,7 @@
       note: '常驻减伤，佩之无时或离' },
     { id: 'qi_jiuzhuan', kind: 'qi', name: '九转飞剑', tier: 'di', lv: 5,
       mats: { longYan: 1, jinLing: 3, starSand: 1 }, out: 'jiuzhuan', need: 1, base: 0.50, risk: 'ruin',
-      note: '可为本命。攻击 +25%' },
+      note: '九转淬锋，攻击 +25%（普通法器，非本命）' },
     /* —— 阵法（阵盘，布在洞府持续生效）—— */
     { id: 'zhen_juling', kind: 'zhen', name: '聚灵阵', tier: 'huang', lv: 2,
       mats: { jinLing: 2, buqiCao: 2 }, out: 'zhenJuLing', need: 1, base: 0.70, risk: 'ruin',
@@ -560,22 +693,91 @@
                   nei 内门层（玄阶，需内门弟子）
                   zhen 真传层（地/天阶，非真传不得学）
      习得之后还要「装配」才能带进斗法，装配上限见 equipLimit() */
+  /* v10.7 阶段三·批次C：术法结构化效果。
+     effects 由 game.js 的统一解释器（applyCombatEffect）兑现，skill 分支不再只按倍率出伤。
+     效果类型：burn 灼烧 / poison 中毒 / weaken 压制 / shred 破甲 / slow 迟滞 /
+               stun 硬控 / interrupt 打断蓄力 / guard 守势。
+     同名状态刷新不叠层、不同来源取最高；持续伤害致死统一走 settleCombatWin。
+     雷系（惊雷引/神霄御剑）的必中与半无视卸力由 kind:'thunder' 在结算层兑现。 */
   const SKILLS = [
     { id: 'zhiquan',   name: '直取',       cost: 0,   mul: 1.0,  kind: 'normal',  lvl: 'wai',  desc: '平实一击，不耗灵力' },
     { id: 'jianqi',    name: '剑气纵横',   cost: 20,  mul: 1.35, kind: 'sword',   lvl: 'wai',  desc: '剑修常法，耗灵力 20' },
-    { id: 'liehuo',    name: '焚山掌',     cost: 25,  mul: 1.45, kind: 'fire',    lvl: 'wai',  desc: '火属一掌，中者灼' },
+    { id: 'liehuo',    name: '焚山掌',     cost: 25,  mul: 1.45, kind: 'fire',    lvl: 'wai',  desc: '火属一掌，附灼烧 2 回合（刷新不叠层）',
+      effects: [{ type: 'burn', turns: 2, mul: 1 }] },
     { id: 'hanshui',   name: '寒水箭',     cost: 22,  mul: 1.30, kind: 'water',   lvl: 'wai',  desc: '凝水成箭，克火' },
-    { id: 'mumin',     name: '缠木根',     cost: 28,  mul: 1.20, kind: 'wood',    lvl: 'nei',  desc: '缠根缚身，敌一回合伤害减半' },
-    { id: 'luoshi',    name: '落石诀',     cost: 26,  mul: 1.40, kind: 'earth',   lvl: 'nei',  desc: '沉雄一击，破其防' },
-    { id: 'dugu',      name: '毒火丝',     cost: 30,  mul: 1.15, kind: 'poison',  lvl: 'nei',  desc: '真伤绵延三回合' },
-    { id: 'zhentian',  name: '镇压八方',   cost: 50,  mul: 1.60, kind: 'control', lvl: 'nei',  desc: '镇压八方，敌下一回合不能攻' },
-    { id: 'liuJian',   name: '流转剑罡',   cost: 35,  mul: 1.50, kind: 'sword',   lvl: 'nei',  desc: '剑罡绕身，攻守兼顾' },
-    { id: 'leiming',   name: '惊雷引',     cost: 40,  mul: 1.75, kind: 'thunder', lvl: 'zhen', desc: '雷属，必中，破半甲' },
-    { id: 'baigu',     name: '白骨飞剑',   cost: 45,  mul: 1.80, kind: 'sword',   lvl: 'zhen', desc: '白骨凝剑，锋锐易折（命中偏难）' },
-    { id: 'xueLian',   name: '血炼神光',   cost: 0,   mul: 1.55, kind: 'blood',   lvl: 'zhen', desc: '魔门常法：倾气血以易伤' },
+    { id: 'mumin',     name: '缠木根',     cost: 28,  mul: 1.20, kind: 'wood',    lvl: 'nei',  desc: '缠根缚身，压制 1 回合（其出手 ×0.7）',
+      effects: [{ type: 'weaken', turns: 1, v: 0.3 }] },
+    { id: 'luoshi',    name: '落石诀',     cost: 26,  mul: 1.40, kind: 'earth',   lvl: 'nei',  desc: '沉雄一击，破甲 2 回合（其受创 +20%）',
+      effects: [{ type: 'shred', turns: 2, v: 0.2 }] },
+    { id: 'dugu',      name: '毒火丝',     cost: 30,  mul: 1.15, kind: 'poison',  lvl: 'nei',  desc: '较低直伤，中毒 3 回合（每回合真伤）',
+      effects: [{ type: 'poison', turns: 3, pct: 0.035 }] },
+    { id: 'zhentian',  name: '镇压八方',   cost: 50,  mul: 1.60, kind: 'control', lvl: 'nei',  desc: '打断蓄力；非蓄力时硬控 1 回合（定神期内转为压制）',
+      effects: [{ type: 'interrupt' }, { type: 'stun', turns: 1 }] },
+    { id: 'liuJian',   name: '流转剑罡',   cost: 35,  mul: 1.50, kind: 'sword',   lvl: 'nei',  desc: '剑罡绕身，本次攻守兼顾（附带守势）',
+      effects: [{ type: 'guard' }] },
+    { id: 'leiming',   name: '惊雷引',     cost: 40,  mul: 1.75, kind: 'thunder', lvl: 'zhen', desc: '雷属，必中，半无视卸力，可打断蓄力',
+      effects: [{ type: 'interrupt' }] },
+    { id: 'baigu',     name: '白骨飞剑',   cost: 45,  mul: 1.80, kind: 'sword',   lvl: 'zhen', desc: '白骨凝剑，锋锐易折：额外耗灵一成、本命器损 +4',
+      hpCostPct: 0.10, natalDmg: 4 },
+    { id: 'xueLian',   name: '血炼神光',   cost: 0,   mul: 1.55, kind: 'blood',   lvl: 'zhen', desc: '魔门常法：倾气血一成以易伤' },
     { id: 'xuanZhu',   name: '玄珠坠月',   cost: 55,  mul: 1.90, kind: 'water',   lvl: 'zhen', desc: '玄珠压顶，水滴石穿' },
-    { id: 'shenying',  name: '神霄御剑',   cost: 60,  mul: 2.10, kind: 'thunder', lvl: 'zhen', desc: '雷剑相合，威巨而耗灵亦巨' }
+    { id: 'shenying',  name: '神霄御剑',   cost: 60,  mul: 2.10, kind: 'thunder', lvl: 'zhen', desc: '雷剑相合，必中，半无视卸力，可打断蓄力',
+      effects: [{ type: 'interrupt' }] }
   ];
+
+  /* ====== 敌方路数与行动模板（v10.7 阶段三·批次C） ======
+     性格（brute/veteran/slippery/normal）保留为数值与撤退倾向；
+     路数决定「下一招做什么」。固定时序：
+       选意图 → 玩家看到意图并行动 → 敌方执行该意图（禁止临时重摇）
+       → 结算持续状态/冷却/回合 → 选下一意图。
+     蓄力（charge）跨一回合：本回合只蓄势，下回合释放重击——玩家有真实反制窗口。
+     硬控后敌方获得 2 回合「定神」，期间硬控转为压制，防连控锁死。
+     行动字段：id/name/type/weight/mul/effects/cd/cond/intent。
+       type: attack 直接伤害 / charge 蓄力 / burst 释放蓄力 / guard 护体 /
+             counter 反击架势 / gather 聚气回灵 / debuff 施加负面 / flee 撤退。
+       cond: lowHp 血量低于 35% 时权重加倍。
+       effects 与术法同一套解释器，side 由结算层指定为 me。 */
+  const FOE_STYLES = [
+    { id: 'sword', name: '剑修', el: 'metal',
+      actions: [
+        { id: 'sw_atk',   name: '疾剑',     type: 'attack', weight: 3, mul: 1.0,  intent: '剑尖微沉，下一招是疾剑直刺' },
+        { id: 'sw_charge',name: '蓄力重剑', type: 'charge', weight: 2, mul: 2.2,  cd: 3, intent: '剑举过顶，剑气暗蓄——下回合重剑劈落（可打断）' },
+        { id: 'sw_combo', name: '连击',     type: 'attack', weight: 2, mul: 0.62, hits: 2, cd: 2, intent: '手腕翻转，连击两剑将出' },
+        { id: 'sw_low',   name: '低血强攻', type: 'attack', weight: 4, mul: 1.35, cond: 'lowHp', intent: '他已带伤，却把剑握得更紧——欲拼死强攻' }
+      ] },
+    { id: 'fa', name: '法修', el: 'fire',
+      actions: [
+        { id: 'fa_atk',   name: '五行术',   type: 'attack', weight: 3, mul: 1.05, intent: '指掐法诀，五行术光将落' },
+        { id: 'fa_burn',  name: '灼烧诀',   type: 'debuff', weight: 2, mul: 0.55, cd: 3, effects: [{ type: 'burn', turns: 2, pct: 0.03 }], intent: '掌心生焰——这一招带灼烧，宜先净符或解毒丹' },
+        { id: 'fa_gather',name: '聚气',     type: 'gather', weight: 2, cd: 3, intent: '他闭目聚气，门户大开——这是输出的空档' },
+        { id: 'fa_burst', name: '高耗大招', type: 'attack', weight: 2, mul: 1.8, cd: 4, intent: '灵气暴涨，大招将出——宜守势或护体' }
+      ] },
+    { id: 'body', name: '体修', el: 'earth',
+      actions: [
+        { id: 'bd_atk',   name: '重拳',     type: 'attack',  weight: 3, mul: 1.1,  intent: '沉腰立马，重拳将出' },
+        { id: 'bd_guard', name: '护体',     type: 'guard',   weight: 2, v: 0.4, cd: 3, intent: '双臂交叠护住周身——先破甲再爆发，否则打不动' },
+        { id: 'bd_charge',name: '蓄势',     type: 'charge',  weight: 2, mul: 1.9, cd: 3, intent: '筋肉贲张，蓄势待发——下回合重击（可打断）' },
+        { id: 'bd_counter',name: '反击架势', type: 'counter', weight: 2, v: 0.5, cd: 3, intent: '他摆出反击架势——此时普攻会遭反噬，宜术法或破甲' }
+      ] },
+    { id: 'gui', name: '诡修', el: 'water',
+      actions: [
+        { id: 'gu_poison',name: '毒砂',     type: 'debuff', weight: 3, mul: 0.5, cd: 2, effects: [{ type: 'poison', turns: 3, pct: 0.03 }], intent: '袖中暗藏毒砂——中毒将持续掉血，宜解毒丹' },
+        { id: 'gu_lock',  name: '锁灵',     type: 'debuff', weight: 2, mul: 0.4, cd: 3, effects: [{ type: 'lock', turns: 2, v: 0.3 }], intent: '指画锁灵纹——你的术法耗灵将增，宜清神丹' },
+        { id: 'gu_bluff', name: '虚张',     type: 'attack', weight: 2, mul: 0.8, intent: '他身形飘忽，虚实难辨' },
+        { id: 'gu_flee',  name: '低血撤退', type: 'flee',   weight: 5, cond: 'lowHp', intent: '他眼神游移，已在寻退路——速压血线或锁灵阵' }
+      ] }
+  ];
+
+  /* 战利品掉落池（按路数）：普通胜场约 45% 掉一份材料、约 12% 掉一张基础丹符；
+     寻仇必掉一份路数相关材料。概率与材料在 game.js 的 settleCombatWin 兑现，
+     必须过月账与无套利回归，防止战斗刷材料全面取代历练采集。 */
+  const FOE_LOOT = {
+    sword: { mats: ['tieMu', 'jinLing', 'longYan'], w: [5, 4, 1] },
+    body:  { mats: ['tieMu', 'jinLing', 'longYan'], w: [5, 4, 1] },
+    fa:    { mats: ['fuZhi', 'zhuSha', 'heshenHua', 'lanyouCao'], w: [4, 4, 2, 2] },
+    gui:   { mats: ['fuZhi', 'zhuSha', 'heshenHua', 'lanyouCao'], w: [3, 3, 3, 3] },
+    basic: ['pillHp', 'pillMp', 'fuHuo', 'fuJin']
+  };
 
   /* ====== 道基功法的境界上限（修炼功法 / 杀伐招式 分家后最重的一条） ======
      品阶不够，修到本境圆满就再也上不去了 —— 必须去换更高阶的道基功法
@@ -2116,9 +2318,17 @@
 
   /* ====== 坊市（仙道专用） ====== */
   /* 信香是神道之物，已移出仙道货架——两套系统不互通货架 */
+  /* v10.7 阶段三：符箓入坊市货架（唯一配置表 TALISMANS）。
+     黄阶战斗符与功能符少量现货；玄阶以制符/宗门为主，坊市只列增益/雷/冰封/缚灵/破甲/聚灵/神行；
+     地阶（雷火符/拘仙敕神符）不上市——高阶制作、遗迹、寻仇所得。
+     新丹全部有配方且黄阶恢复/解毒/护脉类可买可炼，保证不学炼丹也有最低手段。 */
+  const SHOP_TAL_IDS = ['fuHuo', 'fuJin', 'fuDun', 'fuJing', 'huoyuyuan', 'jinchuan', 'hanhuo',
+    'fuZeng', 'fuLei', 'fuBing', 'fuFu', 'fuPo', 'fuJu', 'fuShen', 'wuyun'];
   const SHOP = PILL_EXT.filter(function (x) { return x.type !== 'xiang'; })
     .map(function (x) { return Object.assign({ cat: 'pill' }, x); })
     .concat(ARTIFACT_EXT.map(function (x) { return Object.assign({ cat: 'art', type: 'art' }, x); }))
+    .concat(TALISMANS.filter(function (x) { return SHOP_TAL_IDS.indexOf(x.id) >= 0; })
+      .map(function (x) { return Object.assign({}, x, { cat: 'tal', type: 'tal', talCat: x.cat, desc: x.eff }); }))
     .concat(MATERIAL_EXT.map(function (x) { return Object.assign({ cat: 'mat', type: 'mat' }, x); })
       .concat([{ id: 'fudi', name: '灵脉契', price: 2400, type: 'land', cat: 'art', desc: '可升洞府灵气一档' }]));
 
@@ -2127,7 +2337,7 @@
   const SHOP_GONGFA = GONGFA_EXT.filter(function (x) { return x.tier === 'huang' || x.tier === 'xuan'; })
     .map(function (x) { return Object.assign({ cat: 'gongfa', type: 'gongfa' }, x); });
 
-  const SHOP_CATS = { pill: '丹药', art: '法器', mat: '材料', gongfa: '功法', sell: '卖出' };
+  const SHOP_CATS = { pill: '丹药', tal: '符箓', art: '法器', mat: '材料', gongfa: '功法', sell: '卖出' };
 
   /* ====== 两界 ====== */
   const GATE = [
@@ -3857,6 +4067,7 @@
     HOOK_DEBUFF, HOOKS,
     DIVINE_ARTIFACTS, VOTIVE_ITEMS, CLAN_INDUSTRIES, TUTORIAL_STEPS,
     INTENTS, COMBAT_TEXT,
+    FOE_STYLES, FOE_LOOT,
     ZHENJUN
   };
 })(window);

@@ -178,6 +178,8 @@
       sellCh: 'market',           // 卖出渠道：sect / market / black
       txHistory: [], pendingTx: null, lastLiturgy: '',
       breakBonus: 0, cultBonus: 1,  // 丹药临时加成
+      /* v10.7 阶段三：开脉丹（3 旬修炼 +20%，与日月玄浆取强）/ 悟心丹（下次读书论道悟道 +3） */
+      kaiMaiXun: 0, wuXinBuff: 0,
       pendingEnc: null, yaoshou: false, miaoSites: 0, debt: 0,   // debt 已废弃，仅旧档兼容
       /* v8.1 P0 批次3：御兽。barn 是兽栏（最多 BEAST_BARN[灵脉档] 头），
          bond 亲密 / power 妖力是两条互不替代的养成轴。 */
@@ -289,7 +291,9 @@
     if (S.lu && S.lu.name === '行气吞灵') v *= 1.2;
     if (S.cultivation === 'both') v *= 0.8;   // 未定：前两阶 −20%
     if (S.meditate) v *= 2;                   // 闭关 ×2
-    if (S.cultBonus && S.cultBonus > 1) v *= S.cultBonus; // 日月玄浆：本月有效
+    /* v10.7 阶段三：开脉丹（3 旬 +20%）与日月玄浆（一月 +30%）同类增益取强，不叠乘 */
+    const _cultMul = Math.max(S.cultBonus || 1, S.kaiMaiXun > 0 ? 1.2 : 1);
+    if (_cultMul > 1) v *= _cultMul;
     const _arr1 = Math.max(0, S.arrears || 0);
     if (_arr1) v *= Math.max(D.FIXED_COST.arrearsFloor, 1 - D.FIXED_COST.arrearsStep * _arr1);
     if (hasDebuff('borrowed_luck')) v *= 1.2;  // 借来的运：快，但会走火
@@ -515,6 +519,8 @@
     for (let i = 0; i < n; i++) {
       /* 天劫余威按「旬」走：锁的是三旬，不是三月 */
       if (S.tribLock > 0) { S.tribLock--; if (!S.tribLock) logLine('天劫余威散了，可以再试。', ''); }
+      /* v10.7 阶段三：开脉丹按旬递减（3 旬修炼 +20%），到期写日志 */
+      if (S.kaiMaiXun > 0) { S.kaiMaiXun--; if (!S.kaiMaiXun) logLine('开脉丹的药力散了，修炼收益复常。', ''); }
       S.xun = (S.xun || 0) + 1;
       if (S.xun >= XUN_PER_MONTH) {
         S.xun = 0;
@@ -935,7 +941,7 @@
      cat: pill→PILL_EXT / art→ARTIFACT_EXT / mat→MATERIAL_EXT。
      归错了会取到别的同 id 条目的图标，所以这里必须显式映射。 */
   function shopIconTable(cat) {
-    return cat === 'art' ? 'ARTIFACT_EXT' : cat === 'mat' ? 'MATERIAL_EXT' : 'PILL_EXT';
+    return cat === 'art' ? 'ARTIFACT_EXT' : cat === 'mat' ? 'MATERIAL_EXT' : cat === 'tal' ? 'TALISMANS' : 'PILL_EXT';
   }
   /* v9.0 M0：行动预览。
      目的不是加装饰，是消灭「点完才发现少了一旬」。
@@ -4585,6 +4591,8 @@
       const list = D.SHOP.filter(function (x) {
         if (x.cat !== cat || !shopNameHit(x.name)) return false;
         if (x.cat === 'pill' && x.type === 'xiang' && !usesShenLine()) return false;
+        /* 祈雨符箓是神道之物，仙道货架不列（与信香同一口径） */
+        if (x.cat === 'tal' && x.id === 'hanhuo' && !usesShenLine()) return false;
         return true;
       });
       list.sort(function (a, b2) {
@@ -4599,7 +4607,7 @@
         let note = fmtNum(price) + ' 石';
         if (it.tier) note = D.GONGFA_TIERS[it.tier].name + ' · ' + note;
         let owned = false;
-        let tag = it.cat === 'art' ? '法器' : it.cat === 'mat' ? '材料' : '丹药';
+        let tag = it.cat === 'art' ? '法器' : it.cat === 'mat' ? '材料' : it.cat === 'tal' ? '符箓' : '丹药';
         if (it.type === 'land') {
           tag = '灵脉契';
           owned = (parseInt(S.lingqiUp, 10) || 0) >= D.LINGQI.length - 1;
@@ -4643,7 +4651,7 @@
     cat = cat || 'pill';
     if (cat === 'sell') { ACT.openSell(); return; }
     _shopLastCat = cat;
-    const tabs = [['pill', '丹药'], ['gongfa', '修炼功法'], ['fa', '术法'], ['art', '法器'], ['mat', '材料'], ['sell', '卖出']];
+    const tabs = [['pill', '丹药'], ['tal', '符箓'], ['gongfa', '修炼功法'], ['fa', '术法'], ['art', '法器'], ['mat', '材料'], ['sell', '卖出']];
     let b = '<div class="row"><span class="lab">灵石</span><b id="shop-stone" style="color:var(--stone)">' + fmtNum(S.stones) + '</b></div>';
     b += '<div class="shop-tabs">';
     for (const t of tabs) {
@@ -4746,17 +4754,13 @@
         b += '</ul>';
       }
       if (onceA.length) {
-        b += divider() + '<div class="small muted">一次性之物：用掉即无。</div><ul class="opts">';
+        /* v10.7 阶段三：一次性符（火云/传音/五雷/祈雨/拘仙）已迁入符箓体系，
+           此处只剩破宝锥等一次性法器，战前用。平时符在乾坤袋使用。 */
+        b += divider() + '<div class="small muted">一次性法器：战前用，用掉即无。</div><ul class="opts">';
         onceA.forEach(function (a) {
-          if (a.id === 'jinchuan') {
-            /* 传音符平时就能用（传讯相识之人），不必等开战。 */
-            b += iconRow('ARTIFACT_EXT', a.id, '·', a.name + '　' + a.eff,
-              { name: '可用', cls: 'chance' }, '使用', false, 'do;useart:' + a.id);
-          } else {
-            b += '<li class="opt disabled"><span class="key">·</span>' +
-              '<span class="txt">' + esc(a.name) + '<span class="muted">　' + esc(a.eff) + '</span></span>' +
-              '<span class="note">战前用</span></li>';
-          }
+          b += '<li class="opt disabled"><span class="key">·</span>' +
+            '<span class="txt">' + esc(a.name) + '<span class="muted">　' + esc(a.eff) + '</span></span>' +
+            '<span class="note">战前用</span></li>';
         });
         b += '</ul>';
       }
@@ -4768,29 +4772,39 @@
      旧版它躺在 S.arts 里，既没有使用分支，战前菜单里点了也只写一句
      「战前用了传音符」——文案是句空话，物品却被消耗掉了。
      现在给它一个真实的平时用途：传讯一位相识之人，好感 +5。 */
+  /* v10.7 阶段三：平时符（传音符/祈雨符箓）从唯一符箓库存 S.talismans 消耗。
+     传音符占一旬（产出好感→占旬）；祈雨符箓给神道下一场显圣免香火。 */
   ACT.do_useart = (id) => {
-    const a = D.ARTIFACT_EXT.find(function (x) { return x.id === id; });
-    if (!a) { toast('没有此物'); return; }
-    if (id !== 'jinchuan') { toast('此物只能在战前使用'); return; }
-    if ((S.arts || []).indexOf(id) < 0) { toast('此物已不在身上'); return; }
-    const met = Object.keys(S.npcs || {}).filter(function (k) { return S.npcs[k] && S.npcs[k].met; });
-    if (!met.length) { toast('尚无相识之人，符传不到'); return; }
-    closeModal();
-    /* 传音是「走动」的替代品，不是白送的好感：
-       找上门聊天（do_ia）要占一旬，传音符省了路，但省不掉那一旬——
-       否则它就是一条只卖灵石、不耗时间的刷好感外挂。 */
-    advanceXun(1);
-    if (S.phase !== 'play') return render();
-    const k = met[Math.floor(rng() * met.length)];
-    const rec = S.npcs[k];
-    const before = rec.fav || 0;
-    rec.fav = clamp(before + 5, 0, 120);
-    const nm = (D.NPC_POOL.find(function (x) { return x.id === k; }) || {}).name || '故人';
-    S.arts.splice((S.arts || []).indexOf(id), 1);
-    consumeQuality(id);
-    logLine('传音符化作一道轻烟，「' + nm + '」收到了你的问候（好感 +' + (rec.fav - before) + '）。', 'good');
-    toast('传音已至 · ' + nm);
-    render();
+    const t = D.TALISMANS.find(function (x) { return x.id === id && x.use === 'outCombat'; });
+    if (!t) { toast('此物不在平时用'); return; }
+    if ((S.talismans[id] || 0) < 1) { toast('此符已不在身上'); return; }
+    if (id === 'jinchuan') {
+      const met = Object.keys(S.npcs || {}).filter(function (k) { return S.npcs[k] && S.npcs[k].met; });
+      if (!met.length) { toast('尚无相识之人，符传不到'); return; }
+      closeModal();
+      advanceXun(1);
+      if (S.phase !== 'play') return render();
+      const k = met[Math.floor(rng() * met.length)];
+      const rec = S.npcs[k];
+      const before = rec.fav || 0;
+      rec.fav = clamp(before + 5, 0, 120);
+      const nm = (D.NPC_POOL.find(function (x) { return x.id === k; }) || {}).name || '故人';
+      S.talismans[id]--;
+      consumeQuality(id);
+      logLine('传音符化作一道轻烟，「' + nm + '」收到了你的问候（好感 +' + (rec.fav - before) + '）。', 'good');
+      toast('传音已至 · ' + nm);
+      render(); return;
+    }
+    if (id === 'hanhuo') {
+      if (!usesShenLine()) { toast('祈雨符箓唯神道受用'); return; }
+      S.talismans[id]--;
+      consumeQuality(id);
+      S.preBuff = S.preBuff || {};
+      S.preBuff.freeXiansheng = true;
+      logLine('祈雨符箓焚化，下一场显圣不耗香火。', 'good');
+      toast('祈雨已备');
+      closeModal(); render(); return;
+    }
   };
 
   ACT.do_buy = (id) => {
@@ -4837,6 +4851,11 @@
       addMat(it.id, 1);
       logLine('购得材料「' + it.name + '」。', 'good');
       toast('购得 ' + it.name + ' · 余 ' + fmtNum(S.stones) + ' 石');
+    } else if (it.cat === 'tal') {
+      /* v10.7 阶段三：符箓唯一库存 S.talismans，不再进 S.arts */
+      addTalisman(it.id, 1);
+      logLine('购得符箓「' + it.name + '」。', 'good');
+      toast('购得 ' + it.name + ' · 余 ' + fmtNum(S.stones) + ' 石');
     } else {
       S.bag[it.id] = (S.bag[it.id] || 0) + 1;
       logLine('购得「' + it.name + '」。', 'good');
@@ -4860,11 +4879,27 @@
       const it = D.SHOP.find(x => x.id === k);
       return { k, n: S.bag[k], name: it ? it.name : k, desc: it ? it.desc : '' };
     });
-    if (!items.length) b += `<div class="small muted">乾坤袋空空如也。</div>`;
+    /* v10.7 阶段三：平时符（传音符/祈雨符箓）从符箓库存列出，可在平时使用 */
+    const outTals = Object.keys(S.talismans || {}).filter(function (k) {
+      const t = D.TALISMANS.find(function (x) { return x.id === k; });
+      return t && t.use === 'outCombat' && (S.talismans[k] || 0) > 0;
+    });
+    if (!items.length && !outTals.length) b += `<div class="small muted">乾坤袋空空如也。</div>`;
     else {
-      b += `<ul class="opts">`;
-      for (const it of items) b += optRow('·', `${it.name} ×${it.n}　${it.desc}`, null, '使用', false, 'do;use:' + it.k);
-      b += `</ul>`;
+      if (items.length) {
+        b += `<ul class="opts">`;
+        for (const it of items) b += optRow('·', `${it.name} ×${it.n}　${it.desc}`, null, '使用', false, 'do;use:' + it.k);
+        b += `</ul>`;
+      }
+      if (outTals.length) {
+        b += divider() + '<div class="small muted">平时符</div><ul class="opts">';
+        outTals.forEach(function (k) {
+          const t = D.TALISMANS.find(function (x) { return x.id === k; });
+          b += iconRow('TALISMANS', k, '·', t.name + ' ×' + S.talismans[k] + '　' + t.eff,
+            { name: '符', cls: 'chance' }, '使用', false, 'do;useart:' + k);
+        });
+        b += '</ul>';
+      }
     }
     openModal('乾坤袋', b);
   };
@@ -4875,6 +4910,13 @@
     if (!it) { toast('无法使用'); return; }
     if (it.type === 'xiang' && !usesShenLine()) { toast('此物唯神道受用'); return; }
     if (it.cat === 'mat' || it.type === 'mat') { toast('这是材料，需炼丹炼器用'); return; }
+    /* v10.7 阶段三：战斗专用丹（护脉/清神/烈元/生生/归元）平时不可服，避免浪费 */
+    if (['guard', 'cleanseCtl', 'burst', 'regen', 'mix'].indexOf(it.type) >= 0) {
+      toast('此丹只在斗法中服用'); return;
+    }
+    /* 悟心丹已满蓄势时不重复服 */
+    if (it.type === 'insight' && (S.wuXinBuff || 0) > 0) { toast('悟心药力已在身'); return; }
+    if (it.type === 'cultXun' && (S.kaiMaiXun || 0) > 0) { toast('开脉药力已在身'); return; }
     S.bag[k]--;
     bump('pillUsed'); S.pillThisMonth = true;
     const eff = applyPill(it);
@@ -6120,6 +6162,12 @@
     if (eff.karma) { S.karma = Math.max(0, S.karma + eff.karma); add('业力', eff.karma); }
     if (eff.fame) { S.fame = Math.max(0, S.fame + eff.fame); add('声望', eff.fame); }
     if (eff.insightXp) { S.insightXp = (S.insightXp || 0) + eff.insightXp; add('悟道', eff.insightXp); }
+    /* v10.7 阶段三：悟心丹——读书/论道（带悟性或悟道收益）时消费蓄势，额外加悟道点 */
+    if (S.wuXinBuff > 0 && (eff.insightXp || eff.insight)) {
+      S.insightXp = (S.insightXp || 0) + S.wuXinBuff;
+      add('悟道', S.wuXinBuff);
+      S.wuXinBuff = 0;
+    }
     ['heart', 'insight', 'qualify', 'fate', 'sense', 'speed'].forEach(function (k) {
       if (eff[k]) {
         const nm = { heart: '道心', insight: '悟性', qualify: '资质', fate: '机缘', sense: '神识', speed: '身法' }[k];
@@ -6153,6 +6201,10 @@
         S.arts = S.arts || [];
         S.arts.push(a.id);
         out.push('得' + a.name);
+      } else {
+        /* v10.7 阶段三：传音符等已迁入符箓表，事件发放走唯一符箓库存 */
+        const t = D.TALISMANS.find(function (x) { return x.id === eff.art; });
+        if (t) { addTalisman(t.id, 1); out.push('得' + t.name); }
       }
     }
     if (eff.flag) {
@@ -6272,6 +6324,26 @@
     out.forgedRealm = clamp(parseInt(out.forgedRealm, 10) || 2, 1, 9);
     out.skillsUsed = Math.max(0, parseInt(out.skillsUsed, 10) || 0);
     return out;
+  }
+
+  /* v10.7 阶段三·批次D：符箓体系统一迁移。
+     旧档把火云符/传音符/五雷符/祈雨符箓/拘仙敕神符当一次性法器存在 S.arts（数组，可重复）。
+     现在它们是符箓，唯一库存是 S.talismans{id:数量}。迁移按出现次数累加，
+     从 S.arts 移除这些 id（破宝锥 duzuo 保留）。幂等：二次执行 S.arts 已无这些 id，结果不变。
+     品相记录 craftedQ 一并保留（id 不变，无需搬动）。 */
+  const LEGACY_TAL_IDS = ['huoyuyuan', 'jinchuan', 'wuyun', 'hanhuo', 'juxian'];
+  function migrateTalismans(out) {
+    if (!out || !Array.isArray(out.arts)) return;
+    if (!out.talismans || typeof out.talismans !== 'object') out.talismans = {};
+    const keep = [];
+    out.arts.forEach(function (id) {
+      if (LEGACY_TAL_IDS.indexOf(id) >= 0) {
+        out.talismans[id] = (out.talismans[id] || 0) + 1;
+      } else {
+        keep.push(id);
+      }
+    });
+    out.arts = keep;
   }
 
   function applyState(st) {
@@ -6477,6 +6549,9 @@
       });
     }
     if (!out.talismans || typeof out.talismans !== 'object') out.talismans = {};
+    /* v10.7 阶段三：旧档一次性符（火云/传音/五雷/祈雨/拘仙）从 S.arts 迁入 S.talismans。
+       幂等：迁移后 S.arts 里不再有这些 id，二次读档结果完全一致。破宝锥仍是法器。 */
+    migrateTalismans(out);
     if (!Array.isArray(out.disks)) out.disks = [];
     if (!out.craftedQ || typeof out.craftedQ !== 'object') out.craftedQ = {};
     Object.keys(out.craftedQ).forEach(function (id) {
@@ -7847,6 +7922,17 @@
       case 'life': if (S.lifeMax) { S.lifeMax += (it.v || 20); msg = '寿元上限 +' + (it.v || 20); } else msg = '无寿元可续'; break;
       case 'break': S.breakBonus = (S.breakBonus || 0) + (it.v || 0.12); msg = '下次破境 +' + Math.round((it.v || 0.12) * 100) + '%'; break;
       case 'cult': S.cultBonus = 1.3; msg = '闭关效率 +30%（一月）'; break;
+      /* v10.7 阶段三：开脉丹（3 旬修炼 +20%，与日月玄浆取强）/ 悟心丹（下次读书论道悟道 +3）/
+         解毒丹（平时清毒焰、复少量气血）。战斗专用丹（护脉/清神/烈元/生生/归元）在 do_use 拦截。 */
+      case 'cultXun': S.kaiMaiXun = Math.max(S.kaiMaiXun || 0, it.turns || 3); msg = '开脉 3 旬，修炼收益 +20%'; break;
+      case 'insight': S.wuXinBuff = Math.max(S.wuXinBuff || 0, it.v || 3); msg = '悟心蓄势，下一次读书论道悟道 +' + (it.v || 3); break;
+      case 'antidote': {
+        const g = Math.max(10, Math.round(S.hpMax * 0.06));
+        S.hp = Math.min(S.hpMax, S.hp + g);
+        if (S.combat) { applyCombatEffect('me', { type: 'antidote' }, S.combat); msg = '毒焰俱清，气血 +' + g; }
+        else msg = '清解余毒，气血 +' + g;
+        break;
+      }
       case 'xiang':
         // 香火只归神道：仙道服信香，等于把别人的香火塞进自己气海，不该生效
         if (!usesShenLine()) { msg = '此物与你气海不合，香灰自指缝漏尽'; break; }
@@ -9025,20 +9111,36 @@
     const foeBase = isShen() ? foeRealm * 4 : rankBaseXian()[foeRealm];
     const foeR = foeBase + Math.floor(rng() * Math.min(foeStages, 4));
     const names = ['邻庙庙祝', '散修', '血奉执事', '游方邪修', '宗门执法', '野祀孤魂'];
+    /* v10.7 阶段三：路数（剑修/法修/体修/诡修）决定招式模板，性格保留为数值倾向。
+       路数五行偏向模板主属，但仍有随机扰动，避免每场同属。 */
+    const styleIds = (D.FOE_STYLES || []).map(function (s) { return s.id; });
+    const foeStyle = styleIds.length ? styleIds[Math.floor(rng() * styleIds.length)] : 'sword';
+    const styleEl = ((D.FOE_STYLES || []).find(function (s) { return s.id === foeStyle; }) || {}).el;
     S.combat = {
       foe: (function () {
         const elKeys = ['metal', 'wood', 'water', 'fire', 'earth'];
         const hpMax = Math.max(80, Math.round(60 + foePower * 0.8));   // 血量随境界，不再恒 100
         const traits = ['brute', 'veteran', 'slippery', 'normal'];
+        const el = (styleEl && rng() < 0.6) ? styleEl : elKeys[Math.floor(rng() * elKeys.length)];
     return { name: pick(names), rank: foeR, power: foePower,
           hp: hpMax, hpMax: hpMax,
           trait: traits[Math.floor(rng() * traits.length)],
-          el: elKeys[Math.floor(rng() * elKeys.length)] };
+          style: foeStyle, el: el };
       })(),
-      round: 0, observed: false, defending: false
+      round: 0, observed: false, defending: false,
+      /* v10.7 阶段三：状态生命周期字段（四入口读写） */
+      foePoison: 0, foePoisonPct: 0, foeShred: 0, foeShredV: 0,
+      foeStun: 0, foeCalm: 0, foeGuard: 0, foeCounter: 0,
+      meGuard: 0, meGuardTurns: 0, meDodge: false, meMpSave: false, meBurst: false,
+      meRegen: 0, mePoison: 0, mePoisonPct: 0, meBurn: 0, meBurnPct: 0, meBurnFresh: false,
+      meSlow: 0, meLock: 0,
+      pillCount: 0, lastPillId: null, lastPillRound: -9,
+      talCd: {}, foeCd: {}, foeCharging: null, foeIntent: null
     };
     S.combat.rankUp = !!(S.preBuff && S.preBuff.rankUp);
     if (S.preBuff) S.preBuff.rankUp = false;
+    /* 首个意图在开战时选定并存入存档字段——读档后不重新随机 */
+    S.combat.foeIntent = pickFoeIntent(S.combat);
     /* v10.7 阶段二：本命被动在开战瞬间落一次（宝镜：照见破绽）。
        只走一个出口，免得各扩展在 startCombat 里各插一段。 */
     {
@@ -9069,26 +9171,34 @@
     const _hasStance = stanceList().length > 0;
     let b = '<div class="small">开打之前，' + (_hasStance ? '还有两件事：用物、定势。' : '还能做一件事。') + '</div>'
       + divider() + '<ul class="opts">';
-    /* v10.7 P1·战斗口径：传音符不是战斗物。
-       它承诺「传讯相识之人，好感 +5」，战前用掉它既没有效果分支，纯是浪费——
-       非战斗的符不该出现在战前菜单里被无效消耗。 */
+    /* v10.7 阶段三：战前符从唯一符箓库存 S.talismans 读取（use:'preCombat'）。
+       火云符/五雷符/拘仙敕神符在此；传音符/祈雨符箓是平时符，不列。
+       破宝锥仍是法器（slot:'once'），单独列出。 */
+    const preTals = Object.keys(S.talismans || {}).filter(function (k) {
+      const t = D.TALISMANS.find(function (x) { return x.id === k; });
+      return t && t.use === 'preCombat' && (S.talismans[k] || 0) > 0;
+    });
+    preTals.forEach(function (k, i) {
+      const t = D.TALISMANS.find(function (x) { return x.id === k; });
+      b += optRow('ABC'[i] || '·', '用「' + t.name + '」（' + S.talismans[k] + '）', { name: '符箓', cls: 'chance' }, t.eff, false, 'do;cbtpre:' + k);
+    });
     const ones = (S.arts || []).filter(function (id) {
       const a = D.ARTIFACT_EXT.find(function (x) { return x.id === id; });
-      return a && a.slot === 'once' && a.id !== 'jinchuan';
+      return a && a.slot === 'once';
     });
     ones.forEach(function (id, i) {
       const a = D.ARTIFACT_EXT.find(function (x) { return x.id === id; });
-      b += optRow('ABC'[i] || '·', '用「' + a.name + '」', { name: '符箓', cls: 'chance' }, a.eff, false, 'do;cbtpre:' + id);
+      b += optRow('器', '用「' + a.name + '」', { name: '法器', cls: 'chance' }, a.eff, false, 'do;cbtpre:' + id);
     });
     (S.disks || []).filter(function (d) { return d.id === 'zhenSuoLing'; }).forEach(function (d) {
       b += optRow('阵', '携「锁灵阵」入场', { name: '随身阵', cls: 'peace' }, '本场敌人不能遁走，阵盘不消耗', false, 'do;cbtpre:disk_zhenSuoLing');
     });
     const pills = D.PILL_EXT.filter(function (p) { return (S.bag[p.id] || 0) > 0 && ['hp', 'hpPct', 'hpFull', 'mp', 'mpPct', 'mpFull', 'cure'].includes(p.type); });
-    pills.slice(0, 4).forEach(function (p) {
+    pills.forEach(function (p) {
       b += optRow('·', '服 ' + p.name + '（' + (S.bag[p.id]) + '）', { name: '丹药', cls: 'peace' }, p.desc, false, 'do;cbtpill:' + p.id);
     });
     /* 「无可用之物」只针对符/丹，不能连带否掉下面的态势 */
-    if (!ones.length && !pills.length) {
+    if (!preTals.length && !ones.length && !pills.length) {
       b += '<div class="small muted">身上没有可用的符与丹。' +
         (_hasStance ? '好在势还在——下面可定。' : '那就这么上吧。') + '</div>';
     }
@@ -9187,25 +9297,31 @@
       logLine('你在四周钉下阵旗，锁灵阵封住了退路。', 'good');
       closeModal(); render(); return;
     }
+    S.preBuff = S.preBuff || {};
+    /* v10.7 阶段三：战前符从唯一符箓库存消耗（火云/五雷/拘仙） */
+    const t = D.TALISMANS.find(function (x) { return x.id === id && x.use === 'preCombat'; });
+    if (t) {
+      if ((S.talismans[id] || 0) < 1) { toast('此符已不在身上'); closeModal(); return; }
+      S.talismans[id]--;
+      consumeQuality(id);
+      if (id === 'huoyuyuan') S.preBuff.fire = 0.6;
+      else if (id === 'wuyun') { S.preBuff.sureHit = true; S.preBuff.boost = 0.8; }
+      else if (id === 'juxian') {
+        /* 拘仙敕神符当场生效于本场（战前面板在战斗开始后才打开） */
+        S.preBuff.rankUp = false;
+        if (S.combat) S.combat.rankUp = true;
+      }
+      logLine('战前用了「' + t.name + '」。', 'good');
+      closeModal(); render(); return;
+    }
+    /* 破宝锥仍是法器 */
     const a = D.ARTIFACT_EXT.find(function (x) { return x.id === id; });
     if (!a) return;
     const artAt = (S.arts || []).indexOf(id);
     if (artAt < 0) { toast('此物已不在身上'); closeModal(); return; }
     S.arts.splice(artAt, 1);
     consumeQuality(id);
-    S.preBuff = S.preBuff || {};
-    if (id === 'huoyuyuan') S.preBuff.fire = 0.6;
-    else if (id === 'wuyun') { S.preBuff.sureHit = true; S.preBuff.boost = 0.8; }
-    else if (id === 'duzuo') S.preBuff.escape = true;
-    else if (id === 'hanhuo') S.preBuff.freeXiansheng = true;
-    else if (id === 'juxian') {
-      /* v10.7 P1·战斗口径：拘仙敕神符的位格压制必须作用在「当前这一场」。
-         旧写法只写 S.preBuff.rankUp，而 rankUp 是 startCombat 读的一次性字段——
-         战前面板是在战斗已经开始之后才打开的，于是这张符被吃掉却毫无作用。
-         现在当场生效；preBuff 一并清掉，免得下一场又白送一次。 */
-      S.preBuff.rankUp = false;
-      if (S.combat) S.combat.rankUp = true;
-    }
+    if (id === 'duzuo') S.preBuff.escape = true;
     logLine('战前用了「' + a.name + '」。', 'good');
     closeModal(); render();
   };
@@ -9224,28 +9340,58 @@
     closeModal(); render();
   };
 
-  /* 「器」：符 / 丹 / 权柄，一个二级菜单收拢 */
+  /* 「器」：符 / 丹 / 权柄，按「攻 / 防 / 控 / 助 / 丹」分类。
+     v10.7 阶段三：删除 slice(0,6)——持有超过六种时最后一种仍可用；
+     显示同种符冷却与丹药次数（每场 2 次、同种不连续两回合）。 */
   ACT.openGear = () => {
     const c = S.combat;
     if (!c) return;
-    let b = '<div class="small">灵力 ' + Math.round(S.mp) + '　香火 ' + Math.round(S.xianghuo) + '</div>' + divider();
-    b += '<ul class="opts">';
-    const tals = Object.keys(S.talismans || {}).filter(function (k) { return (S.talismans[k] || 0) > 0; });
-    tals.forEach(function (k) {
+    const pillN = c.pillCount || 0;
+    let b = '<div class="small">灵力 ' + Math.round(S.mp) + '　香火 ' + Math.round(S.xianghuo) +
+      '　丹药 ' + pillN + '/2</div>' + divider();
+    const tals = Object.keys(S.talismans || {}).filter(function (k) {
       const t = D.TALISMANS.find(function (x) { return x.id === k; });
-      if (!t) return;
-      b += iconRow('TALISMANS', k, '·', '贴 ' + t.name + '（' + S.talismans[k] + '）',
-        { name: '符', cls: 'chance' }, t.eff, false, 'do;cbt:tal:' + k);
+      return t && t.use === 'combat' && (S.talismans[k] || 0) > 0;
     });
-    if (isShen()) b += optRow('·', '动权柄', { name: '权柄', cls: 'peace' }, '-50 香火', S.xianghuo < 50, 'do;cbt:quanbing');
-    D.PILL_EXT.filter(function (p) { return (S.bag[p.id] || 0) > 0 && ['hp', 'hpPct', 'hpFull', 'mp', 'mpPct', 'mpFull', 'cure'].indexOf(p.type) >= 0; })
-      .slice(0, 6).forEach(function (p) {
-        b += iconRow('PILL_EXT', p.id, '·', '服 ' + p.name + '（' + S.bag[p.id] + '）',
-          { name: '丹药', cls: 'peace' }, p.desc, false, 'do;cbt:pill:' + p.id);
+    const cats = [['攻', '攻 · 伤害'], ['防', '防 · 护体'], ['控', '控 · 压制'], ['助', '助 · 增益']];
+    let anyTal = false;
+    cats.forEach(function (cat) {
+      const group = tals.filter(function (k) {
+        const t = D.TALISMANS.find(function (x) { return x.id === k; });
+        return t && t.cat === cat[0];
       });
-    if (!tals.length && !isShen() && !hasUsablePill()) b += '<div class="small muted">身上没有可用之物。</div>';
-    b += '</ul>';
-    b += '<div class="hint">符是自己做的，丹药是自己炼的——会不会做，决定你舍不舍得用。</div>';
+      if (!group.length) return;
+      anyTal = true;
+      b += '<div class="sechead">' + cat[1] + '</div><ul class="opts">';
+      group.forEach(function (k) {
+        const t = D.TALISMANS.find(function (x) { return x.id === k; });
+        const cd = (c.talCd || {})[k] || 0;
+        const note = cd > 0 ? (t.eff + '（冷却 ' + cd + ' 回合）') : t.eff;
+        b += iconRow('TALISMANS', k, '·', '贴 ' + t.name + '（' + S.talismans[k] + '）',
+          { name: '符', cls: 'chance' }, note, cd > 0, 'do;cbt:tal:' + k);
+      });
+      b += '</ul>';
+    });
+    if (isShen()) {
+      b += '<div class="sechead">权柄</div><ul class="opts">';
+      b += optRow('·', '动权柄', { name: '权柄', cls: 'peace' }, '-50 香火', S.xianghuo < 50, 'do;cbt:quanbing');
+      b += '</ul>';
+    }
+    /* 丹药：全部列出（不截断），按可用类型过滤；已满/已用尽/连续限制在 do_cbt 内校验 */
+    const COMBAT_PILL_TYPES = ['hp', 'hpPct', 'hpFull', 'cure', 'mp', 'mpPct', 'mpFull',
+      'guard', 'cleanseCtl', 'antidote', 'burst', 'regen', 'mix'];
+    const pills = D.PILL_EXT.filter(function (p) { return (S.bag[p.id] || 0) > 0 && COMBAT_PILL_TYPES.indexOf(p.type) >= 0; });
+    if (pills.length) {
+      b += '<div class="sechead">丹 · 恢复 / 战术（每场 2 次）</div><ul class="opts">';
+      pills.forEach(function (p) {
+        const dis = pillN >= 2 || (c.lastPillId === p.id && c.round === (c.lastPillRound || 0) + 1);
+        b += iconRow('PILL_EXT', p.id, '·', '服 ' + p.name + '（' + S.bag[p.id] + '）',
+          { name: '丹药', cls: 'peace' }, p.desc, dis, 'do;cbt:pill:' + p.id);
+      });
+      b += '</ul>';
+    }
+    if (!anyTal && !isShen() && !pills.length) b += '<div class="small muted">身上没有可用之物。</div>';
+    b += '<div class="hint">符是自己做的，丹药是自己炼的——会不会做，决定你舍不舍得用。同种符用后冷却 1 回合；丹药每场最多 2 次、同种不可连续两回合。</div>';
     openModal('器 · 符 / 丹 / 权柄', b);
   };
 
@@ -9446,6 +9592,431 @@
     return p && p.length ? pick(p) : '';
   }
 
+  /* ============================================================
+     v10.7 阶段三·批次C：状态统一生命周期（四个唯一入口）
+     ------------------------------------------------------------
+     applyCombatEffect   写入 / 刷新 / 取最高 / 免疫（定神）
+     tickCombatEffects   回合开始（敌方持续伤害）/ 回合结束（全体递减）
+     consumeCombatEffect 一次性效果消费（护体 / 神行 / 聚灵 / 烈元）
+     renderCombatEffects 按归属渲染标签（敌方卡 / 我方卡）
+     底层字段沿用阶段一/二已验证的 foeMark/foeWeaken/foeBurn/foeSlow/
+     talShield/talBuff，扩展只读这些字段，不另建第二套状态系统。
+     规则：同名刷新不叠层；不同来源取最高；持续伤害致死走 settleCombatWin；
+           控制失效 / 刷新 / 被净化都写日志。
+     ============================================================ */
+  const COMBAT_STATES = {
+    foe: [
+      { key: 'foeMark',   label: '破绽', desc: '受创 ×1.25',        cls: 'bad' },
+      { key: 'foeWeaken', label: '压制', desc: '出手 ×0.7',          cls: 'bad' },
+      { key: 'foeBurn',   label: '灼烧', desc: '每回合灼伤',          cls: 'bad', dot: true },
+      { key: 'foePoison', label: '中毒', desc: '每回合毒伤',          cls: 'bad', dot: true },
+      { key: 'foeShred',  label: '破甲', desc: '受创 +20%',          cls: 'bad' },
+      { key: 'foeSlow',   label: '迟滞', desc: '出手 ×0.85',          cls: 'bad' },
+      { key: 'foeStun',   label: '被镇压', desc: '下次行动失效',      cls: 'bad' },
+      { key: 'foeCalm',   label: '定神', desc: '硬控转为压制',        cls: '' }
+    ],
+    me: [
+      { key: 'defending', label: '守势', desc: '减伤50%',            cls: 'on', bool: true },
+      { key: 'observed',  label: '看破', desc: '下一击无视卸力',      cls: 'on', bool: true },
+      { key: 'talBuff',   label: '增益', desc: '直接伤害',            cls: 'on', turns: 'talBuffTurns', pct: true },
+      { key: 'talShield', label: '护体', desc: '下次受击减伤',        cls: 'on', once: true, pct: true },
+      { key: 'meGuard',   label: '护脉', desc: '受击减伤',            cls: 'on', pct: true },
+      { key: 'meDodge',   label: '神行', desc: '规避下次直接攻击',    cls: 'on', bool: true },
+      { key: 'meMpSave',  label: '聚灵', desc: '下一门术法耗灵 −50%', cls: 'on', bool: true },
+      { key: 'meBurst',   label: '烈元', desc: '下一门攻击术法 +35%', cls: 'on', bool: true },
+      { key: 'meRegen',   label: '生生', desc: '每回合复气血 4%',     cls: 'on' },
+      { key: 'mePoison',  label: '中毒', desc: '每回合毒伤',          cls: 'bad', dot: true },
+      { key: 'meBurn',    label: '灼烧', desc: '每回合灼伤',          cls: 'bad', dot: true },
+      { key: 'meSlow',    label: '迟滞', desc: '出手 ×0.85',          cls: 'bad' },
+      { key: 'meLock',    label: '锁灵', desc: '术法耗灵 +30%',       cls: 'bad' }
+    ]
+  };
+  const CLEANSE_ME = ['mePoison', 'meBurn', 'meSlow', 'meLock'];
+
+  function stateTurnsKey(key) {
+    return key + 'Turns';
+  }
+  /* 写入一个状态。同名刷新不叠层、取最高；定神期内硬控转压制。
+     返回 true＝确实写入/刷新（调用方据此决定日志），false＝被免疫或无效。 */
+  function applyCombatEffect(side, ef, c) {
+    c = c || S.combat;
+    if (!c || !ef || !ef.type) return false;
+    const t = ef.type;
+    const log = function (txt, cls) { logLine(txt, cls || ''); };
+    if (side === 'foe') {
+      /* 回合数统一语义：玩家施加的敌方状态记 turns+1，当回合末（敌方行动后）
+         递减一次，面板显示 turns，效果恰好覆盖接下来 turns 次敌方行动/玩家攻击。
+         与增益符 talBuffTurns 同一口径，避免「写 2 回合实际只生效 1 次」。 */
+      if (t === 'burn') {
+        const was = c.foeBurn > 0;
+        c.foeBurn = Math.max(c.foeBurn || 0, ef.turns || 2);
+        c.foeBurnMul = Math.max(c.foeBurnMul || 0, ef.mul || 1);
+        c.burnFresh = true;   /* 点火当回合不落伤，「N 回合」＝之后烧 N 次（foeStart 递减，不在 roundEnd） */
+        log(was ? '余焰再起，火势续为 ' + c.foeBurn + ' 回合。' : '焰起——灼烧 ' + c.foeBurn + ' 回合（下回合起每回合灼伤）。', 'good');
+        return true;
+      }
+      if (t === 'poison') {
+        const was = c.foePoison > 0;
+        c.foePoison = Math.max(c.foePoison || 0, ef.turns || 3);
+        c.foePoisonPct = Math.max(c.foePoisonPct || 0, ef.pct || 0.035);
+        c.poisonFresh = true;   /* 施毒当回合不毒发，「N 回合」＝之后毒发 N 次 */
+        log(was ? '毒势续命，中毒 ' + c.foePoison + ' 回合。' : '毒入经脉——中毒 ' + c.foePoison + ' 回合（下回合起每回合真伤）。', 'good');
+        return true;
+      }
+      if (t === 'weaken') {
+        const was = c.foeWeaken > 0;
+        const _n = (ef.turns || 1) + 1;
+        c.foeWeaken = Math.max(c.foeWeaken || 0, _n);
+        log(was ? '压制续上（' + (ef.turns || 1) + ' 回合）。' : '压住其势——出手 ×0.7（' + (ef.turns || 1) + ' 回合）。', 'good');
+        return true;
+      }
+      if (t === 'shred') {
+        const was = c.foeShred > 0;
+        const _n = (ef.turns || 2) + 1;
+        c.foeShred = Math.max(c.foeShred || 0, _n);
+        c.foeShredV = Math.max(c.foeShredV || 0, ef.v || 0.2);
+        log(was ? '破甲续上（' + (ef.turns || 2) + ' 回合）。' : '破其甲防——受创 +' + Math.round((ef.v || 0.2) * 100) + '%（' + (ef.turns || 2) + ' 回合）。', 'good');
+        return true;
+      }
+      if (t === 'slow') {
+        const was = c.foeSlow > 0;
+        const _n = (ef.turns || 2) + 1;
+        c.foeSlow = Math.max(c.foeSlow || 0, _n);
+        log(was ? '迟滞续上（' + (ef.turns || 2) + ' 回合）。' : '身法被滞——出手 ×0.85（' + (ef.turns || 2) + ' 回合）。', 'good');
+        return true;
+      }
+      if (t === 'interrupt') {
+        if (c.foeIntent && c.foeIntent.type === 'charge') {
+          c.foeCharging = null;
+          c.foeIntent = null;
+          c.foeCalm = 3;   /* 记 3，当回合末递减后剩 2 回合定神 */
+          log('蓄力被打断！' + c.foe.name + '气机一散，进入定神（2 回合）。', 'good');
+          return true;
+        }
+        return false;
+      }
+      if (t === 'stun') {
+        if (c.foeCalm > 0) {
+          /* 定神期内硬控转为压制——防连控锁死，但不无提示免疫 */
+          c.foeWeaken = Math.max(c.foeWeaken || 0, (ef.turns || 1) + 1);
+          log('定神之中，硬控化为压制（' + (ef.turns || 1) + ' 回合）。', '');
+          return true;
+        }
+        c.foeStun = Math.max(c.foeStun || 0, ef.turns || 1);
+        c.foeCalm = 3;   /* 硬控之后给 2 回合定神（记 3，当回合末递减一次） */
+        log(c.foe.name + '被镇压，下次行动失效（定神 2 回合随后至）。', 'good');
+        return true;
+      }
+      return false;
+    }
+    /* —— 我方 —— */
+    if (t === 'guard') { c.defending = true; return true; }
+    if (t === 'shield') {
+      c.talShield = Math.max(c.talShield || 0, ef.v || 0.6);
+      c.defending = true;
+      return true;
+    }
+    if (t === 'dodge') { c.meDodge = true; log('神行符贴身——下一次直接攻击将被规避。', 'good'); return true; }
+    if (t === 'mpSave') {
+      if (c.meMpSave) { log('聚灵已在身，不叠加。', ''); return false; }
+      c.meMpSave = true; log('聚灵符——下一门术法耗灵减半。', 'good'); return true;
+    }
+    if (t === 'burst') {
+      if (c.meBurst) { log('烈元药力已在身，不叠加。', ''); return false; }
+      c.meBurst = true; return true;
+    }
+    if (t === 'meGuard') {
+      c.meGuard = Math.max(c.meGuard || 0, ef.v || 0.2);
+      c.meGuardTurns = Math.max(c.meGuardTurns || 0, (ef.turns || 2) + 1);
+      return true;
+    }
+    if (t === 'regen') {
+      c.meRegen = Math.max(c.meRegen || 0, (ef.turns || 3) + 1);
+      return true;
+    }
+    if (t === 'burn') {
+      c.meBurn = Math.max(c.meBurn || 0, (ef.turns || 2) + 1);
+      c.meBurnPct = Math.max(c.meBurnPct || 0, ef.pct || 0.03);
+      c.meBurnFresh = true;
+      log('你身上着了火——灼烧 ' + (ef.turns || 2) + ' 回合。', 'danger');
+      return true;
+    }
+    if (t === 'poison') {
+      c.mePoison = Math.max(c.mePoison || 0, (ef.turns || 3) + 1);
+      c.mePoisonPct = Math.max(c.mePoisonPct || 0, ef.pct || 0.03);
+      log('毒入你经脉——中毒 ' + (ef.turns || 3) + ' 回合。', 'danger');
+      return true;
+    }
+    if (t === 'slow') { c.meSlow = Math.max(c.meSlow || 0, (ef.turns || 2) + 1); log('你身法被滞。', 'danger'); return true; }
+    if (t === 'lock') { c.meLock = Math.max(c.meLock || 0, (ef.turns || 2) + 1); log('灵台被锁——术法耗灵 +30%。', 'danger'); return true; }
+    if (t === 'cleanse') {
+      for (let i = 0; i < CLEANSE_ME.length; i++) {
+        const k = CLEANSE_ME[i];
+        if (c[k] > 0) {
+          c[k] = 0;
+          const nm = (COMBAT_STATES.me.find(function (x) { return x.key === k; }) || {}).label || k;
+          log('净化——' + nm + '已清。', 'good');
+          return true;
+        }
+      }
+      return false;
+    }
+    if (t === 'cleanseCtl') {
+      let did = false;
+      ['meLock', 'meSlow'].forEach(function (k) { if (c[k] > 0) { c[k] = 0; did = true; } });
+      if (did) log('清神——控制已解。', 'good');
+      return did;
+    }
+    if (t === 'antidote') {
+      let did = false;
+      ['mePoison', 'meBurn'].forEach(function (k) { if (c[k] > 0) { c[k] = 0; did = true; } });
+      if (did) log('解毒——毒与焰俱清。', 'good');
+      return did;
+    }
+    return false;
+  }
+
+  /* 一次性效果消费：读后即清，返回数值（无则 0/false） */
+  function consumeCombatEffect(side, id, c) {
+    c = c || S.combat;
+    if (!c) return 0;
+    if (side === 'me') {
+      if (id === 'talShield') { const v = c.talShield || 0; c.talShield = 0; return v; }
+      if (id === 'meDodge') { const v = !!c.meDodge; c.meDodge = false; return v; }
+      if (id === 'meMpSave') { const v = !!c.meMpSave; c.meMpSave = false; return v; }
+      if (id === 'meBurst') { const v = !!c.meBurst; c.meBurst = false; return v; }
+    }
+    if (side === 'foe') {
+      if (id === 'foeStun') { const v = c.foeStun || 0; c.foeStun = 0; return v; }
+      if (id === 'foeGuard') { const v = c.foeGuard || 0; c.foeGuard = 0; return v; }
+      if (id === 'foeCounter') { const v = c.foeCounter || 0; c.foeCounter = 0; return v; }
+    }
+    return 0;
+  }
+
+  /* 回合结算。timing='foeStart'：敌方持续伤害（烧/毒死走胜利出口）；
+     timing='roundEnd'：全体状态递减 + 我方持续恢复/伤害 + 冷却 + 回合数。
+     返回 false＝战斗已在本函数内结束（调用方不再继续）。 */
+  function tickCombatEffects(side, timing, c) {
+    c = c || S.combat;
+    if (!c) return false;
+    if (timing === 'foeStart') {
+      /* 灼烧：点火当回合只清标记，之后每回合烧一次 */
+      if (c.foeBurn > 0 && c.burnFresh) {
+        c.burnFresh = false;
+      } else if (c.foeBurn > 0) {
+        const bd = burnTickOf(c);
+        c.foe.hp = Math.max(0, c.foe.hp - bd);
+        c.foeBurn--;
+        logLine(c.foe.name + '身上火势未熄，灼伤 ' + bd + (c.foeBurn > 0 ? '（余 ' + c.foeBurn + ' 回合）' : '（火熄）'), 'good');
+        if (c.foe.hp <= 0) { settleCombatWin(c); return false; }
+      }
+      /* 中毒：与灼烧同一口径，施毒当回合不毒发，之后每回合真伤 */
+      if (c.foePoison > 0 && c.poisonFresh) {
+        c.poisonFresh = false;
+      } else if (c.foePoison > 0) {
+        const pd = Math.max(1, Math.round(c.foe.hpMax * (c.foePoisonPct || 0.035)));
+        c.foe.hp = Math.max(0, c.foe.hp - pd);
+        c.foePoison--;
+        logLine(c.foe.name + '毒发，真伤 ' + pd + (c.foePoison > 0 ? '（余 ' + c.foePoison + ' 回合）' : '（毒尽）'), 'good');
+        if (c.foe.hp <= 0) { settleCombatWin(c); return false; }
+      }
+      return true;
+    }
+    if (timing === 'roundEnd') {
+      /* 我方持续恢复：生生丹（每回合气血上限 4%） */
+      if (c.meRegen > 0) {
+        const hg = Math.max(1, Math.round(S.hpMax * 0.04));
+        S.hp = Math.min(S.hpMax, S.hp + hg);
+        c.meRegen--;
+        logLine('生生丹药力流转，气血 +' + hg + (c.meRegen > 0 ? '（余 ' + c.meRegen + ' 回合）' : '（药力尽）'), 'good');
+      }
+      /* 我方持续伤害：中毒 / 灼烧（致死走败北出口，与敌方 DoT 对称） */
+      if (c.mePoison > 0) {
+        const pd = Math.max(1, Math.round(S.hpMax * (c.mePoisonPct || 0.03)));
+        S.hp = Math.max(0, S.hp - pd);
+        c.mePoison--;
+        logLine('你毒发，气血 −' + pd + (c.mePoison > 0 ? '（余 ' + c.mePoison + ' 回合）' : '（毒尽）'), 'danger');
+      }
+      if (c.meBurn > 0 && c.meBurnFresh) {
+        c.meBurnFresh = false;
+      } else if (c.meBurn > 0) {
+        const bd = Math.max(1, Math.round(S.hpMax * (c.meBurnPct || 0.03)));
+        S.hp = Math.max(0, S.hp - bd);
+        c.meBurn--;
+        logLine('你身上余焰灼身，气血 −' + bd + (c.meBurn > 0 ? '（余 ' + c.meBurn + ' 回合）' : '（火熄）'), 'danger');
+      }
+      if (S.hp <= 0) { combatLose(c); return false; }
+      /* 敌方状态递减 */
+      ['foeMark', 'foeWeaken', 'foeShred', 'foeSlow', 'foeCalm'].forEach(function (k) {
+        if (c[k] > 0) c[k]--;
+      });
+      /* 我方状态递减 */
+      if (c.talBuffTurns > 0) { c.talBuffTurns--; if (c.talBuffTurns <= 0) { c.talBuffTurns = 0; c.talBuff = 0; } }
+      ['meGuardTurns', 'meSlow', 'meLock'].forEach(function (k) {
+        if (c[k] > 0) c[k]--;
+        if (k === 'meGuardTurns' && c.meGuardTurns <= 0) c.meGuard = 0;
+      });
+      /* 符箓同种冷却递减 */
+      if (c.talCd) Object.keys(c.talCd).forEach(function (k) { if (c.talCd[k] > 0) c.talCd[k]--; });
+      /* 敌方行动冷却递减 */
+      if (c.foeCd) Object.keys(c.foeCd).forEach(function (k) { if (c.foeCd[k] > 0) c.foeCd[k]--; });
+      c.round++;
+      return true;
+    }
+    return true;
+  }
+
+  /* 按归属渲染状态标签。敌方卡只出敌方状态，我方卡只出我方状态。 */
+  function renderCombatEffects(side, c) {
+    c = c || S.combat;
+    if (!c) return '';
+    const nw = function (s) { return '<span style="white-space:nowrap">' + s + '</span>'; };
+    let out = '';
+    (COMBAT_STATES[side] || []).forEach(function (st) {
+      const v = c[st.key];
+      if (!v) return;
+      if (st.bool) { out += '<span class="stance ' + st.cls + '">' + st.label + ' · ' + st.desc + '</span>'; return; }
+      if (st.once) { out += '<span class="stance ' + st.cls + '">' + st.label + ' · ' + st.desc + ' ' + Math.round(v * 100) + '%</span>'; return; }
+      if (st.key === 'talBuff') {
+        if (c.talBuffTurns > 0) out += '<span class="stance on">增益 · 直接伤害 +' + Math.round(v * 100) + '%' + nw('（' + c.talBuffTurns + ' 回合）') + '</span>';
+        return;
+      }
+      if (st.key === 'foeBurn') {
+        out += c.burnFresh
+          ? '<span class="stance bad">余焰将起 · 下回合起每回合 ' + burnTickOf(c) + ' 伤' + nw('（' + v + ' 回合）') + '</span>'
+          : '<span class="stance bad">灼烧 · 每回合 ' + burnTickOf(c) + ' 伤' + nw('（' + v + ' 回合）') + '</span>';
+        return;
+      }
+      if (st.key === 'foePoison') {
+        const pd = Math.max(1, Math.round(c.foe.hpMax * (c.foePoisonPct || 0.035)));
+        out += '<span class="stance bad">中毒 · 每回合 ' + pd + ' 伤' + nw('（' + v + ' 回合）') + '</span>';
+        return;
+      }
+      if (st.key === 'mePoison' || st.key === 'meBurn') {
+        const pct = st.key === 'mePoison' ? (c.mePoisonPct || 0.03) : (c.meBurnPct || 0.03);
+        const dd = Math.max(1, Math.round(S.hpMax * pct));
+        const fresh = st.key === 'meBurn' && c.meBurnFresh;
+        out += '<span class="stance bad">' + st.label + (fresh ? '将起' : '') + ' · 每回合 ' + dd + ' 伤' + nw('（' + (fresh ? v - 1 : v) + ' 回合）') + '</span>';
+        return;
+      }
+      if (st.key === 'meGuard') {
+        if (c.meGuardTurns > 0) out += '<span class="stance on">护脉 · 受击减伤 ' + Math.round(v * 100) + '%' + nw('（' + c.meGuardTurns + ' 回合）') + '</span>';
+        return;
+      }
+      if (st.key === 'meRegen') { out += '<span class="stance on">生生 · 每回合复气血 4%' + nw('（' + v + ' 回合）') + '</span>'; return; }
+      if (st.key === 'foeShred') { out += '<span class="stance bad">破甲 · 受创 +' + Math.round((c.foeShredV || 0.2) * 100) + '%' + nw('（' + v + ' 回合）') + '</span>'; return; }
+      /* 通用回合数标签 */
+      out += '<span class="stance ' + st.cls + '">' + st.label + ' · ' + st.desc + nw('（' + v + ' 回合）') + '</span>';
+    });
+    return out;
+  }
+
+  /* 败北唯一出口（敌方 DoT 致死与直接致死共用）。
+     旧版内联在 foeTurn，持续伤害致死无法复用——现在收成一函数。 */
+  function combatLose(c) {
+    if (rng() < 0.4) { die('为' + (c && c.foe ? c.foe.name : '敌') + '所戕，血溅于地。'); return; }
+    S.combat = null; S.phase = 'play'; S.hp = 1;
+    S.stones = Math.floor(S.stones * 0.5);
+    S.followers = Math.round(S.followers * 0.6);
+    logLine('重伤而仆。及醒，资财尽失。', 'danger');
+    toast('重伤 · 财物被劫');
+    advanceXun(1);
+  }
+
+  /* 术法结构化效果解释器：伤害已在 skill 分支算出，这里兑现附加状态。
+     只对 SKILLS 表里有 effects 的术法生效；role=fa 功法仍走原倍率路径。 */
+  function applySkillEffects(sk, c) {
+    if (!sk || !sk.effects || !c) return '';
+    const tags = [];
+    sk.effects.forEach(function (ef) {
+      if (ef.type === 'guard') { c.defending = true; tags.push('守势'); return; }
+      if (ef.type === 'interrupt') {
+        if (applyCombatEffect('foe', ef, c)) tags.push('打断蓄力');
+        return;
+      }
+      if (applyCombatEffect('foe', ef, c)) {
+        const nm = { burn: '灼烧', poison: '中毒', weaken: '压制', shred: '破甲', slow: '迟滞', stun: '镇压' }[ef.type];
+        if (nm) tags.push(nm);
+      }
+    });
+    return tags.length ? '（' + tags.join('·') + '）' : '';
+  }
+
+  /* 雷火引爆：雷系攻击命中灼烧之敌，按剩余灼烧回合追加小额伤害并消耗一层。
+     不可递归触发（引爆本身不再点火）。返回追加伤害值。 */
+  function detonateBurn(c, baseMul) {
+    if (!c || !(c.foeBurn > 0)) return 0;
+    const extra = Math.max(1, Math.round(c.foe.hpMax * 0.05 * c.foeBurn * (baseMul || 1)));
+    c.foeBurn--;
+    if (c.foeBurn <= 0) { c.foeBurnMul = 0; c.burnFresh = false; }
+    logLine('雷火引爆余焰 +' + extra + '；灼烧剩余 ' + c.foeBurn + ' 回合。', 'good');
+    return extra;
+  }
+
+  /* ============================================================
+     v10.7 阶段三·批次C：敌方路数与意图
+     ------------------------------------------------------------
+     固定时序：选意图 → 玩家应对 → 敌方执行该意图（禁止临时重摇）
+               → 结算状态 → 选下一意图。
+     意图存在 S.combat.foeIntent（存档字段），读档不重新随机。
+     蓄力跨一回合：charge 当回合只蓄势，burst 下回合释放。
+     ============================================================ */
+  function foeStyleOf(c) {
+    const id = c && c.foe ? c.foe.style : null;
+    return (D.FOE_STYLES || []).find(function (s) { return s.id === id; }) || (D.FOE_STYLES || [])[0];
+  }
+  /* 选下一个意图：按权重 + 条件 + 冷却。蓄力后强制接释放。 */
+  function pickFoeIntent(c) {
+    if (!c || !c.foe) return null;
+    const style = foeStyleOf(c);
+    if (!style) return null;
+    /* 蓄力已就绪 → 本回合必须释放（不可临时重摇） */
+    if (c.foeCharging) {
+      const ch = c.foeCharging;
+      c.foeCharging = null;
+      return { id: ch.id + '_burst', name: ch.name + '·释放', type: 'burst', mul: ch.mul,
+        intent: ch.name + '劈落——重击将至！', srcId: ch.id };
+    }
+    c.foeCd = c.foeCd || {};
+    const lowHp = c.foe.hp <= c.foe.hpMax * 0.35;
+    const pool = style.actions.filter(function (a) {
+      if (a.type === 'flee' && !lowHp) return false;       /* 撤退只在低血 */
+      if (a.cond === 'lowHp' && !lowHp) return false;
+      if ((c.foeCd[a.id] || 0) > 0) return false;
+      return true;
+    });
+    const usable = pool.length ? pool : style.actions.filter(function (a) { return a.type === 'attack'; });
+    let total = 0;
+    usable.forEach(function (a) { total += (a.weight || 1) * (a.cond === 'lowHp' && lowHp ? 2 : 1); });
+    let r = rng() * total;
+    let chosen = usable[usable.length - 1];
+    for (let i = 0; i < usable.length; i++) {
+      r -= (usable[i].weight || 1) * (usable[i].cond === 'lowHp' && lowHp ? 2 : 1);
+      if (r <= 0) { chosen = usable[i]; break; }
+    }
+    if (chosen.cd) c.foeCd[chosen.id] = chosen.cd + 1;   /* +1：本回合结束递减一次 */
+    if (chosen.type === 'charge') {
+      c.foeCharging = { id: chosen.id, name: chosen.name, mul: chosen.mul };
+      return { id: chosen.id, name: chosen.name, type: 'charge', mul: chosen.mul, intent: chosen.intent, srcId: chosen.id };
+    }
+    return { id: chosen.id, name: chosen.name, type: chosen.type, mul: chosen.mul,
+      hits: chosen.hits, v: chosen.v, effects: chosen.effects, intent: chosen.intent, srcId: chosen.id };
+  }
+  /* 意图展示文本（敌方卡最醒目处）。蓄力/护体/反击给出应对提示。 */
+  function foeIntentText(c) {
+    if (!c || !c.foeIntent) return '';
+    const it = c.foeIntent;
+    let tip = '';
+    if (it.type === 'charge') tip = '　→ 可用镇压八方/雷符/缚灵符打断，或守势硬抗';
+    else if (it.type === 'burst') tip = '　→ 重击将至：守势、护体或神行符';
+    else if (it.type === 'guard') tip = '　→ 先破甲（落石诀/破甲符）再爆发';
+    else if (it.type === 'counter') tip = '　→ 此时普攻遭反噬，宜术法或控制';
+    else if (it.type === 'gather') tip = '　→ 聚气空档，宜全力输出';
+    else if (it.type === 'flee') tip = '　→ 速压血线，或锁灵阵断其退路';
+    return '【下回合意图：' + it.name + '——' + it.intent + tip + '】';
+  }
+
   function renderCombat() {
     const c = S.combat;
     if (!c) { S.phase = 'play'; return ''; }
@@ -9479,25 +10050,18 @@
     if (c.foe.el && D.ELEMENTS[c.foe.el]) fb += elemChip(c.foe.el);
     fb += '</div>';
     const traitName = { brute: '莽夫', veteran: '老练', slippery: '滑头', normal: '寻常' }[c.foe.trait] || '寻常';
-    let fstate = '<span class="stance">' + traitName + '</span>';
+    const styleName = (foeStyleOf(c) || {}).name || '';
+    let fstate = '<span class="stance">' + traitName + (styleName ? ' · ' + styleName : '') + '</span>';
     if (c.momentum > 0) fstate += '<span class="stance bad">气势 ' + c.momentum + '</span>';
-    /* v10.7 P1·战斗口径：破绽、灼烧、迟滞、压制都是「打在他身上的」，
-       旧版却全部渲染在我方卡的状态区——玩家一眼看去像是自己中了招，
-       于是「这一刀为什么打得更疼」根本无从判断。
-       现在敌方的状态一律回到敌方卡；我方卡只留守势、看破、增益、护体这些
-       真正作用在自己身上的东西。 */
+    if (c.foeGuard > 0) fstate += '<span class="stance bad">护体 · 下次受击减伤 ' + Math.round(c.foeGuard * 100) + '%</span>';
+    if (c.foeCounter > 0) fstate += '<span class="stance bad">反击架势 · 普攻遭反噬</span>';
+    /* v10.7 阶段三：敌方状态统一走 renderCombatEffects（破绽/压制/灼烧/中毒/破甲/迟滞/被镇压/定神） */
     const nw = function (s) { return '<span style="white-space:nowrap">' + s + '</span>'; };
-    if (c.foeMark > 0) fstate += '<span class="stance bad">破绽 · 受创 ×1.25' + nw('（' + c.foeMark + ' 回合）') + '</span>';
-    if (c.foeWeaken > 0) fstate += '<span class="stance bad">压制 · 出手 ×0.7' + nw('（' + c.foeWeaken + ' 回合）') + '</span>';
-    if (c.foeBurn > 0) {
-      /* v10.5 P2·C7：点火当回合只清标记、不落伤，必须写出来，
-         否则玩家会以为「点了没生效」；同一回合再点火是刷新，不是叠层。 */
-      fstate += c.burnFresh
-        ? '<span class="stance bad">余焰将起 · 下回合起每回合 ' + burnTickOf(c) + ' 伤' + nw('（' + c.foeBurn + ' 回合）') + '</span>'
-        : '<span class="stance bad">灼烧 · 每回合 ' + burnTickOf(c) + ' 伤' + nw('（' + c.foeBurn + ' 回合）') + '</span>';
-    }
-    if (c.foeSlow > 0) fstate += '<span class="stance bad">迟滞 · 出手 ×0.85' + nw('（' + c.foeSlow + ' 回合）') + '</span>';
+    fstate += renderCombatEffects('foe', c);
     fb += '<div class="frow"><span class="k">状态</span><div>' + fstate + '</div></div>';
+    /* v10.7 阶段三：意图是行动区附近最醒目的信息，不藏在「观察」弹窗里 */
+    const _intentTxt = foeIntentText(c);
+    if (_intentTxt) fb += '<div class="foeintent small" style="margin-top:8px;color:var(--cinnabar);font-weight:600">' + esc(_intentTxt) + '</div>';
     const keK2 = keMul(mainEl(), c.foe.el);
     if (c.foe.el) {
       fb += '<div class="frow"><span class="k">相克</span><span class="' + (keK2 > 1 ? 'good' : keK2 < 1 ? 'danger' : 'stance') + '">' +
@@ -9548,12 +10112,8 @@
        这里把已有字段渲染出来，一行业务公式都不改——只让看不见的变得看得见。
        v10.7 P1：敌方身上的破绽/灼烧/迟滞/压制已移回敌方卡，
        我方卡只留真正作用在自己身上的状态。 */
-    if (c.defending) tags += '<span class="stance on">守势 · 减伤50%</span>';
-    if (c.observed) tags += '<span class="stance on">看破 · 下一击无视卸力</span>';
-    /* v10.7 P1·战斗口径：增益符的显示写「直接伤害 +30%」并带剩余回合数，
-       与结算口径完全一致——面板与公式读同一份数据，不再各说各话。 */
-    if (c.talBuffTurns > 0 && c.talBuff) tags += '<span class="stance on">增益 · 直接伤害 +' + Math.round(c.talBuff * 100) + '%' + nw('（' + c.talBuffTurns + ' 回合）') + '</span>';
-    if (c.talShield) tags += '<span class="stance on">护体 · 下次受击减伤 ' + Math.round(c.talShield * 100) + '%</span>';
+    /* v10.7 阶段三：我方状态统一走 renderCombatEffects（守势/看破/增益/护体/护脉/神行/聚灵/烈元/生生/中毒/灼烧/迟滞/锁灵） */
+    tags += renderCombatEffects('me', c);
     if (c.noFoeFlee) tags += '<span class="stance on">锁灵 · 敌方不能遁走</span>';
     if (c.momentum > 0) tags += '<span class="stance bad">敌方气势 · 增伤 +' + Math.round((([1.0,1.10,1.20,1.35][c.momentum]||1) - 1) * 100) + '%</span>';
     /* v10.4 P1·S4：入场态势。玩家得看见「这一场是按什么势在打」，
@@ -9583,6 +10143,12 @@
       '术法' + equippedSkills().length + '·神通' + (S.shenTong || []).length, S.mp < 15, 'act:openSkills'));
     o.push(optRow('3', '御', { name: '平和', cls: 'peace' },
       '减伤 50%' + (artBonus('body') ? ' +法宝' : ''), false, 'do;cbt:defend'));
+    /* v10.7 阶段三：调息——仙道/双修的资源窗口。神道保留香火权柄，不机械复制。 */
+    if (!isShen() || isBoth()) {
+      const _restGain = Math.max(20, Math.round(S.mpMax * 0.12));
+      o.push(optRow('息', '调息', { name: '平和', cls: 'peace' },
+        '灵力 +' + _restGain + ' · 清一层迟滞 · 敌方仍行动', S.mp >= S.mpMax, 'do;cbt:rest'));
+    }
     o.push(optRow('4', '器', { name: '机缘', cls: 'chance' },
       '符 ' + (tals.length ? tals.reduce(function (a, k) { return a + (S.talismans[k] || 0); }, 0) + ' 张' : '无') +
       (qbN ? ' · 权柄' : '') + ' · 丹', !tals.length && !hasUsablePill() && !qbN, 'act:openGear'));
@@ -9617,135 +10183,180 @@
       + '</div>';
   }
 
+  /* v10.7 阶段三：敌方回合改为「执行已保存的意图」。
+     时序：持续伤害（foeStart）→ 气势 → 按意图行动 → 选下一意图 → 回合收尾。
+     意图在玩家行动前就已选定并展示，敌方执行时禁止临时重摇。
+     返回 false＝战斗已结束（胜利/败北/敌遁），调用方负责 render。 */
   function foeTurn() {
     const c = S.combat;
     if (!c) return false;
-    const gap = combatGap(c), diff = c.foe.rank - combatRank(c);
-    /* v10.4 P0·S3：灼烧在敌方回合开头结算。
-       旧版 foeBurn/foeBurnMul 只在 cast 分支写入，全项目 0 处读取——
-       烈火掌、流火剑诀承诺的「灼烧」一直是空头支票。
-       位置选在「敌方将要出手之前」，两个后果都是刻意的：
-         · 一次 2 回合的灼烧恰好烧两次（本回合敌动前 + 下回合敌动前）
-         · 烧死的敌人来不及还手——点火值钱，就在这一下 */
-    if (c.foeBurn > 0 && c.burnFresh) {
-      /* 点火那一回合：焰刚起，先不落伤，让「2 回合」= 之后烧 2 次 */
-      c.burnFresh = false;
-    } else if (c.foeBurn > 0) {
-      const bd = burnTickOf(c);
-      c.foe.hp = Math.max(0, c.foe.hp - bd);
-      c.foeBurn--;
-      c.burnTick = bd;
-      logLine(c.foe.name + '身上火势未熄，灼伤 ' + bd +
-        (c.foeBurn > 0 ? '（余 ' + c.foeBurn + ' 回合）' : '（火熄）'), 'good');
-      if (c.foe.hp <= 0) { settleCombatWin(c); return false; }
-    }
-    // 气势：每三回合涨一档，逼玩家在「稳」和「险」之间选，而不是无限拖
+    const gap = combatGap(c);
+    /* 敌方持续伤害（灼烧/中毒）在出手前结算；烧死/毒死走胜利出口 */
+    if (!tickCombatEffects('foe', 'foeStart', c)) return false;
+    /* 气势：每三回合涨一档 */
     if (!c.momentum) c.momentum = 0;
     if (c.round > 0 && c.round % 3 === 0) c.momentum = Math.min(3, c.momentum + 1);
     const momMul = [1.0, 1.10, 1.20, 1.35][c.momentum] || 1;
-    // P1-8：双向按血量百分比结算
-    /* v10.5 P1·C5：ratio 下限从 0.2 提到 0.35，最大约 1/0.35≈2.86（原 5）。
-       下限越低，「我战力低」时敌方伤害被放大得越狠，正是死亡螺旋的放大口。 */
-    const ratio = clamp(Math.sqrt(computePower() / Math.max(1, c.foe.power)), 0.35, 2.5);
-    /* v8.1：基础值保持 0.15。旧版玩家的期望伤害是 0.20×0.72=0.144，
-       去掉空挥后若不同步回调这里，战斗会整体变简单。 */
-    let dmg = S.hpMax * 0.15 * (1 / ratio) * (0.8 + rng() * 0.4) * momMul;
-    /* v10.5 P1·C6：敌方还手与玩家出手共用 GAP_MUL 表，inc 即「被抬多少」 */
-    dmg *= gapMul(gap).inc;
-    if (c.foeWeaken > 0) dmg *= 0.7;   // 术神通压住了他的势
-    if (c.foeSlow > 0) {
-      dmg *= 0.85;                     // v10.4 P0·S3：迟滞，身法被冻住
-      c.foeSlow--;
+
+    const intent = c.foeIntent || pickFoeIntent(c);
+    /* 硬控（被镇压）：本次行动失效，定神随后至 */
+    if (consumeCombatEffect('foe', 'foeStun', c)) {
+      logLine(c.foe.name + '被镇压之势未散，这一招没能出手。', 'good');
+      c.foeIntent = pickFoeIntent(c);
+      return endCombatRound(c);
     }
-    if (c.foe.trait === 'brute') dmg *= 1.25;       // 莽夫：出手更重
-    if (c.foe.trait === 'veteran') dmg *= 0.90;     // 老练：不拼命，求稳耗
-    /* v8.1：玩家同样有卸力——护体法器与位格优势在这里兑现，
-       而不是像旧版那样只挨打、看不出自己的防御有什么用。 */
-    const myDefl = clamp(deflectOf(c, 'me') + fateAdd('defl'), 0, 0.55);   // v9.0 M1：守拙藏锋
-    dmg *= (1 - myDefl);
-    /* v10.4 P1·S4：守中带攻——本场首次受击减伤三成。
-       一次性的，用完就记 stanceUsed.stGuard，不再重复减。 */
-    if (c.stance === 'shouzhong' && !(c.stanceUsed && c.stanceUsed.stGuard)) {
-      dmg *= 0.7;
-      c.stanceUsed = c.stanceUsed || {};
-      c.stanceUsed.stGuard = true;
-      logLine('守中带攻：这一击被卸去了三成。', 'good');
-    }
-    /* v10.7 P1·战斗口径：守势与护体取强，不叠乘。
-       旧写法 red = 0.5 − talShield，金刚符(0.6)叠在守势(0.5)上落到 0.05 下限，
-       实际减伤约 95%——文案写「减伤 60%」，玩家却挡掉了九成五。
-       现在：守势 0.5、护体 0.6 同时在场时取 0.6，即总减伤 60%。 */
-    const _red = Math.max(c.defending ? 0.5 : 0, c.talShield || 0);
-    if (_red > 0) dmg *= clamp(1 - _red, 0.05, 0.95);
-    if (c.talShield) c.talShield = 0;
-    /* v10.7 阶段二：本命神钟的常驻减伤只在「总减伤上限」内生效——
-       与守势/护体取强后再乘，不叠加成隐式 95%。 */
-    {
-      const _XN = G.WXCS3_EXT;
-      if (_XN && _XN.natalIncomingMul) dmg *= _XN.natalIncomingMul(c);
-    }
-    // 滑头：血量低于一半会试着跑
+    /* 滑头性格：低血仍可能逃跑（与诡修撤退意图并存，性格是数值倾向） */
     if (c.foe.trait === 'slippery' && c.foe.hp <= c.foe.hpMax * 0.5 && rng() < 0.35) {
       if (c.noFoeFlee) {
         logLine(c.foe.name + '欲遁，为锁灵阵所遏。', 'good');
         c.foe.trait = 'normal';
-        endCombatRound(c);
-        return true;
+        c.foeIntent = pickFoeIntent(c);
+        return endCombatRound(c);
       }
       S.combat = null; S.phase = 'play';
       logLine(combatLine('foeFlee') + '　' + c.foe.name + '遁走了。', '');
       advanceXun(1); render(); return false;
     }
-    dmg = Math.round(dmg);
-    /* v9.0 M2：第四位出手挪进扩展（ext-beast：令兽护/自动护主/反噬；
-       ext-benming：本命出鞘挡击）。钩子返回 true＝这一回合被截胡。
-       钩子跑在扣血之前——挡刀才是真的挡刀（旧版先扣血再挡，是个次序 bug）。 */
-    const _XH = G.WXCS3_EXT;
-    if (_XH && _XH.foeHooks) {
-      let _caught = false;
-      for (let _i = 0; _i < _XH.foeHooks.length; _i++) {
-        if (_XH.foeHooks[_i](c, dmg, myDefl)) { _caught = true; break; }
-      }
-      if (_caught) {
-        c.defending = false;
-        if (!S.combat) return false;   // 钩子已把战斗结掉（反噬致死）
-        if (c.foeMark > 0) c.foeMark--;
-        if (c.foeWeaken > 0) c.foeWeaken--;
-        endCombatRound(c);
-        return true;
-      }
+
+    const it = intent || { type: 'attack', mul: 1, name: '攻击' };
+    /* 非伤害意图：聚气 / 护体 / 反击架势 / 撤退 */
+    if (it.type === 'gather') {
+      c.foeGuard = 0;
+      logLine(c.foe.name + '闭目聚气，灵力暗复，门户大开。', '');
+      c.foeIntent = pickFoeIntent(c);
+      return endCombatRound(c);
     }
-    S.hp = Math.max(0, S.hp - dmg);
-    /* v8.1：敌方回合以前只扣血、不报数，玩家看不见自己挨了多少。
-       现在给一句画面 + 一个数字，卸力成功时换一种写法。 */
-    logLine((myDefl >= 0.25 ? combatLine('fDefl') : combatLine('fHit')) +
-      '　气血 −' + dmg + (myDefl >= 0.25 ? '（卸去 ' + Math.round(myDefl * 100) + '%）' : ''), 'danger');
+    if (it.type === 'guard') {
+      c.foeGuard = Math.max(c.foeGuard || 0, it.v || 0.4);
+      logLine(c.foe.name + '双臂交叠，护住周身（下次受击减伤 ' + Math.round((it.v || 0.4) * 100) + '%）。', '');
+      c.foeIntent = pickFoeIntent(c);
+      return endCombatRound(c);
+    }
+    if (it.type === 'counter') {
+      c.foeCounter = Math.max(c.foeCounter || 0, it.v || 0.5);
+      logLine(c.foe.name + '摆出反击架势——此时普攻会遭反噬。', '');
+      c.foeIntent = pickFoeIntent(c);
+      return endCombatRound(c);
+    }
+    if (it.type === 'flee') {
+      if (c.noFoeFlee) {
+        logLine(c.foe.name + '欲遁，为锁灵阵所遏。', 'good');
+        c.foeIntent = pickFoeIntent(c);
+        return endCombatRound(c);
+      }
+      S.combat = null; S.phase = 'play';
+      logLine(c.foe.name + '虚晃一招，转身遁走了。', '');
+      advanceXun(1); render(); return false;
+    }
+    if (it.type === 'charge') {
+      /* 蓄力当回合只蓄势，不造成伤害——玩家有真实反制窗口 */
+      logLine(c.foe.name + it.name + '，气机暗蓄而未发（下回合释放，可打断）。', '');
+      c.foeIntent = pickFoeIntent(c);
+      return endCombatRound(c);
+    }
+
+    /* —— 伤害类意图：attack / burst / debuff —— */
+    const ratio = clamp(Math.sqrt(computePower() / Math.max(1, c.foe.power)), 0.35, 2.5);
+    let base = S.hpMax * 0.15 * (1 / ratio) * (0.8 + rng() * 0.4) * momMul;
+    base *= gapMul(gap).inc;
+    base *= (it.mul || 1);
+    if (c.foeWeaken > 0) base *= 0.7;
+    if (c.foeSlow > 0) base *= 0.85;
+    if (c.foe.trait === 'brute') base *= 1.25;
+    if (c.foe.trait === 'veteran') base *= 0.90;
+    const myDefl = clamp(deflectOf(c, 'me') + fateAdd('defl'), 0, 0.55);
+    base *= (1 - myDefl);
+    if (c.stance === 'shouzhong' && !(c.stanceUsed && c.stanceUsed.stGuard)) {
+      base *= 0.7;
+      c.stanceUsed = c.stanceUsed || {};
+      c.stanceUsed.stGuard = true;
+      logLine('守中带攻：这一击被卸去了三成。', 'good');
+    }
+    /* 守势 / 护体 / 护脉取强，不叠乘；神行符规避整次直接攻击 */
+    const _red = Math.max(c.defending ? 0.5 : 0, c.talShield || 0, c.meGuard || 0);
+    if (_red > 0) base *= clamp(1 - _red, 0.05, 0.95);
+    consumeCombatEffect('me', 'talShield', c);
+    {
+      const _XN = G.WXCS3_EXT;
+      if (_XN && _XN.natalIncomingMul) base *= _XN.natalIncomingMul(c);
+    }
+    const hits = it.hits || 1;
+    let totalDmg = 0;
+    for (let h = 0; h < hits; h++) {
+      let dmg = Math.round(base * (hits > 1 ? (0.9 + rng() * 0.2) : 1));
+      /* 神行符：规避下一次直接攻击（对持续伤害无效），只挡第一击 */
+      if (h === 0 && consumeCombatEffect('me', 'meDodge', c)) {
+        logLine('神行符身形一晃，' + c.foe.name + '这一击落了空。', 'good');
+        continue;
+      }
+      /* 扩展钩子（灵兽护主/本命出鞘）：返回 true＝截胡这一击 */
+      const _XH = G.WXCS3_EXT;
+      let caught = false;
+      if (_XH && _XH.foeHooks) {
+        for (let _i = 0; _i < _XH.foeHooks.length; _i++) {
+          if (_XH.foeHooks[_i](c, dmg, myDefl)) { caught = true; break; }
+        }
+      }
+      if (caught) { if (!S.combat) return false; continue; }
+      S.hp = Math.max(0, S.hp - dmg);
+      totalDmg += dmg;
+    }
+    if (totalDmg > 0) {
+      logLine((myDefl >= 0.25 ? combatLine('fDefl') : combatLine('fHit')) +
+        '　' + c.foe.name + '「' + it.name + '」气血 −' + totalDmg +
+        (myDefl >= 0.25 ? '（卸去 ' + Math.round(myDefl * 100) + '%）' : ''), 'danger');
+    }
+    /* debuff 意图附带负面状态（施加于我方） */
+    if (it.effects && it.effects.length) {
+      it.effects.forEach(function (ef) { applyCombatEffect('me', ef, c); });
+    }
     c.defending = false;
-    if (S.hp <= 0) {
-      if (rng() < 0.4) { die(`为${c.foe.name}所戕，血溅于地。`); return false; }
-      S.combat = null; S.phase = 'play'; S.hp = 1;
-      S.stones = Math.floor(S.stones * 0.5);
-      S.followers = Math.round(S.followers * 0.6);
-      logLine('重伤而仆。及醒，资财尽失。', 'danger');
-      toast('重伤 · 财物被劫');
-      advanceXun(1);   // 时间要往前走（内部可能再次 die，交给调用方 render 兜底）
-      return false;
-    }
-    if (c.foeMark > 0) c.foeMark--;
-    if (c.foeWeaken > 0) c.foeWeaken--;
-    endCombatRound(c);
-    return true;
+    if (S.hp <= 0) { combatLose(c); return false; }
+    /* 执行完毕，选下一意图（蓄力后强制接释放已在 pickFoeIntent 内处理） */
+    c.foeIntent = pickFoeIntent(c);
+    return endCombatRound(c);
   }
 
-  /* v10.7 P1：回合收尾的唯一出口。
-     增益符的剩余回合数在这里递减——foeTurn 恰好有三条出口，
-     散在各处各写一遍，迟早会漏掉某一条（表现为「增益符永不过期」）。 */
+  /* v10.7 阶段三：回合收尾唯一出口。全体状态递减、持续恢复/伤害、冷却、回合数
+     都收在 tickCombatEffects('roundEnd')——不再散在 foeTurn 各出口。
+     返回 false＝我方持续伤害致死，战斗已结束。 */
   function endCombatRound(c) {
-    if (c.talBuffTurns > 0) {
-      c.talBuffTurns--;
-      if (c.talBuffTurns <= 0) { c.talBuffTurns = 0; c.talBuff = 0; }
+    return tickCombatEffects('me', 'roundEnd', c);
+  }
+
+  /* v10.7 阶段三·批次C：战利品按路数掉四艺材料。
+     普通胜场约 45% 掉一份材料、约 12% 掉一张基础丹符；寻仇必掉一份路数材料。
+     加权随机用 rng()（存档种子可复现）。材料进 bagMat、丹进 bag、符进 talismans，
+     都不写月账收入（月账只记灵石），与现有无套利护栏不冲突。 */
+  function weightedPick(ids, ws) {
+    let total = 0;
+    for (let i = 0; i < ws.length; i++) total += ws[i];
+    let r = rng() * total;
+    for (let i = 0; i < ids.length; i++) { r -= ws[i]; if (r <= 0) return ids[i]; }
+    return ids[ids.length - 1];
+  }
+  function combatLoot(c) {
+    if (!c || !c.foe) return;
+    const L = D.FOE_LOOT || {};
+    const style = c.foe.style || 'sword';
+    const pool = L[style] || L.sword;
+    if (!pool) return;
+    const isVeng = !!c.isVengeance;
+    /* 材料：寻仇必掉，普通 45% */
+    if (isVeng || rng() < 0.45) {
+      const mid = weightedPick(pool.mats, pool.w);
+      addMat(mid, 1);
+      const it = D.MATERIAL_EXT.find(function (x) { return x.id === mid; });
+      logLine('搜其遗物，得「' + (it ? it.name : mid) + '」×1。', 'good');
     }
-    c.round++;
+    /* 基础丹符：普通 12%，寻仇不额外掉（避免寻仇刷符） */
+    if (!isVeng && rng() < 0.12 && L.basic && L.basic.length) {
+      const bid = L.basic[Math.floor(rng() * L.basic.length)];
+      const pill = D.PILL_EXT.find(function (x) { return x.id === bid; });
+      const tal = D.TALISMANS.find(function (x) { return x.id === bid; });
+      if (pill) { S.bag[bid] = (S.bag[bid] || 0) + 1; logLine('得丹「' + pill.name + '」×1。', 'good'); }
+      else if (tal) { addTalisman(bid, 1); logLine('得符「' + tal.name + '」×1。', 'good'); }
+    }
   }
 
   /* v10.4 P0·S3：胜利结算收成一处。
@@ -9764,6 +10375,10 @@
     logLine(combatLine('kill') + '。', 'danger');
     if (_slayMaster) logLine('仆者，授业之人也。不呼汝名。', 'danger');
     logLine(isShen() ? `散去对方的香火，得灵石 ${loot}。` : `一剑毕${c.foe.name}，得灵石 ${loot}。`, 'danger');
+    /* v10.7 阶段三·批次C：战利品接入四艺。按路数掉材料（约 45% 一份）与基础丹符（约 12%）；
+       寻仇必掉一份路数相关材料。掉落只进 bagMat/talismans/bag，不进月账收入（非灵石），
+       概率与材料池见 D.FOE_LOOT，须过经济模拟防「战斗刷材料」取代历练采集。 */
+    combatLoot(c);
     // 生死之间有一线明悟：打赢同一境的对手，不该只值几块灵石
     const insight = Math.max(1, Math.round(c.foe.power * 0.35));
     if (isShen()) {
@@ -9858,7 +10473,19 @@
       }
       raw *= (1 - defl);
       if (c.observed) raw *= 1.6;
+      /* v10.7 阶段三：破甲（受创 +20%）与敌方护体（减伤）在公共伤害段兑现 */
+      if (c.foeShred > 0) raw *= (1 + (c.foeShredV || 0.2));
+      const _fg = consumeCombatEffect('foe', 'foeGuard', c);
+      if (_fg > 0) { raw *= (1 - _fg); note = '他护体未散，'; }
       dmg = Math.round(raw * (0.94 + rng() * 0.12));
+      /* 反击架势：普攻遭反噬（术法/符箓不受此限） */
+      const _ctr = consumeCombatEffect('foe', 'foeCounter', c);
+      if (_ctr > 0) {
+        const back = Math.max(1, Math.round(S.hpMax * 0.08 * _ctr));
+        S.hp = Math.max(0, S.hp - back);
+        logLine('他反击架势未散，你普攻遭反噬，气血 −' + back + '。', 'danger');
+        if (S.hp <= 0) { combatLose(c); render(); return; }
+      }
       if (c.observed) note = '看破了破绽，' + combatLine('pHit');
       else if (defl >= 0.20) note = combatLine('pDefl') + '（卸去 ' + Math.round(defl * 100) + '%）';
       else note = combatLine('pHit');
@@ -9868,15 +10495,23 @@
       const nm = decodeURIComponent(arg || '');
       const sk = artSpecByName(nm);
       if (!sk) { render(); return; }
-      /* v10.5 P1·C4：术法耗灵同样按上限百分比兜底，
-         否则上限涨到千级后，20~60 的耗灵在灵力池面前等于免费。 */
-      const _skCost = skillCostOf(sk);
+      /* v10.5 P1·C4：术法耗灵按上限百分比兜底。
+         v10.7 阶段三：聚灵符（下一门 −50%）与锁灵（+30%）在此兑现。 */
+      let _skCost = skillCostOf(sk);
+      let _mpSaveNote = '';
+      if (consumeCombatEffect('me', 'meMpSave', c)) { _skCost = Math.max(0, Math.round(_skCost * 0.5)); _mpSaveNote = '（聚灵符 · 耗灵减半）'; }
+      if (c.meLock > 0) _skCost = Math.round(_skCost * 1.3);
       if (S.mp < _skCost) { toast('灵力不足（需 ' + _skCost + '）'); render(); return; }
       S.mp -= _skCost;
       let mul2 = skillMulByName(nm);
       const reson = resonResult(sk);
-      let sure = false, extra = reson.txt && reson.txt !== '无关' ? '（' + reson.txt + '）' : '';
-      if (sk.kind === 'blood') { S.hp = Math.max(1, S.hp - Math.round(S.hpMax * 0.1)); extra = '（耗气血一成）'; }
+      let sure = false, extra = _mpSaveNote + (reson.txt && reson.txt !== '无关' ? '（' + reson.txt + '）' : '');
+      if (sk.kind === 'blood') { S.hp = Math.max(1, S.hp - Math.round(S.hpMax * 0.1)); extra += '（耗气血一成）'; }
+      /* v10.7 阶段三：白骨飞剑的代价——额外耗灵一成 + 本命器损 +4（文案已改，不再「命中偏难」） */
+      if (sk.hpCostPct) { S.hp = Math.max(1, S.hp - Math.round(S.hpMax * sk.hpCostPct)); extra += '（耗气血 ' + Math.round(sk.hpCostPct * 100) + '%）'; }
+      if (sk.natalDmg && S.benming) { S.benming.dmg = Math.max(0, (S.benming.dmg || 0) + sk.natalDmg); extra += '（器损 +' + sk.natalDmg + '）'; }
+      /* 烈元丹：下一门攻击术法 +35%（消费一次） */
+      if (consumeCombatEffect('me', 'meBurst', c)) { mul2 *= 1.35; extra += '（烈元丹 +35%）'; }
       if (sk.kind === 'thunder') sure = true;
       mul2 *= bodySpellMul(sk.kind);
       if (sk.kind === 'sword') mul2 *= fateMul('sword');   // v9.0 M1：一剑破法
@@ -9886,7 +10521,9 @@
       const _bmul = preBoostMul();
       if (S.preBuff && S.preBuff.sureHit) { sure = true; S.preBuff.sureHit = false; extra += '（五雷符 · 无视卸力）'; }
       hit = true;                                   // v8.1：招式同样必中
-      const defl2 = (sure || c.observed) ? 0 : clamp(deflectOf(c, 'foe') - hitBonus * 0.5, 0, 0.55);
+      /* v10.7 阶段三：雷系必中且半无视卸力（卸力减半后再抵命中加成） */
+      let defl2 = (sure || c.observed) ? 0 : clamp(deflectOf(c, 'foe') - hitBonus * 0.5, 0, 0.55);
+      if (sk.kind === 'thunder' && !sure) defl2 *= 0.5;
       const r2 = ratio;
       /* v10.4 P0·3.4：招式从此也吃主修功法。
          旧版只有「施法」分支接功法，而玩家 90% 的输出走「招式」——
@@ -9903,11 +10540,19 @@
       }
       raw2 *= (1 - defl2);
       if (c.observed) raw2 *= 1.6;
+      /* v10.7 阶段三：破甲增伤 / 敌方护体减伤 */
+      if (c.foeShred > 0) raw2 *= (1 + (c.foeShredV || 0.2));
+      const _fg2 = consumeCombatEffect('foe', 'foeGuard', c);
+      if (_fg2 > 0) raw2 *= (1 - _fg2);
       dmg = Math.round(raw2 * (0.94 + rng() * 0.12));
+      /* 雷火引爆：雷系术法命中灼烧之敌，按剩余灼烧追加伤害并消耗一层（不递归） */
+      if (sk.kind === 'thunder') dmg += detonateBurn(c, 1);
       c.observed = false;
       if (_gk && _gk.text) extra += '（功法 ' + _gk.text + '）';
       if (_hadBoost) extra += '（五雷符 +80%）';
-      note = '「' + nm + '」' + (defl2 >= 0.20 ? '（卸去 ' + Math.round(defl2 * 100) + '%）' : '') + extra;
+      /* v10.7 阶段三：结构化效果解释器——兑现 SKILLS.effects（灼烧/压制/中毒/破甲/守势/打断/硬控） */
+      const _efTag = applySkillEffects(sk, c);
+      note = '「' + nm + '」' + (defl2 >= 0.20 ? '（卸去 ' + Math.round(defl2 * 100) + '%）' : '') + extra + _efTag;
     } else if (sub === 'shentong') {
       /* 神通不占装配格、可穿透位格压制的一部分，代价是「一道一场只能出一次」。
          它是大招，不是第二个普攻——所以必中，但消耗高、有次数。 */
@@ -9946,7 +10591,7 @@
         if (k1 === '命') {
           stTags.push('必中');
         } else if (k1 === '术') {
-          c.foeWeaken = Math.max(c.foeWeaken || 0, 2);
+          applyCombatEffect('foe', { type: 'weaken', turns: 2 }, c);
           stTags.push('压势');
         } else if (k1 === '身') {
           /* v10.4 P2·联动三：身类功法（疗伤）放大身神通的自愈。
@@ -10073,8 +10718,8 @@
             c.foeBurn = 2; c.foeBurnMul = _gst.burn; c.burnFresh = true;
             if (_wasBurn) logLine('余焰再起，火势续为 2 回合。', 'good');
           }
-          if (_gst.slow) { c.foeSlow = 2; }
-          if (_gst.pierce) { c.foeWeaken = Math.max(c.foeWeaken || 0, 2); }
+          if (_gst.slow) { applyCombatEffect('foe', { type: 'slow', turns: 2 }, c); }
+          if (_gst.pierce) { applyCombatEffect('foe', { type: 'weaken', turns: 2 }, c); }
         }
       }
     } else if (sub === 'quanbing') {
@@ -10084,36 +10729,79 @@
       dmg = Math.round(c.foe.hpMax * Math.max(0.10, 0.30 * ratio) * mult * 1.2);
       note = '动用权柄';
     } else if (sub === 'tal') {
-      // 符是消耗品，不是技能——会不会做，决定舍不舍得用
+      /* v10.7 阶段三：符箓唯一配置表 TALISMANS，结构化 effect 由解释器兑现。
+         同种符用后冷却 1 回合（防无限叠同一状态）；净符无负面时不可用。 */
       const tid = arg || '';
       const t = D.TALISMANS.find(function (x) { return x.id === tid; });
       if (!t || (S.talismans[tid] || 0) < 1) { toast('没有这张符'); render(); return; }
+      if (t.use !== 'combat') { toast('此符不在战中用'); render(); return; }
+      c.talCd = c.talCd || {};
+      if ((c.talCd[tid] || 0) > 0) { toast('「' + t.name + '」冷却中（余 ' + c.talCd[tid] + ' 回合）'); render(); return; }
+      const ef = t.effect || {};
+      /* 净符：无可净化负面时不可用，不浪费 */
+      if (ef.type === 'cleanse' && !CLEANSE_ME.some(function (k) { return c[k] > 0; })) {
+        toast('身上无可净化之负面'); render(); return;
+      }
       S.talismans[tid]--;
       consumeQuality(tid);
+      c.talCd[tid] = 2;   /* 用后冷却 1 回合：本回合结束递减一次，下回合仍禁，再下回合可用 */
       if (t.kind === 'atk') {
         hit = true;
-        dmg = Math.round(c.foe.hpMax * Math.max(0.12, 0.30 * ratio) * (t.v || 1) * mult * fateMul('tal') * talBuffMul(c));
+        let _tv = t.v || 1;
+        dmg = Math.round(c.foe.hpMax * Math.max(0.12, 0.30 * ratio) * _tv * mult * fateMul('tal') * talBuffMul(c));
+        /* 破甲增伤 / 敌方护体减伤 */
+        if (c.foeShred > 0) dmg = Math.round(dmg * (1 + (c.foeShredV || 0.2)));
+        const _fg3 = consumeCombatEffect('foe', 'foeGuard', c);
+        if (_fg3 > 0) dmg = Math.round(dmg * (1 - _fg3));
         note = '贴「' + t.name + '」' + (t.el ? '（' + (D.ELEMENTS[t.el] ? D.ELEMENTS[t.el].name : t.el) + '）' : '');
+        /* 雷符/雷火符：必中半无视卸力已在公式（符箓本就不吃卸力），引爆余焰 */
+        if (t.el === 'thunder') {
+          if (ef.type === 'detonate' && c.foeBurn > 0) {
+            /* 雷火符：引爆剩余层数，按层数追加 */
+            dmg += detonateBurn(c, 1.5);
+          } else if (c.foeBurn > 0) {
+            dmg += detonateBurn(c, 1);
+          }
+          if (ef.type === 'interrupt') applyCombatEffect('foe', { type: 'interrupt' }, c);
+        }
+        /* 火符附灼烧 */
+        if (ef.type === 'burn') applyCombatEffect('foe', ef, c);
+        /* 冰封符附迟滞 */
+        if (ef.type === 'slow') applyCombatEffect('foe', ef, c);
       } else if (t.kind === 'def') {
-        /* v10.7 P1·战斗口径：金刚符是「下一次受击总减伤 60%」。
-           旧写法 c.talShield 会被守势再减一次（0.5−0.6 落到 0.05 下限），
-           实际减伤约 95%，文案完全对不上。现在护体与守势取强，不叠乘。 */
-        c.defending = true;
-        c.talShield = Math.max(c.talShield || 0, t.v || 0.6);
-        note = '贴「' + t.name + '」，护住了要害（下次受击减伤 ' + Math.round(c.talShield * 100) + '%）';
+        if (ef.type === 'dodge') {
+          applyCombatEffect('me', ef, c);
+          note = '贴「' + t.name + '」，身形飘忽（规避下一次直接攻击）';
+        } else {
+          applyCombatEffect('me', { type: 'shield', v: t.v || 0.6 }, c);
+          note = '贴「' + t.name + '」，护住了要害（下次受击减伤 ' + Math.round(c.talShield * 100) + '%）';
+        }
       } else if (t.kind === 'escape') {
         S.combat = null; S.phase = 'play';
         logLine('贴上「' + t.name + '」，身形一晃便不见了。', 'good');
         advanceXun(1); render(); return;
       } else if (t.kind === 'buff') {
-        /* v10.7 P1·战斗口径：增益符是「三回合内直接伤害 +30%」。
-           旧写法每贴一张就 +0.3 无限累加（贴三张 +90%），也没有回合数，
-           而且只增幅普攻——文案写「伤害」，实际术法与符箓不吃。
-           回合数记 4：贴符这一手本身不是输出，回合结束时递减一次，
-           玩家在面板上看到的仍是「还有 3 回合」。 */
-        c.talBuff = t.v || 0.3;
-        c.talBuffTurns = TAL_BUFF_TURNS + 1;
-        note = '贴「' + t.name + '」，杀气涨了三成（' + TAL_BUFF_TURNS + ' 回合内有效）';
+        if (ef.type === 'mpSave') {
+          applyCombatEffect('me', ef, c);
+          note = '贴「' + t.name + '」，灵台清明（下一门术法耗灵减半）';
+        } else {
+          /* 增益符：三回合直接伤害 +30%，刷新不叠层。记 4 回合，当回合尾递减一次，面板显示 3 */
+          c.talBuff = Math.max(c.talBuff || 0, t.v || 0.3);
+          c.talBuffTurns = TAL_BUFF_TURNS + 1;
+          note = '贴「' + t.name + '」，杀气涨了三成（' + TAL_BUFF_TURNS + ' 回合内有效）';
+        }
+      } else if (t.kind === 'ctrl') {
+        /* 缚灵符：压制 2 回合，对蓄力目标改为打断；破甲符：破甲 2 回合 */
+        if (ef.interrupt && c.foeIntent && c.foeIntent.type === 'charge') {
+          applyCombatEffect('foe', { type: 'interrupt' }, c);
+          note = '贴「' + t.name + '」，缚灵断其蓄力！';
+        } else {
+          applyCombatEffect('foe', ef, c);
+          note = '贴「' + t.name + '」' + (ef.type === 'shred' ? '（破甲 2 回合）' : '（压制 2 回合）');
+        }
+      } else if (t.kind === 'cleanse') {
+        applyCombatEffect('me', ef, c);
+        note = '贴「' + t.name + '」，秽气尽去';
       }
     } else if (sub === 'bluff') {
       const odds = clamp(0.25 + st('insight') * 0.02 + S.fame / 2000 - diff * 0.05, 0.05, 0.7);
@@ -10125,6 +10813,16 @@
       }
       note = '他不信你';
     } else if (sub === 'defend') { c.defending = true; note = combatLine('guard') + '（守势）'; }
+    else if (sub === 'rest') {
+      /* v10.7 阶段三·调息：恢复 max(20, mpMax×12%) 灵力，不造成伤害、不附带守势，
+         敌方仍执行本回合意图；可清一层自身迟滞，但不净化中毒和灼烧。
+         神道保留香火权柄体系，不机械复制同一按钮（菜单侧只对仙道/双修显示）。 */
+      const gain = Math.max(20, Math.round(S.mpMax * 0.12));
+      const before = S.mp;
+      S.mp = Math.min(S.mpMax, S.mp + gain);
+      if (c.meSlow > 0) { c.meSlow--; logLine('调息行功，迟滞减去一层。', 'good'); }
+      note = '调息行功，灵力 +' + (S.mp - before) + '（敌方仍行动）';
+    }
     else if (sub === 'flee') {
       if (S.preBuff && S.preBuff.escape) { S.preBuff.escape = false; 
         S.combat = null; S.phase = 'play'; logLine('破宝锥开路，你从容遁走。', 'good'); advanceXun(1); render(); return; }
@@ -10139,12 +10837,38 @@
       note = '走不脱';
     } else if (sub === 'observe') { c.observed = true; note = combatLine('observe') + '（看破了破绽）'; }
     else if (sub === 'pill') {
+      /* v10.7 阶段三：丹药每场最多 2 次（pillCount），同种不可连续两回合。
+         usedPill 布尔保留供旧成就逻辑。新丹战术效果由 applyCombatEffect 兑现。 */
+      const COMBAT_PILL_TYPES = ['hp', 'hpPct', 'hpFull', 'cure', 'mp', 'mpPct', 'mpFull',
+        'guard', 'cleanseCtl', 'antidote', 'burst', 'regen', 'mix'];
       const p = D.PILL_EXT.find(function (x) { return x.id === arg; }) ||
-        D.PILL_EXT.find(function (x) { return (S.bag[x.id] || 0) > 0 && ['hp','hpPct','hpFull','cure','mp','mpPct','mpFull'].includes(x.type); });
+        D.PILL_EXT.find(function (x) { return (S.bag[x.id] || 0) > 0 && COMBAT_PILL_TYPES.indexOf(x.type) >= 0; });
       if (!p || (S.bag[p.id] || 0) < 1) { toast('没有可用丹药'); render(); return; }
+      c.pillCount = c.pillCount || 0;
+      if (c.pillCount >= 2) { toast('本场丹药已用尽（2/2）'); render(); return; }
+      if (c.lastPillId === p.id && c.round === (c.lastPillRound || 0) + 1) {
+        toast('「' + p.name + '」不可连续两回合服用'); render(); return;
+      }
+      /* 已满状态不能用，避免浪费 */
+      if ((p.type === 'hp' || p.type === 'hpPct' || p.type === 'hpFull') && S.hp >= S.hpMax) { toast('气血已满，不必服丹'); render(); return; }
+      if ((p.type === 'mp' || p.type === 'mpPct' || p.type === 'mpFull') && S.mp >= S.mpMax) { toast('灵力已满，不必服丹'); render(); return; }
+      if (p.type === 'cleanseCtl' && !(c.meLock > 0 || c.meSlow > 0)) { toast('身上无控制可解'); render(); return; }
+      if (p.type === 'antidote' && !(c.mePoison > 0 || c.meBurn > 0)) { toast('身上无毒焰可解'); render(); return; }
+      if (p.type === 'guard' && c.meGuardTurns > 0) { toast('护脉药力已在身'); render(); return; }
+      if (p.type === 'burst' && c.meBurst) { toast('烈元药力已在身'); render(); return; }
+      if (p.type === 'regen' && c.meRegen > 0) { toast('生生药力已在身'); render(); return; }
       S.bag[p.id]--;
       bump('pillUsed'); S.pillThisMonth = true; c.usedPill = true;
-      note = '服 ' + p.name + '：' + applyPill(p);
+      c.pillCount++; c.lastPillId = p.id; c.lastPillRound = c.round;
+      let pillMsg = '';
+      if (p.type === 'guard') { applyCombatEffect('me', { type: 'meGuard', v: p.v || 0.2, turns: p.turns || 2 }, c); pillMsg = '护脉 2 回合（受击 −20%）'; }
+      else if (p.type === 'cleanseCtl') { applyCombatEffect('me', { type: 'cleanseCtl' }, c); const g = Math.max(10, Math.round(S.mpMax * 0.06)); S.mp = Math.min(S.mpMax, S.mp + g); pillMsg = '控制已解，灵力 +' + g; }
+      else if (p.type === 'antidote') { applyCombatEffect('me', { type: 'antidote' }, c); const g = Math.max(10, Math.round(S.hpMax * 0.06)); S.hp = Math.min(S.hpMax, S.hp + g); pillMsg = '毒焰俱清，气血 +' + g; }
+      else if (p.type === 'burst') { const cost = Math.max(1, Math.round(S.hpMax * 0.05)); S.hp = Math.max(1, S.hp - cost); applyCombatEffect('me', { type: 'burst' }, c); pillMsg = '烈元蓄势（下一门攻击术法 +35%），气血 −' + cost; }
+      else if (p.type === 'regen') { applyCombatEffect('me', { type: 'regen', turns: p.turns || 3 }, c); pillMsg = '生生不息（3 回合每回合复气血 4%）'; }
+      else if (p.type === 'mix') { const gh = Math.round(S.hpMax * (p.v || 0.18)), gm = Math.round(S.mpMax * (p.v || 0.18)); S.hp = Math.min(S.hpMax, S.hp + gh); S.mp = Math.min(S.mpMax, S.mp + gm); pillMsg = '气血 +' + gh + '，灵力 +' + gm; }
+      else pillMsg = applyPill(p);
+      note = '服 ' + p.name + '：' + pillMsg + '（丹药 ' + c.pillCount + '/2）';
     } else if (sub === 'talk') {
       if (rng() < clamp(0.2 + (st('fate') + gongfaFateAdd()) * 0.02 - gap * 0.1 - diff * 0.01, 0.05, 0.6)) {
         S.combat = null; S.phase = 'play';
@@ -11399,7 +12123,12 @@
     if (lifeGain) S.lifeMax = (S.lifeMax || 0) + parseInt(lifeGain[1], 10);
     const xiuGain = gain.match(/修为\s*\+\s*(\d+)/);
     if (xiuGain) gainXiuwei(parseInt(xiuGain[1], 10));
-    if (/阅历/.test(gain)) S.insightXp = (S.insightXp || 0) + 1 + fateAdd('book');   // v9.0 M1：负薪问道
+    if (/阅历/.test(gain)) {
+      /* v10.7 阶段三：悟心丹——下一次读书悟道收益 +N，消费一次蓄势 */
+      let _bookXp = 1 + fateAdd('book');   // v9.0 M1：负薪问道
+      if (S.wuXinBuff > 0) { _bookXp += S.wuXinBuff; logLine('悟心丹药力发作，悟道额外 +' + S.wuXinBuff + '。', 'good'); S.wuXinBuff = 0; }
+      S.insightXp = (S.insightXp || 0) + _bookXp;
+    }
     /* v10.6：有些真意不是数值，是一次改判或一条伏笔。
        写在 fx 里，读的时候一并兑现——gain 那句话才有下文。 */
     const fx = layer.fx || {};
@@ -13000,6 +13729,11 @@
        没有探针就只能靠肉眼数按钮——那正是本轮要消灭的验证盲区。 */
     dockItems, navGroups, navGroupOf,
     talBuffMul, preBoostMul, TAL_BUFF_TURNS,
+    /* v10.7 阶段三：战斗决策层探针。状态四入口 / 意图 / 调息 / 掉落 / 符箓迁移。
+       验收仍走玩家可见路径（do;cbt:*），探针只作辅助断言。 */
+    applyCombatEffect, tickCombatEffects, consumeCombatEffect, renderCombatEffects,
+    applySkillEffects, detonateBurn, pickFoeIntent, foeIntentText, foeStyleOf,
+    combatLoot, migrateTalismans, combatLose, startCombat,
     /* v10.7 阶段二：破境 FIFO 与本命迁移探针。
        测试要验「每一步都能续接」「迁移两次结果一致」，没有出口就只能靠点 UI。 */
     afterBreakDone, afterBreakStepDone, migrateBenming,
