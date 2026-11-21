@@ -1015,6 +1015,33 @@
   @keyframes sideIn{from{transform:translateX(18px);opacity:.6}to{transform:none;opacity:1}}
   .modal--side .sidegrip{width:34px;height:3px;border-radius:2px;background:var(--edge);
     margin:0 auto 8px}
+
+  /* ============ v10.8 P2：批量段控与应用外壳固定 ============
+     段控（坊市「买 5」/ 采集「3 旬」/ 炼制「做满」）与检索排序同一行同一套小签，
+     玩家不必为三种批量记三种长相。 */
+  .qtychips{margin:6px 0 8px}
+  .qtychips .shop-chip{min-width:44px;text-align:center}
+
+  /* 外壳固定：≥1200 才生效。用 max-height 而不是 height——
+     中栏内容短于一屏时自然回落到文档流，不会留一片空白；
+     长于一屏时中栏自己内滚，左右两栏与页头纹丝不动，
+     这就是「中间是一页，左右上下滑动时中间固定」。
+     前置条件：P0 已做重绘保滚动位置，否则每次重绘都把内滚归零，比不固定更难用。 */
+  @media(min-width:1200px){
+    .stage>.col-main{
+      position:sticky;top:58px;
+      max-height:calc(100vh - 84px);
+      overflow-y:auto;overflow-x:hidden;
+      overscroll-behavior:contain;scrollbar-width:thin;
+    }
+    @supports(height:100dvh){
+      .stage>.col-main{max-height:calc(100dvh - 84px)}
+    }
+    .stage>.col-main::-webkit-scrollbar{width:6px}
+    .stage>.col-main::-webkit-scrollbar-thumb{background:rgba(90,80,60,.22);border-radius:3px}
+    /* 中栏自己滚时，Tab 条在中栏顶部吸住（栏内滚动容器里的 top 是 0，不是视口的 58） */
+    .stage>.col-main .tabbar{top:0}
+  }
 </style>
 </head>
 <body>

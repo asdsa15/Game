@@ -4783,6 +4783,12 @@
         const price = buyPriceOf(it);
         let note = fmtNum(price) + ' 石';
         if (it.tier) note = D.GONGFA_TIERS[it.tier].name + ' · ' + note;
+        /* v10.8 P2（顺手修 6）：行情涨跌要看得见。
+           v10.5 做了双向行情，可玩家只看到一个最终价——贵了还是便宜了，全凭记性。
+           现在价后补一个箭头与相对基准的百分比；材料行再补「已有 N」（顺手修 7），
+           免得买料要开乾坤袋对数量。 */
+        note += marketTrendOf(it);
+        if (it.cat === 'mat') note += ' · 已有 ' + (S.bagMat[it.id] || 0);
         let owned = false;
         let tag = it.cat === 'art' ? '法器' : it.cat === 'mat' ? '材料' : it.cat === 'tal' ? '符箓' : '丹药';
         if (it.type === 'land') {
@@ -4794,9 +4800,12 @@
           owned = (S.arts || []).indexOf(it.id) >= 0;
           if (owned) note = '已拥有';
         }
+        /* 段控在买多份时把总价写到价后，省得玩家心算 */
+        const q = shopBuyQty(it);
+        const buying = q > 1 ? (' · 买 ' + q + ' 份 ' + fmtNum(price * q) + ' 石') : '';
         b += iconRow(shopIconTable(it.cat), it.id, '·', it.name + '　' + (it.desc || it.eff || ''),
           { name: tag, cls: 'peace' },
-          note, owned || S.stones < price, 'do;buy:' + it.id);
+          note + buying, owned || S.stones < price, 'do;buy:' + it.id);
       });
     }
     return b;
@@ -4841,6 +4850,12 @@
         return '<span class="shop-chip' + (_shopSort === s[0] ? ' on' : '') +
           '" data-act="do;shopsort:' + s[0] + '">' + s[1] + '</span>';
       }).join('') + '</div>';
+    /* v10.8 P2：数量段控。坊市本来就能连点（买完不关窗），
+       所以这里不是发明「批量购买」，只是把「连点五下」压成「点一下」。 */
+    if (cat === 'pill' || cat === 'tal' || cat === 'mat') {
+      b += qtyChips([{ v: 1, n: '买 1' }, { v: 5, n: '买 5' }, { v: 10, n: '买 10' }, { v: 0, n: '买满' }],
+        shopQty(), 'do;shopqty', '每次买');
+    }
     b += '<ul class="opts" id="shop-list">' + shopListInner(cat) + '</ul>';
     b += '<div class="hint">坊市只售黄、玄两阶。地阶以上不上市——那要靠「传法机缘」自己撞。</div>';
     b += '<div class="hint">坊市只认灵石，不认香火。香火是庙里的东西。</div>';
@@ -4872,6 +4887,10 @@
   };
 
   ACT.do_shopsort = (s) => { _shopSort = s || 'def'; ACT.openShop(_shopLastCat || 'pill'); };
+  ACT.do_shopqty = (n) => {
+    setShopQty(parseInt(n, 10) || 0);
+    ACT.openShop(_shopLastCat || 'pill');
+  };
 
   ACT.do_shopcat = (c) => { closeModal(); ACT.openShop(c); };
 
@@ -5012,8 +5031,17 @@
       if (S.arts.indexOf(it.id) >= 0) { toast('已拥有此法宝'); return; }
     }
     const buyPrice = buyPriceOf(it);
-    if (!spendStones(buyPrice, '购 ' + it.name)) {
+    /* v10.8 P2：这一击买几份。余额不够时自动降到能买的数量，
+       并如实报「已买到 N 份」——不能悄悄买少，也不能整单失败。 */
+    const want = shopStackable(it) ? shopQty() : 1;
+    const qty = shopBuyQty(it);
+    if (shopStackable(it) && shopAffordOf(it) < 1) {
       toast('灵石不足：需 ' + fmtNum(buyPrice) + '，余 ' + fmtNum(S.stones));
+      return;
+    }
+    const totalPrice = buyPrice * qty;
+    if (!spendStones(totalPrice, '购 ' + it.name + (qty > 1 ? ' ×' + qty : ''))) {
+      toast('灵石不足：需 ' + fmtNum(totalPrice) + '，余 ' + fmtNum(S.stones));
       return;
     }
     if (it.cat === 'art') {
@@ -5025,19 +5053,20 @@
     } else if (it.cat === 'mat') {
       /* 修 bug：旧代码写进 S.bag，而四艺查的是 S.bagMat。
          结果「在坊市花钱买的材料，炼丹永远显示没有」——四艺整条链断在这里。 */
-      addMat(it.id, 1);
-      logLine('购得材料「' + it.name + '」。', 'good', 'trade');
-      toast('购得 ' + it.name + ' · 余 ' + fmtNum(S.stones) + ' 石');
+      addMat(it.id, qty);
+      logLine('购得材料「' + it.name + '」' + (qty > 1 ? ' ×' + qty : '') + '。', 'good', 'trade');
+      toast('购得 ' + it.name + (qty > 1 ? ' ×' + qty : '') + ' · 余 ' + fmtNum(S.stones) + ' 石');
     } else if (it.cat === 'tal') {
       /* v10.7 阶段三：符箓唯一库存 S.talismans，不再进 S.arts */
-      addTalisman(it.id, 1);
-      logLine('购得符箓「' + it.name + '」。', 'good');
-      toast('购得 ' + it.name + ' · 余 ' + fmtNum(S.stones) + ' 石');
+      addTalisman(it.id, qty);
+      logLine('购得符箓「' + it.name + '」' + (qty > 1 ? ' ×' + qty : '') + '。', 'good');
+      toast('购得 ' + it.name + (qty > 1 ? ' ×' + qty : '') + ' · 余 ' + fmtNum(S.stones) + ' 石');
     } else {
-      S.bag[it.id] = (S.bag[it.id] || 0) + 1;
-      logLine('购得「' + it.name + '」。', 'good');
-      toast('购得 ' + it.name + ' · 余 ' + fmtNum(S.stones) + ' 石');
+      S.bag[it.id] = (S.bag[it.id] || 0) + qty;
+      logLine('购得「' + it.name + '」' + (qty > 1 ? ' ×' + qty : '') + '。', 'good');
+      toast('购得 ' + it.name + (qty > 1 ? ' ×' + qty : '') + ' · 余 ' + fmtNum(S.stones) + ' 石');
     }
+    if (want !== 0 && qty < want) toast('灵石只够 ' + qty + ' 份，已买到上限');
     /* 买完不关窗：只换列表与余额，能接着买下一件 */
     refreshShop(_shopLastCat || 'pill'); render();
     /* 坊市开着就先不弹「所得」，否则一买就被顶掉、连买断掉 */
@@ -6627,6 +6656,23 @@
        不需要把旧进度折算。 */
     out.xun = (typeof st.xun === 'number' && st.xun >= 0 && st.xun < XUN_PER_MONTH) ? st.xun : 0;
     out.xiuAcc = typeof st.xiuAcc === 'number' ? st.xiuAcc : 0;
+    /* v10.8 P2：批量段控的记忆（坊市 / 采集 / 炼制各一份）。
+       旧档没有这个字段 → 三处都缺省 1；万一旧档里是裸数字，按同一值铺开。
+       这是本批唯一新增的存档字段，SAVE_VER 不动。 */
+    out.batchN = (function (v) {
+      const base = typeof v === 'number' ? Math.max(1, Math.floor(v) || 1) : 1;
+      const o = { shop: base, gather: base, craft: base };
+      if (v && typeof v === 'object') {
+        BATCH_KEYS.forEach(function (k) {
+          const n = parseInt(v[k], 10);
+          if (!isNaN(n)) o[k] = Math.max(0, n);
+        });
+      }
+      if (o.shop !== 0) o.shop = Math.max(1, o.shop);
+      o.gather = clamp(o.gather, 1, GATHER_BATCH_MAX);
+      o.craft = clamp(o.craft, 1, CRAFT_BATCH_MAX);
+      return o;
+    })(st.batchN);
     /* 临终状态要留：不然在读档时把「还有一口气」吞掉，等于白送一条命 */
     out.dying = st.dying || null;
     if (out.phase === 'dying' && !out.dying) out.phase = 'over';
@@ -12088,7 +12134,7 @@
     openModal(title, b);
   }
   ACT.do_retry = (kind, a, b) => {
-    if (kind === 'gather') { ACT.do_gather(a); return; }
+    if (kind === 'gather') { ACT.do_gather(a, b); return; }
     if (kind === 'craft') { ACT.do_craftgo(a, b); return; }
   };
   /* 结算末尾调用：有东西才弹，没有就什么都不做（不打断节奏） */
@@ -12305,6 +12351,74 @@
     openModal('缺料 · ' + esc(outNameOf(r)), b);
   };
 
+  /* ---------- v10.8 P2：批量执行器 ----------
+     坊市之所以「能批量」，不是因为有个批量按钮，而是买完不关窗——「再来一次」只花 1 击。
+     采集与炼制要的是同一件事：把重复劳动的点击成本压到 1，而不是发明新概念。
+     所以这里给三处（坊市段控 / 采集 N 旬 / 炼制 N 炉）一个共同跑法。
+
+     口径（方案 §6.1，先定死再写代码）：
+       · 每单位独立掷骰，**禁止「一次掷骰 ×N」**——批量只许减少点击，不许改变期望值；
+       · 单位自己返回 {stop:true, why}（料尽 / 采不到）即停；阶段离开 play（死亡/战斗/奇遇）也停；
+       · 汇总只弹一次窗，由调用方决定怎么呈现，本函数只管跑与计数。
+     返回的 n 是「真正跑完的单位数」——中止发生在第几个，由调用方写「第 k 次中止」。 */
+  function runBatch(n, step) {
+    const max = Math.max(1, Math.floor(Number(n) || 1));
+    const results = [];
+    let stopped = false, why = '';
+    for (let i = 1; i <= max; i++) {
+      const r = step(i) || {};
+      if (r.stop) { stopped = true; why = r.why || ''; break; }
+      results.push(r);
+      if (S.phase !== 'play') { stopped = true; why = '外界生变'; break; }
+    }
+    return {
+      n: results.length,
+      done: results.filter(function (r) { return r.ok; }).length,
+      stopped: stopped, why: why, results: results
+    };
+  }
+
+  /* 上次选的批量数：一个字段放三处（坊市 / 采集 / 炼制），因为玩家对
+     「买几份」与「炼几炉」的默认量本来就不一样。旧档没有这个字段 → 缺省 1。 */
+  const BATCH_KEYS = ['shop', 'gather', 'craft'];
+  function batchN(kind) {
+    const v = S.batchN;
+    if (typeof v === 'number') return Math.max(1, Math.floor(v) || 1);
+    const n = (v && v[kind]) || 1;
+    return Math.max(1, Math.floor(Number(n) || 1));
+  }
+  function setBatchN(kind, n) {
+    if (typeof S.batchN !== 'object' || S.batchN === null) {
+      const old = typeof S.batchN === 'number' ? Math.max(1, Math.floor(S.batchN) || 1) : 1;
+      S.batchN = { shop: old, gather: old, craft: old };
+    }
+    S.batchN[kind] = Math.max(1, Math.floor(Number(n) || 1));
+  }
+  /* 坊市「买满」用 0 占位：段控里它是一个选项，不是一个数量 */
+  function shopQty() {
+    const v = S.batchN && S.batchN.shop;
+    if (v === 0) return 0;
+    return Math.max(1, Math.floor(Number(v) || 1));
+  }
+  function setShopQty(v) {
+    if (typeof S.batchN !== 'object' || S.batchN === null) S.batchN = { shop: 1, gather: 1, craft: 1 };
+    S.batchN.shop = (Number(v) === 0) ? 0 : Math.max(1, Math.floor(Number(v) || 1));
+  }
+  const GATHER_BATCH_MAX = 3;    // 采集：一次最多 3 旬（一月三旬，再多就该分月过）
+  const CRAFT_BATCH_MAX = 12;    // 炼制：一次最多 12 炉，再多该去看账本
+
+  /* 段控小签：三处批量共用同一种外观，免得「买 5」和「炼 3」长得不一样。
+     actBase 里可以带参数（炼制的配方 id），chip 自己只补数量。 */
+  function qtyChips(list, cur, actBase, label) {
+    let b = '<div class="shop-tools qtychips"><span class="small muted">' + esc(label || '数量') + '</span>';
+    list.forEach(function (q) {
+      b += '<span class="shop-chip' + (cur === q.v ? ' on' : '') + '" data-act="' + actBase + ':' + q.v + '">' +
+        q.n + '</span>';
+    });
+    b += '</div>';
+    return b;
+  }
+
   /* ---------- 采集：四艺的零门槛料源 ----------
      没有这个，散修（不入宗门就没有任务给料）一点材料都拿不到，
      四艺在散修手里等于不存在。三个方向各有偏重，占一旬。 */
@@ -12327,6 +12441,10 @@
   ACT.openGather = () => {
     let b = '<div class="small">采集<b>占一旬</b>，不花灵石。境界越高能找的东西越好，灵气越足出稀有的概率越高。</div>';
     b += '<div class="small muted" style="margin-top:4px">当前：' + esc(curPlace()) + ' · 灵气 ' + D.LINGQI[S.lingqi].name + '</div>' + divider();
+    /* v10.8 P2：一次可采多旬。料是四艺的米，一旬一采等于把炼丹的前置成本
+       摊成了四次点击——这正是「坊市能批量、四艺不能」的来源。 */
+    const curN = batchN('gather');
+    b += qtyChips([{ v: 1, n: '1 旬' }, { v: 2, n: '2 旬' }, { v: 3, n: '3 旬' }], curN, 'do;gatherqty', '采集几旬');
     b += '<ul class="opts">';
     GATHER_SPOTS.forEach(function (sp) {
       const pool = gatherPoolOf(sp);
@@ -12336,36 +12454,65 @@
       });
       b += optRow('·', sp.name, { name: sp.want, cls: 'peace' },
         pool.length ? (Math.min(2, pool.length) + '~' + Math.min(4, pool.length) + ' 份 · 可能出 ' + names.slice(0, 3).join('/')) : '此境采不到',
-        !pool.length, 'do;gather:' + sp.id);
+        !pool.length, 'do;gather:' + sp.id + ':' + curN);
     });
     b += '</ul>';
-    b += '<div class="hint">采到的东西会直接入库存，制作时点配方就能看见够不够。</div>';
+    b += '<div class="hint">采到的东西会直接入库存，制作时点配方就能看见够不够。' +
+      (curN > 1 ? '本次占 ' + curN + ' 旬，逐旬各掷一次。' : '') + '</div>';
     openModal('采集 · 占一旬', b);
   };
-  ACT.do_gather = (spot) => {
+  ACT.do_gatherqty = (n) => {
+    setBatchN('gather', clamp(parseInt(n, 10) || 1, 1, GATHER_BATCH_MAX));
+    ACT.openGather();
+  };
+  /* 一旬采集：只掷骰与入库，不推进时间、不弹窗。
+     抽出来是为了让「1 旬」与「N 旬」走同一段代码——批量与逐次必须逐条等价
+     （方案 §6.4），两套代码就一定会漂。掷骰顺序与旧版一字不差：
+     先 rnd(2) 定份数，再逐份 rnd(pool) 挑料，最后 rng() 判稀有。 */
+  function gatherOnce(sp, pool) {
+    const n = 2 + rnd(2) + (st('sense') >= 15 ? 1 : 0);
+    for (let i = 0; i < n; i++) addMat(pool[rnd(pool.length) - 1], 1);
+    // 稀有一份：境界与灵气都加成
+    const rareOdds = 0.10 + S.xRealm * 0.05 + (S.lingqi || 0) * 0.04;
+    if (rng() < rareOdds && pool.length > 1) addMat(pool[pool.length - 1], 1);
+    return n;
+  }
+  ACT.do_gather = (spot, nArg) => {
     const sp = GATHER_SPOTS.find(function (x) { return x.id === spot; });
     if (!sp) return;
     closeModal();
-    advanceXun(1);
-    if (S.phase !== 'play') return render();
-    const pool = gatherPoolOf(sp);
-    if (!pool.length) { toast('此境采不到东西'); return render(); }
-    const n = 2 + rnd(2) + (st('sense') >= 15 ? 1 : 0);
-    for (let i = 0; i < n; i++) {
-      addMat(pool[rnd(pool.length) - 1], 1);
-    }
-    // 稀有一份：境界与灵气都加成
-    const rareOdds = 0.10 + S.xRealm * 0.05 + (S.lingqi || 0) * 0.04;
-    if (rng() < rareOdds && pool.length > 1) {
-      const top = pool[pool.length - 1];
-      addMat(top, 1);
-    }
-    logLine('进山' + sp.name.replace('山野', '').replace('溪畔', '').replace('废弃', '') + '一趟，收获见下。', '', 'craft');
+    const want = nArg === 'max'
+      ? Math.max(1, XUN_PER_MONTH - (S.xun || 0))
+      : clamp(parseInt(nArg, 10) || batchN('gather'), 1, GATHER_BATCH_MAX);
+    setBatchN('gather', want);
+    const nm = sp.name.replace('山野', '').replace('溪畔', '').replace('废弃', '');
+    const res = runBatch(want, function () {
+      advanceXun(1);
+      if (S.phase !== 'play') return { ok: false, stop: true, why: '外界生变' };
+      /* 与旧版同序：先过一旬，再看这一境能不能采到东西。
+         「白花一旬」不该因为加了批量就被悄悄免掉。 */
+      const pool = gatherPoolOf(sp);
+      if (!pool.length) return { ok: false, stop: true, why: '此境采不到东西' };
+      gatherOnce(sp, pool);
+      logLine('进山' + nm + '一趟，收获见下。', '', 'craft');
+      /* 每旬都重绘一次：这不只是为了进度感——场景句与横幅本身要掷地点，
+         逐次采集时每次都会消耗随机数。批量若省掉这些重绘，后续每一旬的
+         掷骰就会与手动错位，「同 seed 等价」当场不成立。 */
+      render();
+      return { ok: true };
+    });
+    if (!res.n) { toast('此境采不到东西'); return render(); }
+    /* 批量只掷一次外界之事（与 ACT.cultivate 一致）：
+       逐旬掷会把「N 旬」变成 N 次奇遇机会，那是数值改动，不是省点击。
+       注意这里**不再补 render**——上面每旬已经各重绘一次，与逐次采集的重绘次数对齐；
+       多补一次就会多掷一次场景随机数，后面每一旬的掷骰都会错位。 */
     maybeEvent();
-    render();
     if (!modalBusy()) {
-      flushGain('采集所得', '采集占去一旬。料在「四艺 → 材料库存」里，做东西时点配方就能看见够不够。', false,
-        'do;retry:gather:' + sp.id);
+      let tail = '采集占去 ' + res.n + ' 旬。料在「四艺 → 材料库存」里，做东西时点配方就能看见够不够。';
+      if (res.stopped) tail += '（第 ' + (res.n + 1) + ' 旬中止：' + res.why + '）';
+      else if (res.n > 1) tail += '这 ' + res.n + ' 旬里头，外界之事一并略过。';
+      flushGain('采集所得' + (res.n > 1 ? ' · ' + res.n + ' 旬' : ''),
+        tail, res.n > 1, 'do;retry:gather:' + sp.id + ':' + res.n);
     }
   };
 
@@ -12600,28 +12747,52 @@
       fmtNum(sale) + ' 石/份 ×' + r.need + '　净利约 ' + fmtNum(totalSale - cost) + ' 石</div>';
 
     b += divider();
+    /* v10.8 P2：一次可炼多炉。火候一次选定、作用于全部 N 炉；
+       每炉独立扣料、独立判成败、独立结算炸炉——「一次掷骰 ×N」是不许的。 */
+    const maxN = craftMaxOf(r);
+    const curN = clamp(batchN('craft'), 1, Math.max(1, maxN));
     b += '<div class="small muted">选一种火候。<b>无论成败都占一旬</b>，这一旬不能打坐。</div>';
+    const qs = [{ v: 1, n: '1 炉' }, { v: 3, n: '3 炉' }, { v: 5, n: '5 炉' }]
+      .filter(function (q) { return q.v <= Math.max(1, maxN); });
+    qs.push({ v: Math.max(1, maxN), n: maxN > 1 ? ('做满 · ' + maxN + ' 炉') : '做满' });
+    const uniq = [];
+    qs.forEach(function (q) { if (!uniq.some(function (x) { return x.v === q.v; })) uniq.push(q); });
+    b += qtyChips(uniq, curN, 'do;craftqty:' + r.id, '炼几炉');
+    if (maxN < 1) b += '<div class="small muted">料不够一炉。</div>';
     const wWen = clamp(p.total + 0.15, 0.10, 0.98);
     const wWu = clamp(p.total - 0.10, 0.10, 0.98);
     b += '<ul class="opts">';
     b += optRow('A', '文火慢炼', { name: '稳', cls: 'peace' },
-      Math.round(wWen * 100) + '% · 品相不变', false, 'do;craftgo:' + r.id + ':wen');
+      Math.round(wWen * 100) + '% · 品相不变', false, 'do;craftgo:' + r.id + ':wen:' + curN);
     b += optRow('B', '武火猛攻', { name: '贪', cls: 'risk' },
-      Math.round(wWu * 100) + '% · 上品/极品概率翻倍 · 炸炉更狠', false, 'do;craftgo:' + r.id + ':wu');
+      Math.round(wWu * 100) + '% · 上品/极品概率翻倍 · 炸炉更狠', false, 'do;craftgo:' + r.id + ':wu:' + curN);
     b += optRow('C', '稳守中火', { name: '常', cls: 'peace' },
-      Math.round(p.total * 100) + '% · 不赚不亏', false, 'do;craftgo:' + r.id + ':zhong');
+      Math.round(p.total * 100) + '% · 不赚不亏', false, 'do;craftgo:' + r.id + ':zhong:' + curN);
     b += '</ul>';
     if (r.note) b += '<div class="hint">' + esc(r.note) + '</div>';
     openModal('制作 · ' + esc(outNameOf(r)), b);
   }
-
-  ACT.do_craftgo = (id, mode) => {
+  /* 这一炉料够做几炉：按最紧的那种料算，封顶 12 */
+  function craftMaxOf(r) {
+    const m = matsOf(r);
+    let n = CRAFT_BATCH_MAX;
+    Object.keys(m).forEach(function (k) {
+      n = Math.min(n, Math.floor((S.bagMat[k] || 0) / m[k]));
+    });
+    return Math.max(0, Math.min(n, CRAFT_BATCH_MAX));
+  }
+  ACT.do_craftqty = (id, n) => {
     const r = D.RECIPES.find(function (x) { return x.id === id; });
     if (!r) return;
-    if ((S.learnedRecipes || []).indexOf(id) < 0) { toast('尚未学会这张配方'); return; }
-    if (!canCraftTier(r.kind, r.tier, r.lv)) { toast('技艺或境界不足'); return; }
-    closeModal();
-    if (!hasMats(r)) { toast('材料不足'); return; }
+    setBatchN('craft', n === 'max' ? Math.max(1, craftMaxOf(r)) : (parseInt(n, 10) || 1));
+    openCraftRun(r);
+  };
+
+  /* 一炉：只扣料、判成败、结算，不推进时间、不弹窗。
+     旧版这一整段写在 ACT.do_craftgo 里；抽出成函数是为了让「1 炉」与「N 炉」
+     走同一条路径——批量与逐次的结果必须逐条相同（方案 §6.4）。 */
+  function craftOnce(r, mode) {
+    if (!hasMats(r)) return { ok: false, stop: true, why: '料尽' };
     // 扣料
     const m = matsOf(r);
     for (const k in m) { S.bagMat[k] -= m[k]; }
@@ -12679,7 +12850,6 @@
       cls = 'good';
     }
     logLine(msg, cls, 'craft');
-    toast(ok ? '成器' : '毁弃');
     // v6.6：四艺记账（成败都计炉数，只有成功的才计品相）
     bump('craft');
     if (ok) {
@@ -12687,16 +12857,61 @@
       else if (q.id === 'shang') bump('qShang');
       else if (q.id === 'ji') bump('qJi');
     }
-    advanceXun(1);
-    if (S.phase !== 'play') return render();
+    return {
+      ok: ok, q: q,
+      cost: matCostOf(r),
+      back: ok ? Math.max(1, Math.round(craftedValueOf(r) * RECOVER_BASE)) * (r.need || 1) : 0
+    };
+  }
+
+  ACT.do_craftgo = (id, mode, nArg) => {
+    const r = D.RECIPES.find(function (x) { return x.id === id; });
+    if (!r) return;
+    if ((S.learnedRecipes || []).indexOf(id) < 0) { toast('尚未学会这张配方'); return; }
+    if (!canCraftTier(r.kind, r.tier, r.lv)) { toast('技艺或境界不足'); return; }
+    closeModal();
+    if (!hasMats(r)) { toast('材料不足'); return; }
+    const want = clamp(parseInt(nArg, 10) || batchN('craft'), 1, CRAFT_BATCH_MAX);
+    setBatchN('craft', want);
+    let cost = 0, back = 0, okN = 0, badN = 0;
+    const qual = {};
+    const res = runBatch(want, function () {
+      const one = craftOnce(r, mode);
+      if (one.stop) return one;
+      cost += one.cost || 0;
+      back += one.back || 0;
+      if (one.ok) { okN++; qual[one.q.name] = (qual[one.q.name] || 0) + 1; }
+      else badN++;
+      advanceXun(1);
+      if (S.phase !== 'play') return { ok: one.ok, stop: true, why: '外界生变' };
+      /* 每炉都重绘一次（理由同采集）：逐炉炼时每次结算后都会重绘，
+         而场景句与横幅要掷地点、吃随机数。批量若攒到最后再画一次，
+         第二炉起的掷骰就与手动错位——「同 seed 等价」立刻不成立。 */
+      render();
+      return one;
+    });
+    if (!res.n) { toast('材料不足'); return render(); }
+    toast(res.n > 1 ? ('成 ' + okN + ' 废 ' + badN) : (okN ? '成器' : '毁弃'));
+    /* 同上：每炉已经各重绘一次，这里不再补 render（否则随机数多走一步）。 */
     maybeEvent();
-    render();
     // 这一炉出了什么，得让玩家看见；但如果奇遇已经弹了，就不顶掉它
     if (!modalBusy()) {
-      flushGain(ok ? ('炼制所得 · ' + q.name) : '这一炉废了',
-        ok ? '卖出去找「坊市 → 卖出」。自用则直接生效。'
-           : '剩下的残料已回库。武火更容易炸炉，文火更稳。', true,
-        'do;retry:craft:' + id + ':' + (mode || 'zhong'));
+      const qn = Object.keys(qual).map(function (k) { return k + ' ' + qual[k] + ' 炉'; }).join('、');
+      let tail;
+      if (res.n > 1) {
+        tail = '成 ' + okN + ' 炉 · 废 ' + badN + ' 炉' + (qn ? '（' + qn + '）' : '') +
+          '。料钱 ' + fmtNum(cost) + ' 石 · 中品回收约 ' + fmtNum(back) + ' 石 · 净约 ' + fmtNum(back - cost) + ' 石。';
+        tail += '卖出去找「坊市 → 卖出」。自用则直接生效。';
+        if (res.stopped) tail += '（第 ' + (res.n + 1) + ' 炉中止：' + res.why + '）';
+        else tail += '这 ' + res.n + ' 旬里头，外界之事一并略过。';
+      } else {
+        tail = okN
+          ? '卖出去找「坊市 → 卖出」。自用则直接生效。'
+          : '剩下的残料已回库。武火更容易炸炉，文火更稳。';
+      }
+      flushGain(res.n > 1 ? (okN ? ('炼制 · 成 ' + okN + ' 炉') : ('这 ' + res.n + ' 炉全废了'))
+        : (okN ? '炼制所得' : '这一炉废了'),
+        tail, true, 'do;retry:craft:' + id + ':' + (mode || 'zhong'));
     }
   };
 
@@ -13025,6 +13240,38 @@
     let p = Math.round(base * buyMulOf(it.cat));
     if (S.sect && (S.sect.rank || 0) >= 2) p = Math.round(p * 0.97);
     return Math.max(1, p);
+  }
+  /* v10.8 P2：行情箭头。只对吃行情的三类（丹 / 器 / 料）给读数，
+     其余返回空串——符箓与功法本来就不随行情动，标个「—」只会让人以为能等它跌。 */
+  function marketTrendOf(it) {
+    if (!it || !it.price) return '';
+    const key = it.cat === 'pill' ? 'dan' : it.cat === 'art' ? 'qi' : it.cat === 'mat' ? 'mat' : null;
+    if (!key || !S.market || !S.market.buy) return '';
+    const mul = buyMulOf(it.cat);
+    if (Math.abs(mul - 1) < 0.005) return ' —';
+    return (mul > 1 ? ' ↑' : ' ↓') + Math.abs(Math.round((mul - 1) * 100)) + '%';
+  }
+  /* v10.8 P2：哪些货能一次买多份。
+     法器 / 功法 / 术法 / 灵脉契一律 ×1——它们是「买到就归你」的唯一物，
+     批量买只会把「购买唯一」（v10.5 P0·E6）变成一句空话。 */
+  function shopStackable(it) {
+    if (!it) return false;
+    if (it.type === 'land') return false;
+    if (it.cat === 'art' || it.cat === 'gongfa' || it.cat === 'fa') return false;
+    return true;
+  }
+  function shopAffordOf(it) {
+    const price = Math.max(1, buyPriceOf(it));
+    return Math.max(0, Math.floor((S.stones || 0) / price));
+  }
+  /* 这一击实际会买几份：段控给的数量与余额取小；「买满」直接按余额算。
+     显示与扣款都用它，玩家才不会以为点了 5 份却只买了 3 份。 */
+  function shopBuyQty(it) {
+    if (!shopStackable(it)) return 1;
+    const want = shopQty();
+    const afford = shopAffordOf(it);
+    if (want === 0) return Math.max(1, afford);
+    return afford >= 1 ? Math.max(1, Math.min(want, afford)) : want;
   }
   function sellCh() {
     const id = S.sellCh || 'market';
@@ -14089,6 +14336,10 @@
     /* v10.8 P1：纪事分类与中栏分页的探针。
        验收要验「兜底命中率」与「筛选不改数据」，只能在进程内直接读分类结果。 */
     guessCat, catName, chronOf, sidePanelFight, logLine, maybeEvent,
+    /* v10.8 P2：批量执行器与段控的探针。
+       验收要验「同 seed 下批量 N 次 == 手动 N 次」，只能在进程内跑两条路径比对；
+       还要验「余额不足自动降档」，需要直接读这一击会买几份。 */
+    runBatch, batchN, shopQty, shopBuyQty, craftMaxOf, marketTrendOf,
     logCats: function () { return LOG_CATS; },
     mainTabNow: function () { return _mainTab; },
     chronCatNow: function () { return _chronCat; },
