@@ -30,15 +30,16 @@ body{
   .btn{min-height:40px;padding:9px 18px}
   .chip{min-height:38px;padding:8px 12px}
 
-  .dockbtn:hover{transform:none;box-shadow:none}
-  .dockbtn:active{transform:scale(.96)}
+  /* v10.7 P1：导航条目与底部五项底栏同样要够手指高度 */
+  .navitem{min-height:40px}
+  .navmobtn{min-height:46px}
 
   .sysbtn-top{min-height:40px;padding:8px 14px}   /* 36px 仍低于 40px 的下限 */
   .sysbtn-top:hover{background:#fff;border-color:var(--edge);color:var(--ink)}
 
   /* 按钮类元素不参与长按选中，避免误拖出蓝底。
      只在触屏生效：桌面玩家要能复制丹药名、价格与错误提示。 */
-  .opt,.btn,.chip,.dockbtn,.sysbtn-top{-webkit-user-select:none;user-select:none}
+  .opt,.btn,.chip,.navitem,.navmobtn,.sysbtn-top{-webkit-user-select:none;user-select:none}
 }
 
 /* --------------------------------------------------------------------------
@@ -77,12 +78,11 @@ body{
 @media(max-width:880px){
   /* :not(.stage-fight) —— 否则会把对战的「敌左我右」顺序也打乱 */
   .stage:not(.stage-fight){grid-template-columns:1fr;gap:12px;padding:12px 12px 96px}
-  .stage:not(.stage-fight) > .col:nth-of-type(2){order:1}   /* 叙事＋选项（最先看到） */
-  /* 指令坞排第二：手机上它才是主操作区。旧顺序把它放在纪事与状态之后，
-     常用指令（功法/坊市）要先滚过两栏才够得着。 */
-  .stage:not(.stage-fight) > .dockrow{order:2}
-  .stage:not(.stage-fight) > .col:nth-of-type(1){order:3}   /* 天时·纪事 */
-  .stage:not(.stage-fight) > .col:nth-of-type(3){order:4}   /* 状态 */
+  /* v10.7 P1：左导航在手机上只剩「要务」（无要务时整块隐藏），
+     其余入口收进底部五项底栏。顺序＝要务 → 主行动 → 状态。 */
+  .stage:not(.stage-fight) > .col-nav{order:1}
+  .stage:not(.stage-fight) > .col-main{order:2}
+  .stage:not(.stage-fight) > .col-state{order:3}
   .stage:not(.stage-fight) .logbox{max-height:220px}
 }
 
@@ -128,18 +128,14 @@ body{
 }
 
 /* --------------------------------------------------------------------------
-   9. 底部指令区与小屏密度
+   9. 底部五项导航与小屏密度
    -------------------------------------------------------------------------- */
-/* 手机上指令坞 13~15 个按钮，容易占掉小半屏。
-   560 以下压高度：缩小内边距、图标与字号，副标题只留一行省略号。 */
+/* v10.7 P1：底部通栏指令坞已拆进左导航，手机上改为五项固定底栏。
+   560 以下压高度：缩小字号，副标题只留一行省略号。 */
 @media(max-width:560px){
-  /* 15 个入口排 5 列 = 3 行，比 4 列少一行（约 55px），手机上少滚一截 */
-  .dock{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
-  .dockbtn{padding:7px 2px 6px;gap:1px}
-  .dockbtn .dk{width:22px;height:22px;line-height:22px;font-size:12px}
-  .dockbtn .dt{font-size:11px;letter-spacing:0}
-  .dockbtn .ds{font-size:9px;max-width:100%;overflow:hidden;
-    text-overflow:ellipsis;white-space:nowrap}
+  .navmobtn{padding:5px 1px 5px}
+  .navmobtn b{font-size:12px;letter-spacing:0}
+  .navmobtn span{font-size:9px}
 }
 
 /* iOS 在 font-size < 16px 的输入框上聚焦会自动放大整页；自由输入是手机上最常用的入口 */
@@ -161,7 +157,7 @@ body{
   .selgrid .chip b{flex:0 0 auto;white-space:nowrap}
 }
 @media(max-width:360px){
-  .dockbtn .ds{display:none}     /* 极窄屏才彻底去掉副标题 */
+  .navmobtn span{display:none}     /* 极窄屏才彻底去掉副标题 */
 }
 
 /* --------------------------------------------------------------------------
@@ -179,8 +175,6 @@ body{
   .hint{font-size:12.5px}
 }
 
-/* v8.1 P0 M5：指令坞折叠组（触控友好：整行可点，高度 40px 起） */
-.dockgrp{margin-top:10px}
-.dockgt{min-height:40px;padding:10px 8px;font-size:13px}
-.dockgt .gn{font-size:12px}
-.dockgrp>.dock{margin-top:8px}
+/* v10.7 P1：导航条目（触控友好：整行可点，高度 40px 起） */
+.navitem{min-height:40px}
+.navmob{min-height:46px}

@@ -148,22 +148,24 @@ G.render();
 ok(S.goals.length === G.D.GOALS.xian.length, '全目标完成后保持完成态');
 
 
-/* ==================== v8.1 P0 批次 1 ==================== */
-console.log('=== v8.1 · 指令坞分组 ===');
-setup('xian'); S.dockOpen = {};
+/* ==================== v10.7 P1 · 左侧常驻导航 ==================== */
+console.log('=== v10.7 · 左侧常驻导航 ===');
+setup('xian');
 G.render();
 let h = els['stage'].innerHTML;
-ok(h.indexOf('dockgrp') > 0, '坞里出现折叠组');
-ok(h.indexOf('常驻指令') > 0, '常用区标题仍在');
-ok(h.indexOf('收起') < 0, '四组默认收起');
-ok(h.indexOf('展开') > 0, '收起态给出「展开」提示');
-const dockBefore = h;
-G.ACT.do_dockGrp('修炼');
-h = els['stage'].innerHTML;
-ok(h !== dockBefore, '展开动作触发重绘');
-ok(h.indexOf('收起') > 0, '该组展开后给「收起」');
-G.ACT.do_dockGrp('修炼');
-ok(els['stage'].innerHTML.indexOf('收起') < 0, '再点一次收回去');
+ok(h.indexOf('navgrp') > 0, '左栏出现导航分组');
+ok(h.indexOf('navitem') > 0, '导航条目直接可见');
+ok(h.indexOf('dockgrp') < 0, '旧折叠组已下线');
+ok(h.indexOf('常驻指令') < 0, '旧「常驻指令」标题已下线');
+ok(h.indexOf('修行') > 0, '分组名可见');
+ok(h.indexOf('功法') > 0, '「功法」入口直接出现在左栏（不必先展开分组）');
+/* v10.7：移动端五项底栏在 DOM 里常驻（桌面由 CSS 隐藏），
+   保证窄屏下每个一级入口都有一个可达的入口点。 */
+ok(h.indexOf('navmob') > 0, '移动端五项底栏已渲染');
+ok(h.indexOf('do;navgrp:xiu') > 0, '底栏「修行」指向 do;navgrp:xiu');
+ok(h.indexOf('do;navmore') > 0, '底栏「更多」指向 do;navmore');
+/* 旧坞的折叠动作不再存在——它是死指令，留着只会让人以为还能折叠 */
+ok(typeof G.ACT.do_dockGrp !== 'function', '旧 do_dockGrp 已下线');
 
 console.log('=== v8.1 · 功能门 ===');
 setup('xian'); S.unlockStage = 1; S.karma = 0; S.xRealm = 0; S.xStage = 5; S.xiuwei = 0;

@@ -79,23 +79,68 @@
   .topbar .clock{margin-left:auto;font-size:13px;color:var(--jade);letter-spacing:1.5px;white-space:nowrap;font-weight:700}
   .topbar .sysbtn-top{margin-left:16px;flex:0 0 auto}
 
-  /* ============ 三栏布局 ============ */
+  /* ============ 三栏布局（左导航 / 中行事 / 右状态） ============ */
   .stage{
     display:grid;
-    grid-template-columns: 272px minmax(0,1fr) 312px;
+    grid-template-columns: 240px minmax(0,1fr) 300px;
     gap:18px;
-    max-width:1340px;margin:0 auto;
+    max-width:1560px;margin:0 auto;
     padding:20px 26px 40px;
     align-items:start;
   }
-  @media(max-width:1100px){
-    .stage{grid-template-columns: 232px minmax(0,1fr) 272px; gap:12px; padding:16px 14px 34px}
+  @media(max-width:1199px){
+    .stage{grid-template-columns: 220px minmax(0,1fr) 276px; gap:13px; padding:16px 14px 34px}
   }
   @media(max-width:880px){
-    .stage{grid-template-columns:1fr; padding:14px 16px 30px}
+    .stage{grid-template-columns:1fr; padding:14px 16px 96px}
   }
 
   .col{display:flex;flex-direction:column;gap:14px;min-width:0;align-self:start}
+  /* v10.7 P1：左右两栏吸顶的规则放在文件后段（.stage>* 那条之后），
+     原因见那里的注释——那条规则的权重更高，会把 sticky 压成 relative。 */
+
+  /* ============ 左侧常驻导航 ============ */
+  .navbox{margin-top:2px}
+  .navgrp{margin-bottom:11px}
+  .ngrpt{
+    display:flex;align-items:baseline;gap:8px;
+    padding:2px 6px 5px;margin-bottom:3px;
+    border-bottom:1px solid var(--edge);
+  }
+  .ngrpt .ngtn{font-size:12px;color:var(--muted);letter-spacing:2.5px}
+  .ngrpt .ngrpn{margin-left:auto;font-size:10.5px;color:var(--muted);letter-spacing:0;opacity:.8}
+  .navlist{display:flex;flex-direction:column;gap:1px;margin-top:4px}
+  .navitem{
+    display:flex;align-items:center;gap:8px;
+    padding:6px 7px;border-radius:6px;cursor:pointer;
+    border:1px solid transparent;
+    transition:background .12s,border-color .12s;
+  }
+  .navitem:hover{background:#F4FAF7;border-color:var(--edge)}
+  .navitem:focus-visible{outline:2px solid var(--jade-deep);outline-offset:1px}
+  .navitem .nk{
+    flex:0 0 auto;width:23px;height:23px;line-height:23px;text-align:center;border-radius:50%;
+    background:var(--jade-deep);color:#fff;font-size:11.5px;font-weight:700;
+  }
+  .navitem .nt{flex:0 0 auto;font-size:13px;color:var(--strong);font-weight:700;letter-spacing:.5px}
+  .navitem .ns{
+    margin-left:auto;min-width:0;max-width:52%;
+    font-size:11px;color:var(--muted);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  /* 要务：出现即急，颜色与普通入口分开，免得混在导航里被扫过去 */
+  .navgrp--urgent .ngrpt .ngtn{color:var(--cinnabar)}
+  .navitem--urgent{background:rgba(192,80,70,.06);border-color:#E6C8C2}
+  .navitem--urgent .nk{background:var(--cinnabar)}
+  .navitem--urgent:hover{background:rgba(192,80,70,.12);border-color:var(--cinnabar)}
+
+  /* ============ 中栏：近期纪事 ============ */
+  .chhead{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+  .chhead .chn{font-size:12.5px;color:var(--muted);letter-spacing:2px}
+  .chhead .chs{margin-left:auto;font-size:12px;color:var(--jade-deep);cursor:pointer}
+  .chhead .chs:hover{text-decoration:underline}
+  .logbox--mid{max-height:300px}
+
 
   /* ============ 面板 ============ */
   .panel{
@@ -370,54 +415,32 @@
     letter-spacing:1px;margin-bottom:10px;flex-wrap:wrap}
   .vsline b{font-size:13.5px}
 
-  /* ============ 底部常驻指令区 ============ */
+  /* ============ 通栏容器（现仅战斗行动区在用） ============ */
+  /* v10.7 P1：底部功能坞已拆进左导航常驻，这里只留下对战时的行动面板外壳。 */
   .dockrow{grid-column:1/-1;margin-top:2px}
-  .dockhead{
-    display:flex;align-items:baseline;gap:10px;
-    padding:0 2px 9px;font-size:12.5px;color:var(--muted);letter-spacing:1.5px;
-  }
-  .dockhead .sub{margin-left:auto;font-size:11px;letter-spacing:0;opacity:.85}
-  .dock{
-    display:grid;
-    /* 常用区固定四列：旧版 auto-fit 会把 4 个按钮各拉到 314px，
-       内容只占 70px，四分之三是空白。固定列宽后按钮回到正常尺寸。 */
-    grid-template-columns:repeat(4,minmax(0,1fr));
-    gap:10px;
-  }
-  .dockbtn{
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-    padding:12px 6px 11px;border-radius:7px;cursor:pointer;
-    background:var(--panel);border:1px solid var(--edge);
-    box-shadow:0 1px 3px rgba(80,70,50,.07);
-    transition:border-color .14s,background .14s,transform .1s,box-shadow .14s;
-    min-width:0;
-  }
-  .dockbtn:hover{border-color:var(--jade);background:#F1FAF7;transform:translateY(-2px);box-shadow:0 5px 14px rgba(50,100,92,.16)}
-  .dockbtn:active{transform:scale(.97)}
-  .dockbtn .dk{
-    width:29px;height:29px;line-height:29px;text-align:center;border-radius:50%;
-    background:var(--jade-deep);color:#fff;font-size:14px;font-weight:700;margin-bottom:2px;
-  }
-  .dockbtn .dt{font-size:12.5px;color:var(--strong);font-weight:700;letter-spacing:.5px}
-  .dockbtn .ds{font-size:11px;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  /* v8.1 P0 M5：指令坞折叠组 —— 常用区常驻，其余四组收起 */
-  .dockgrp{margin-top:9px}
-  .dockgt{
-    display:flex;align-items:baseline;gap:8px;padding:8px 6px;cursor:pointer;border-radius:6px;
-    background:rgba(90,80,60,.035);border:1px dashed var(--edge);
-    color:var(--muted);font-size:12.5px;letter-spacing:1.5px;
-    transition:border-color .14s,color .14s,background .14s;
-  }
-  .dockgt:hover{border-color:var(--jade);color:var(--strong);background:#F4FAF8}
-  .dockgt .gn{margin-left:auto;font-size:11px;letter-spacing:0;opacity:.9}
-  .dockgrp.open .dockgt{border-style:solid;border-color:var(--edge)}
-  .dockgrp>.dock{margin-top:8px}
 
-  @media(max-width:880px){
-    .dock{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
-    .dockbtn{padding:10px 4px 9px}
-    .dockbtn .dk{width:26px;height:26px;line-height:26px;font-size:13px}
+  /* ============ 移动端底部五项导航（桌面隐藏） ============ */
+  .navmob{display:none}
+  .navmobtn{
+    flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+    padding:7px 2px 6px;border:0;background:none;font-family:inherit;cursor:pointer;
+    color:var(--ink);position:relative;
   }
+  .navmobtn b{font-size:13px;letter-spacing:1px;font-weight:700}
+  .navmobtn span{font-size:10px;color:var(--muted);letter-spacing:0;
+    max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .navmobtn:active{background:rgba(90,80,60,.06)}
+  .navmobtn:focus-visible{outline:2px solid var(--jade-deep);outline-offset:-2px}
+  .navmobtn--hot b{color:var(--cinnabar)}
+  .navmobtn .navdot{
+    position:absolute;top:2px;right:calc(50% - 26px);
+    min-width:16px;height:16px;line-height:16px;padding:0 4px;border-radius:8px;
+    background:var(--cinnabar);color:#fff;font-size:10px;text-align:center;
+  }
+
+  /* ============ 窄屏：左导航收成底栏，只留「要务」 ============ */
+  /* 真正的窄屏覆盖写在文件后段（吸顶规则之后）——
+     那里 .stage>.col-nav 的权重更高，窄屏的 position:static 必须排在它后面才压得住。 */
 
   /* ============ 顶栏系统按钮 ============ */
   .sysbtn-top{
@@ -479,6 +502,50 @@
   .sceneart--backdrop::after{background:none}
   .stage,.stage-create{position:relative}
   .stage>*:not(.sceneart--backdrop){position:relative;z-index:1}
+  /* v10.7 P1：左右两栏吸顶，超高内容在栏内滚动。
+     中栏保持文档流——三栏各自独立翻页的代价是「滚到哪一栏都看不清全貌」。
+     左右两栏的空白正是导航与状态的常驻位置，不再靠假卡片填满。
+
+     放在上面那条之后是有原因的：.stage>* 给了每个舞台子元素 position:relative
+     （专门用来把内容压在结局衬底之上），它的选择器权重与这里相同，
+     谁写在后面谁生效——写在前面，sticky 会被静默压成 relative，
+     吸顶就成了「看着像做了、其实没做」。 */
+  .stage>.col-nav,.stage>.col-state{
+    position:sticky;top:58px;z-index:1;
+    max-height:calc(100vh - 84px);
+    overflow-y:auto;overflow-x:hidden;
+    scrollbar-width:thin;
+  }
+  /* 栏内是 flex 纵向列：一旦给了 max-height，默认的 flex-shrink:1 会把
+     里面的面板压扁（天时面板一度只剩一条边框）。
+     面板高度必须是内容高度，溢出交给 overflow:auto 去滚。 */
+  .stage>.col-nav>*,.stage>.col-state>*{flex:0 0 auto}
+  .stage>.col-nav::-webkit-scrollbar,.stage>.col-state::-webkit-scrollbar{width:6px}
+  .stage>.col-nav::-webkit-scrollbar-thumb,.stage>.col-state::-webkit-scrollbar-thumb{
+    background:rgba(90,80,60,.22);border-radius:3px}
+  .stage>.col-nav::-webkit-scrollbar-track,.stage>.col-state::-webkit-scrollbar-track{background:transparent}
+  @supports (height:100dvh){
+    .stage>.col-nav,.stage>.col-state{max-height:calc(100dvh - 84px)}
+  }
+  /* ============ 窄屏：左导航收成底栏，只留「要务」 ============
+     必须排在上面吸顶规则之后：那边的 .stage>.col-nav 权重更高，
+     窄屏要把吸顶撤掉（position:static），写在它前面就压不住。 */
+  @media(max-width:880px){
+    /* 手机上主行动优先：天时让位，分组表让位，要办的事留在页首。 */
+    .stage>.col-nav,.stage>.col-state{position:static;max-height:none;overflow:visible}
+    .col-nav--quiet{display:none}
+    .col-nav > .panel{display:none}
+    .col-nav .navgrp:not(.navgrp--urgent){display:none}
+    .col-nav .navgrp--urgent{margin-bottom:10px}
+    .col-nav .navgrp--urgent .ngrpt{display:none}
+    .navmob{
+      display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;
+      background:rgba(250,246,238,.97);backdrop-filter:blur(8px);
+      border-top:1px solid var(--edge);
+      padding-bottom:env(safe-area-inset-bottom);
+    }
+    .logbox--mid{max-height:220px}
+  }
   /* 舆图弹窗：州名叠在四个空白圆点与中心上 */
   .mapart{position:relative;border-radius:8px;overflow:hidden;border:1px solid rgba(50,100,92,.25)}
   .mapart img{display:block;width:100%}

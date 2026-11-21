@@ -1257,11 +1257,18 @@
       }
     }
 
+    /* v10.7 P1：桌面改为「左导航 / 中行事 / 右状态」。
+       旧版底部那条通栏功能坞另起一行，必须滚过三栏才够得着，
+       而左右两栏又各自不等高——于是「下面找不到、左右空着」。
+       现在功能坞拆进左栏常驻，纪事与月账移到中栏主行动之后。 */
+    const navG = navGroups();
     stage.innerHTML =
-      '<div class="col">' + renderEventCol() + '</div>' +
-      '<div class="col">' + renderMainCol() + '</div>' +
-      '<div class="col">' + renderStateCol() + '</div>' +
-      '<div class="dockrow">' + renderDock() + '</div>';
+      '<div class="col col-nav' +
+      (navG.some(function (g) { return g.id === 'urgent' && g.items.length; }) ? '' : ' col-nav--quiet') + '">' +
+      renderNavCol(navG) + '</div>' +
+      '<div class="col col-main">' + renderMainCol() + renderChronCol() + '</div>' +
+      '<div class="col col-state">' + renderStateCol() + '</div>' +
+      renderMobileNav(navG);
     enhanceA11y(stage);
     scheduleAutoSave();
   }
@@ -1273,25 +1280,75 @@
     scheduleAutoSave._h = setTimeout(function () { autoSave(); }, 600);
   }
 
-  /* ---------- 左栏：天时 + 事件流 ---------- */
-  function renderEventCol() {
-    let logHtml = '<div class="muted">尚无纪事。</div>';
-    if (S.log.length) {
-      logHtml = '<div class="logbox">' + S.log.slice(0, 24).map(function (l) {
+  /* ---------- 左栏：常驻导航 ---------- */
+  /* v10.7 P1：左栏不再放纪事，改放常驻全功能导航。
+     天时三行留在最上——它是「你在哪儿」的上下文，不是入口，放在导航之上最顺。 */
+  function renderNavCol(groups) {
+    let b = '';
+    const pathName = (D.PATHS.filter(function (p) { return p.id === S.path; })[0] || {}).name || '—';
+    b += panel('天时',
+      '<div class="sl"><span class="k">所在</span><span class="v">' + esc(curPlace()) + '</span></div>' +
+      '<div class="sl"><span class="k">时节</span><span class="v">' + season() + ' · ' + MN[S.month] + '月</span></div>' +
+      '<div class="sl"><span class="k">道途</span><span class="v">' + esc(pathName) + '</span></div>',
+      { sub: '左' });
+
+    b += '<div class="navbox">';
+    groups.forEach(function (g) {
+      if (!g.items.length) return;          // 空组不占位（要务消失了就整个消失）
+      b += '<div class="navgrp' + (g.id === 'urgent' ? ' navgrp--urgent' : '') + '">';
+      b += '<div class="ngrpt"><span class="ngtn">' + esc(g.name) + '</span>' +
+        '<span class="ngrpn">' + g.items.length + ' 项</span></div>';
+      b += '<div class="navlist">';
+      g.items.forEach(function (it) {
+        b += '<div class="navitem' + (g.id === 'urgent' ? ' navitem--urgent' : '') +
+          '" data-act="' + esc(it.act) + '">' +
+          '<span class="nk">' + esc(it.k) + '</span>' +
+          '<span class="nt">' + esc(it.t) + '</span>' +
+          '<span class="ns">' + esc(it.s) + '</span></div>';
+      });
+      b += '</div></div>';
+    });
+    b += '</div>';
+    return b;
+  }
+
+  /* ---------- 中栏：近期纪事 + 本月收支 ---------- */
+  /* v10.7 P1：纪事从左栏搬到中栏主行动之后。
+     默认给 5~8 条（够看清「刚才发生了什么」），要看全部走年谱。 */
+  function renderChronCol() {
+    const items = (S.log || []).slice(0, 7);
+    let b = '<div class="chhead"><span class="chn">近期纪事</span>' +
+      '<span class="chs" data-act="act:openChronicle">全部 ›</span></div>';
+    if (items.length) {
+      b += '<div class="logbox logbox--mid">' + items.map(function (l) {
         return '<div class="ev ' + (l.cls || '') + '"><span class="t">' + esc(l.t) +
           '</span><span class="x">' + l.txt + '</span></div>';
       }).join('') + '</div>';
+    } else {
+      b += '<div class="muted">尚无纪事。</div>';
     }
+    const led = renderLedger();
+    if (led) b += divider() + led;
+    return panel('纪事 · 月账', b, { sub: '中' });
+  }
 
-    let b = '';
-    b += '<div class="sl"><span class="k">所在</span><span class="v">' + esc(curPlace()) + '</span></div>';
-    b += '<div class="sl"><span class="k">时节</span><span class="v">' + season() + ' · ' + MN[S.month] + '月</span></div>';
-    b += '<div class="sl"><span class="k">道途</span><span class="v">' +
-      esc((D.PATHS.filter(function (p) { return p.id === S.path; })[0] || {}).name || '—') + '</span></div>';
-
-    return panel('天时 · 纪事', b + divider() + renderLedger() +
-      '<div class="small" style="margin-bottom:6px;color:var(--muted)">近期事件</div>' + logHtml,
-      { sub: '左' });
+  /* 移动端底部五项导航（桌面端整块隐藏）。
+     手机上不能把桌面左栏硬压成一条窄缝——那是把「入口找不到」原样搬过来。
+     五项：修行 / 外物 / 出行 / 人事 / 更多；
+     要办的事（来访、急事、拍卖、人情、锚定）不塞进这五项，
+     而是留在页首单独一条——它们本来就该一眼看见，不该藏在菜单里。 */
+  function renderMobileNav(groups) {
+    const gs = groups || navGroups();
+    const urgent = gs.filter(function (g) { return g.id === 'urgent'; })[0];
+    const n = urgent ? urgent.items.length : 0;
+    return '<div class="navmob">' +
+      '<button class="navmobtn" data-act="do;navgrp:xiu"><b>修行</b><span>功法 · 四艺</span></button>' +
+      '<button class="navmobtn" data-act="do;navgrp:wai"><b>外物</b><span>袋 · 法宝</span></button>' +
+      '<button class="navmobtn" data-act="do;navgrp:chu"><b>出行</b><span>历练 · 坊市</span></button>' +
+      '<button class="navmobtn" data-act="do;navgrp:ren"><b>人事</b><span>情缘 · 门下</span></button>' +
+      '<button class="navmobtn' + (n ? ' navmobtn--hot' : '') + '" data-act="do;navmore"><b>更多</b>' +
+      (n ? '<span class="navdot">' + n + '</span>' : '<span>要务 · 经营</span>') + '</button>' +
+      '</div>';
   }
 
   /* ---------- 右栏：状态 + 修为 + 六维 ---------- */
@@ -1889,54 +1946,80 @@
         for (let i = 0; i < ex.length; i++) list.push(ex[i]);
       }
     }
-    const GROUP = {
-      客: '常用', 引: '常用', 府: '常用', 庙: '常用', 市: '常用', 拍: '常用', 历: '常用', 情: '常用', 锚: '常用',
-      急: '常用',
-      功: '修炼', 艺: '修炼', 书: '修炼', 胎: '修炼', 构: '修炼',
-      命: '修炼', 兽: '修炼', 果: '修炼',
-      器: '经营', 愿: '经营', 族: '经营', 宝: '经营',
-      缘: '人事', 宗: '人事', 徒: '人事', 统: '人事',
-      图: '更多', 囊: '更多', 洞: '更多', 迹: '更多'
-    };
-    for (const it of list) it.g = GROUP[it.k] || '更多';
+    /* v10.7 P1：分组字段改成左导航的分组名。
+       「常用/修炼/经营/人事/更多」这套旧分组是给底部折叠坞用的，
+       坞拆进左栏后这套名字已经没有意义——分组改由 NAV_GROUPS 唯一定义。 */
+    for (const it of list) it.g = navGroupOf(it.k);
     return list;
   }
-  /* v8.1 P0 M5：两层分组。
-     常用区常驻平铺（欠账、来访、拍卖会这类出现即急，必须首屏可见）；
-     其余按「修炼 / 经营 / 人事 / 更多」折叠，默认收起，展开态存 S.dockOpen。 */
-  const DOCK_GROUPS = ['修炼', '经营', '人事', '更多'];
-  function dockBtn(it) {
-    return '<div class="dockbtn" data-act="' + esc(it.act) + '">' +
-      '<span class="dk">' + esc(it.k) + '</span>' +
-      '<span class="dt">' + esc(it.t) + '</span>' +
-      '<span class="ds">' + esc(it.s) + '</span></div>';
-  }
-  function renderDock() {
-    const items = dockItems();
-    const open = S.dockOpen || {};
-    const common = items.filter(function (x) { return x.g === '常用'; });
-    let b = '<div class="dockhead"><span>常驻指令</span><span class="sub">点开即用，不占主线</span></div>';
-    b += '<div class="dock">';
-    for (const it of common) b += dockBtn(it);
-    b += '</div>';
-    for (const g of DOCK_GROUPS) {
-      const arr = items.filter(function (x) { return x.g === g; });
-      if (!arr.length) continue;
-      const isOpen = !!open[g];
-      b += '<div class="dockgrp' + (isOpen ? ' open' : '') + '">';
-      b += '<div class="dockgt" data-act="do;dockGrp:' + g + '">' +
-        '<span class="gt">' + g + '</span>' +
-        '<span class="gn">' + arr.length + ' 项 · ' + (isOpen ? '收起' : '展开') + '</span></div>';
-      if (isOpen) {
-        b += '<div class="dock">';
-        for (const it of arr) b += dockBtn(it);
-        b += '</div>';
-      }
-      b += '</div>';
+
+  /* v10.7 P1：左侧常驻导航。
+     dockItems() 仍是入口真源（十来个扩展都往里追加），
+     navItems()/NAV_GROUPS 只负责「分组 + 排序」，
+     同一个动作名不在两处各维护一份。
+     分组依 v10.7 方案 §4.2：
+       要务 —— 有人来访、限时急事、拍卖会、待清人情、锚定危险（出现即急，消失不留位）
+       修行 —— 功法、四艺、道书、构筑、道果、化道胎
+       外物 —— 乾坤袋、法宝、本命、灵兽、神器、愿物
+       经营 —— 洞府/庙宇、家族、宗门、道统
+       人事 —— 情缘、门下
+       出行 —— 历练/显圣、舆图、坊市/庙市、洞天、遗迹
+       记录 —— 年谱、功过格、账本（存档与设置仍留顶栏系统菜单） */
+  const NAV_GROUPS = [
+    { id: 'urgent', name: '要务', ks: ['客', '急', '引', '拍', '情', '锚'] },
+    { id: 'xiu', name: '修行', ks: ['功', '艺', '书', '胎', '构', '果'] },
+    { id: 'wai', name: '外物', ks: ['囊', '宝', '命', '兽', '器', '愿'] },
+    { id: 'jing', name: '经营', ks: ['府', '庙', '族', '宗', '统'] },
+    { id: 'ren', name: '人事', ks: ['缘', '徒'] },
+    { id: 'chu', name: '出行', ks: ['历', '图', '市', '洞', '迹'] },
+    { id: 'rec', name: '记录', ks: [], static: true }
+  ];
+  function navGroupOf(k) {
+    for (let i = 0; i < NAV_GROUPS.length; i++) {
+      if (NAV_GROUPS[i].ks.indexOf(k) >= 0) return NAV_GROUPS[i].id;
     }
-    return b;
+    return 'other';   // 兜底：没登记的入口一律进「其他」，绝不悄悄丢掉
   }
-  /* ACT.do_dockGrp 与其它 ACT 一起登记在下方（ACT 表在 1727 行才建，提前赋值会撞 TDZ） */
+  /* 记录组是静态的：年谱/功过格/账本原本只在顶栏系统菜单里，
+     挪进导航后不必先点「系统」才看得见。 */
+  function navStaticItems() {
+    const n = ledgerNet();
+    return [
+      { k: '谱', t: '年谱', s: ((S.log || []).length) + ' 条', act: 'act:openChronicle' },
+      { k: '过', t: '功过格', s: achStat().now + ' / ' + D.ACHIEVEMENTS.length, act: 'act:openAch' },
+      { k: '账', t: '账本', s: (n.net >= 0 ? '+' : '') + fmtNum(n.net), act: 'act:openLedger' }
+    ];
+  }
+  /* 组内顺序按 NAV_GROUPS 里的 ks 定，不按 dockItems 的追加顺序——
+     「功法」永远排在「四艺」前面，玩家不必每次重新找。 */
+  function navGroups() {
+    const items = dockItems();
+    const used = {};
+    const out = [];
+    NAV_GROUPS.forEach(function (g) {
+      const arr = items.filter(function (it) { return g.ks.indexOf(it.k) >= 0; });
+      arr.sort(function (a, b) { return g.ks.indexOf(a.k) - g.ks.indexOf(b.k); });
+      arr.forEach(function (it) { used[it.k] = 1; });
+      if (g.static) {
+        const st = navStaticItems();
+        st.forEach(function (it) { used[it.k] = 1; });
+        arr.push.apply(arr, st);
+      }
+      out.push({ id: g.id, name: g.name, items: arr });
+    });
+    /* 兜底组：任何没登记到分组表的入口都进这里（并在控制台留痕）。
+       「入口零丢失」是本轮的硬验收，所以宁可多一个杂项组，也不能让入口凭空消失。 */
+    const rest = items.filter(function (it) { return !used[it.k]; });
+    if (rest.length) {
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[nav] 未登记分组的入口：' + rest.map(function (x) { return x.k + '/' + x.t; }).join('、'));
+      }
+      out.push({ id: 'other', name: '其他', items: rest });
+    }
+    return out;
+  }
+  /* ACT.do_navgrp / do_navgo 与其它 ACT 一起登记在下方（ACT 表在 1727 行才建，提前赋值会撞 TDZ） */
+
 
   /* ---------- 固定开销（v8.1 收尾项 2） ----------
      时间预算只解决「做事有成本」，「不做事零成本」还留着——于是最省的打法是不出门。
@@ -2758,13 +2841,48 @@
      放在这里而不是新建全局，是为了让 dispatch 只有一条查找路径。 */
   const EXT_ACT = (G.WXCS3_EXT_ACT = G.WXCS3_EXT_ACT || {});
 
-  /* v8.1 P0 M5：指令坞折叠组开关 */
-  ACT.do_dockGrp = (g) => {
-    if (DOCK_GROUPS.indexOf(g) < 0) return;
-    S.dockOpen = S.dockOpen || {};
-    S.dockOpen[g] = !S.dockOpen[g];
-    render();
+  /* v8.1 P0 M5：指令坞折叠组开关
+     v10.7 P1：底部坞已拆进左导航常驻，折叠组随之取消。
+        折叠的代价是「两级点击」——旧版要展开「修炼」才看得见功法，
+        而多数人根本没意识到那四组是可以展开的。现在一级功能直接可见。
+        移动端另有五项底栏（do_navgrp / do_navgo），承担同一批入口。 */
+  ACT.do_navgrp = (gid) => {
+    const g = navGroups().filter(function (x) { return x.id === gid; })[0];
+    if (!g || !g.items.length) { toast('此处暂无可用之处'); return; }
+    let b = '<ul class="opts">';
+    g.items.forEach(function (it, i) {
+      b += optRow('ABCDEFG'[i] || '·', it.t, { name: '入口', cls: 'peace' }, it.s, false,
+        'do;navgo:' + encodeURIComponent(it.act));
+    });
+    b += '</ul>';
+    openModal(g.name + ' · 入口', b);
   };
+  /* 从「更多」里挑一条：先关掉分组弹窗再派发，免得目标面板被压在底下。 */
+  ACT.do_navgo = (a, b2, c2) => {
+    const act = decodeURIComponent([a, b2, c2].filter(function (x) { return x !== undefined && x !== null && x !== ''; }).join(':'));
+    if (!act) { closeModal(); return; }
+    closeModal();
+    dispatch(act);
+  };
+  /* 移动端「更多」：把没进前四项的入口一次列全（要务永远排最前）。 */
+  ACT.do_navmore = () => {
+    const groups = navGroups();
+    const main = { xiu: 1, wai: 1, chu: 1, ren: 1 };
+    let b = '';
+    groups.forEach(function (g) {
+      if (main[g.id]) return;
+      if (!g.items.length) return;
+      b += '<div class="sechead">' + esc(g.name) + '</div><ul class="opts">';
+      g.items.forEach(function (it, i) {
+        b += optRow('ABCDEFG'[i] || '·', it.t, { name: '入口', cls: 'peace' }, it.s, false,
+          'do;navgo:' + encodeURIComponent(it.act));
+      });
+      b += '</ul>';
+    });
+    if (!b) b = '<div class="small muted">此处暂无更多入口。</div>';
+    openModal('更多入口', b);
+  };
+
   ACT.openGoals = openGoals;
   ACT.openTut = openTut;
   ACT.do_tut = do_tut;
@@ -4567,19 +4685,70 @@
   ACT.openArts = () => {
     let b = '<div class="small muted">法宝只有佩戴才生效。攻击位加伤、护体位减伤、遁走位加遁速。</div>' + divider();
     const own = S.arts || [];
+    /* v10.7 P1·战斗口径：一次性之物单列。
+       它们没有对应的装备位（slot='once'），旧版混在装备列表里，
+       点了「佩戴」只是写进一个没人读的 equipped.once——看着像能装，实际不能。 */
+    const equipA = D.ARTIFACT_EXT.filter(function (a) { return own.indexOf(a.id) >= 0 && a.slot !== 'once'; });
+    const onceA = D.ARTIFACT_EXT.filter(function (a) { return own.indexOf(a.id) >= 0 && a.slot === 'once'; });
     if (!own.length) b += '<div class="small muted">尚无法宝。去坊市看看。</div>';
     else {
-      b += '<ul class="opts">';
-      D.ARTIFACT_EXT.filter(function (a) { return own.indexOf(a.id) >= 0; }).forEach(function (a) {
-        const eq = (S.equipped || {})[a.slot] === a.id;
-        b += iconRow('ARTIFACT_EXT', a.id, eq ? '●' : '·', a.name + '　' + a.eff,
-          { name: eq ? '已佩' : (a.slot === 'atk' ? '攻击' : a.slot === 'body' ? '护体' : a.slot === 'move' ? '遁走' : '一次'),
-           cls: eq ? 'peace' : 'chance' },
-          eq ? '卸下' : '佩戴', false, 'do;equip:' + a.id);
-      });
-      b += '</ul>';
+      if (equipA.length) {
+        b += '<ul class="opts">';
+        equipA.forEach(function (a) {
+          const eq = (S.equipped || {})[a.slot] === a.id;
+          b += iconRow('ARTIFACT_EXT', a.id, eq ? '●' : '·', a.name + '　' + a.eff,
+            { name: eq ? '已佩' : (a.slot === 'atk' ? '攻击' : a.slot === 'body' ? '护体' : a.slot === 'move' ? '遁走' : '一次'),
+             cls: eq ? 'peace' : 'chance' },
+            eq ? '卸下' : '佩戴', false, 'do;equip:' + a.id);
+        });
+        b += '</ul>';
+      }
+      if (onceA.length) {
+        b += divider() + '<div class="small muted">一次性之物：用掉即无。</div><ul class="opts">';
+        onceA.forEach(function (a) {
+          if (a.id === 'jinchuan') {
+            /* 传音符平时就能用（传讯相识之人），不必等开战。 */
+            b += iconRow('ARTIFACT_EXT', a.id, '·', a.name + '　' + a.eff,
+              { name: '可用', cls: 'chance' }, '使用', false, 'do;useart:' + a.id);
+          } else {
+            b += '<li class="opt disabled"><span class="key">·</span>' +
+              '<span class="txt">' + esc(a.name) + '<span class="muted">　' + esc(a.eff) + '</span></span>' +
+              '<span class="note">战前用</span></li>';
+          }
+        });
+        b += '</ul>';
+      }
     }
     openModal('法宝', b);
+  };
+
+  /* v10.7 P1·战斗口径：传音符兑现。
+     旧版它躺在 S.arts 里，既没有使用分支，战前菜单里点了也只写一句
+     「战前用了传音符」——文案是句空话，物品却被消耗掉了。
+     现在给它一个真实的平时用途：传讯一位相识之人，好感 +5。 */
+  ACT.do_useart = (id) => {
+    const a = D.ARTIFACT_EXT.find(function (x) { return x.id === id; });
+    if (!a) { toast('没有此物'); return; }
+    if (id !== 'jinchuan') { toast('此物只能在战前使用'); return; }
+    if ((S.arts || []).indexOf(id) < 0) { toast('此物已不在身上'); return; }
+    const met = Object.keys(S.npcs || {}).filter(function (k) { return S.npcs[k] && S.npcs[k].met; });
+    if (!met.length) { toast('尚无相识之人，符传不到'); return; }
+    closeModal();
+    /* 传音是「走动」的替代品，不是白送的好感：
+       找上门聊天（do_ia）要占一旬，传音符省了路，但省不掉那一旬——
+       否则它就是一条只卖灵石、不耗时间的刷好感外挂。 */
+    advanceXun(1);
+    if (S.phase !== 'play') return render();
+    const k = met[Math.floor(rng() * met.length)];
+    const rec = S.npcs[k];
+    const before = rec.fav || 0;
+    rec.fav = clamp(before + 5, 0, 120);
+    const nm = (D.NPC_POOL.find(function (x) { return x.id === k; }) || {}).name || '故人';
+    S.arts.splice((S.arts || []).indexOf(id), 1);
+    consumeQuality(id);
+    logLine('传音符化作一道轻烟，「' + nm + '」收到了你的问候（好感 +' + (rec.fav - before) + '）。', 'good');
+    toast('传音已至 · ' + nm);
+    render();
   };
 
   ACT.do_buy = (id) => {
@@ -6591,7 +6760,7 @@
     b += '<div class="small"><b>快捷键</b>　A~E / 1~5 直选主栏，Enter 执行自由输入</div>';
     b += '<div class="small"><b>系统</b>　右上角「系统」｜存档 · 导入 · 读档 · 帮助 · 重置</div>';
     b += divider();
-    b += '<div class="hint">底部那一排是常驻指令：功法 · 洞府/庙宇 · 坊市（神道为庙市） · 舆图 · 情缘 · 历练 · 乾坤袋。</div>';
+    b += '<div class="hint">左侧是常驻导航：修行 · 外物 · 经营 · 人事 · 出行 · 记录，一级入口直接可见，不必先展开分组。</div>';
     b += divider();
     b += '<div class="hint danger">仙道是与天争命——快，但天要收你；神道是与人间争香火——慢，但只要还有人记得你，天就收不走你。</div>';
     if (needsAnchor()) b += '<div class="hint danger">真正的长生代价：凡人怕老，长生者怕没人记得自己是谁。</div>';
@@ -8781,9 +8950,12 @@
     const _hasStance = stanceList().length > 0;
     let b = '<div class="small">开打之前，' + (_hasStance ? '还有两件事：用物、定势。' : '还能做一件事。') + '</div>'
       + divider() + '<ul class="opts">';
+    /* v10.7 P1·战斗口径：传音符不是战斗物。
+       它承诺「传讯相识之人，好感 +5」，战前用掉它既没有效果分支，纯是浪费——
+       非战斗的符不该出现在战前菜单里被无效消耗。 */
     const ones = (S.arts || []).filter(function (id) {
       const a = D.ARTIFACT_EXT.find(function (x) { return x.id === id; });
-      return a && a.slot === 'once';
+      return a && a.slot === 'once' && a.id !== 'jinchuan';
     });
     ones.forEach(function (id, i) {
       const a = D.ARTIFACT_EXT.find(function (x) { return x.id === id; });
@@ -8904,10 +9076,17 @@
     consumeQuality(id);
     S.preBuff = S.preBuff || {};
     if (id === 'huoyuyuan') S.preBuff.fire = 0.6;
-    else if (id === 'wuyun') S.preBuff.sureHit = true;
+    else if (id === 'wuyun') { S.preBuff.sureHit = true; S.preBuff.boost = 0.8; }
     else if (id === 'duzuo') S.preBuff.escape = true;
     else if (id === 'hanhuo') S.preBuff.freeXiansheng = true;
-    else if (id === 'juxian') S.preBuff.rankUp = true;
+    else if (id === 'juxian') {
+      /* v10.7 P1·战斗口径：拘仙敕神符的位格压制必须作用在「当前这一场」。
+         旧写法只写 S.preBuff.rankUp，而 rankUp 是 startCombat 读的一次性字段——
+         战前面板是在战斗已经开始之后才打开的，于是这张符被吃掉却毫无作用。
+         现在当场生效；preBuff 一并清掉，免得下一场又白送一次。 */
+      S.preBuff.rankUp = false;
+      if (S.combat) S.combat.rankUp = true;
+    }
     logLine('战前用了「' + a.name + '」。', 'good');
     closeModal(); render();
   };
@@ -9088,6 +9267,26 @@
     return Math.max(1, Math.round(c.foe.hpMax * 0.045 * (c.foeBurnMul || 1)));
   }
 
+  /* v10.7 P1·战斗口径：增益符（fuZeng）的唯一定义。
+     「三回合内直接伤害 +30%」——普攻、术法、符箓、神通、施法一律乘同一个系数，
+     面板上写的剩余回合数也是同一个字段，不再各算各的。
+     旧实现三处毛病：每贴一张 +0.3 无限累加、没有回合数、只增幅普攻。 */
+  const TAL_BUFF_TURNS = 3;
+  function talBuffMul(c) {
+    return (c && c.talBuffTurns > 0 && c.talBuff) ? (1 + c.talBuff) : 1;
+  }
+
+  /* v10.7 P1：五雷符（战前一次性强化）的唯一兑现点。
+     文案「斗法首击必中，伤害 +80%」——「必中」（无视卸力）由 preBuff.sureHit 兑现，
+     「+80%」由这里兑现，且只在第一记直接伤害上生效一次。
+     旧版只有 sureHit，+80% 从未存在。 */
+  function preBoostMul() {
+    if (!(S.preBuff && S.preBuff.boost)) return 1;
+    const v = S.preBuff.boost;
+    S.preBuff.boost = 0;
+    return 1 + v;
+  }
+
   /* ============================================================
      v8.1 卸力：把「未中 / 命中」的二值赌博换成连续减伤
      ------------------------------------------------------------
@@ -9163,6 +9362,22 @@
     const traitName = { brute: '莽夫', veteran: '老练', slippery: '滑头', normal: '寻常' }[c.foe.trait] || '寻常';
     let fstate = '<span class="stance">' + traitName + '</span>';
     if (c.momentum > 0) fstate += '<span class="stance bad">气势 ' + c.momentum + '</span>';
+    /* v10.7 P1·战斗口径：破绽、灼烧、迟滞、压制都是「打在他身上的」，
+       旧版却全部渲染在我方卡的状态区——玩家一眼看去像是自己中了招，
+       于是「这一刀为什么打得更疼」根本无从判断。
+       现在敌方的状态一律回到敌方卡；我方卡只留守势、看破、增益、护体这些
+       真正作用在自己身上的东西。 */
+    const nw = function (s) { return '<span style="white-space:nowrap">' + s + '</span>'; };
+    if (c.foeMark > 0) fstate += '<span class="stance bad">破绽 · 受创 ×1.25' + nw('（' + c.foeMark + ' 回合）') + '</span>';
+    if (c.foeWeaken > 0) fstate += '<span class="stance bad">压制 · 出手 ×0.7' + nw('（' + c.foeWeaken + ' 回合）') + '</span>';
+    if (c.foeBurn > 0) {
+      /* v10.5 P2·C7：点火当回合只清标记、不落伤，必须写出来，
+         否则玩家会以为「点了没生效」；同一回合再点火是刷新，不是叠层。 */
+      fstate += c.burnFresh
+        ? '<span class="stance bad">余焰将起 · 下回合起每回合 ' + burnTickOf(c) + ' 伤' + nw('（' + c.foeBurn + ' 回合）') + '</span>'
+        : '<span class="stance bad">灼烧 · 每回合 ' + burnTickOf(c) + ' 伤' + nw('（' + c.foeBurn + ' 回合）') + '</span>';
+    }
+    if (c.foeSlow > 0) fstate += '<span class="stance bad">迟滞 · 出手 ×0.85' + nw('（' + c.foeSlow + ' 回合）') + '</span>';
     fb += '<div class="frow"><span class="k">状态</span><div>' + fstate + '</div></div>';
     const keK2 = keMul(mainEl(), c.foe.el);
     if (c.foe.el) {
@@ -9208,32 +9423,18 @@
     if (eqArt.length) mb += '<div class="frow"><span class="k">法宝</span><div>' +
       eqArt.map(function (a) { return '<span class="stance on">' + esc(a.name) + '</span>'; }).join('') + '</div></div>';
     let tags = '';
-    if (c.defending) tags += '<span class="stance on">守势 · 减伤50%</span>';
-    if (c.observed) tags += '<span class="stance on">看破 · 下一击无视卸力</span>';
     /* v10.1 第一梯队 · 战斗状态可见性。
        此前面板只显示「守势 / 看破」两条，而真正影响伤害的还有四五项，
        玩家挨刀少掉一半血不知道是谁挡的，打出 ×1.25 也看不到标记。
        这里把已有字段渲染出来，一行业务公式都不改——只让看不见的变得看得见。
-       剩余回合数直接读字段本身：foeMark/foeWeaken 都在 foeTurn 里递减，
-       所以数字就是「还剩几回合」，不是估算。 */
-    /* v10.4 P0：括号里的「N 回合」不能断行。
-       标签是 inline-block，容器窄时中文会在任意字间断开——
-       实测「（1 回合）」被拆成「（1 回」+「合）」，读起来像两个数。
-       用一个 nowrap 片段把括号与数字绑在一起。 */
-    const nw = function (s) { return '<span style="white-space:nowrap">' + s + '</span>'; };
-    if (c.foeMark > 0) tags += '<span class="stance on">破绽 · 我方伤害 ×1.25' + nw('（' + c.foeMark + ' 回合）') + '</span>';
-    if (c.foeWeaken > 0) tags += '<span class="stance on">压制 · 敌方伤害 ×0.7' + nw('（' + c.foeWeaken + ' 回合）') + '</span>';
-    /* v10.4 P0·S3：灼烧/迟滞两条状态此前只写不读，玩家看不见，也就算不动 */
-    if (c.foeBurn > 0) {
-      /* v10.5 P2·C7：点火当回合只清标记、不落伤，必须写出来，
-         否则玩家会以为「点了没生效」；同一回合再点火是刷新，不是叠层。 */
-      tags += c.burnFresh
-        ? '<span class="stance bad">余焰将起 · 下回合起每回合 ' + burnTickOf(c) + ' 伤' + nw('（' + c.foeBurn + ' 回合）') + '</span>'
-        : '<span class="stance bad">灼烧 · 每回合 ' + burnTickOf(c) + ' 伤' + nw('（' + c.foeBurn + ' 回合）') + '</span>';
-    }
-    if (c.foeSlow > 0) tags += '<span class="stance bad">迟滞 · 敌方伤害 ×0.85' + nw('（' + c.foeSlow + ' 回合）') + '</span>';
-    if (c.talBuff) tags += '<span class="stance on">神通加成 · 伤害 +' + Math.round(c.talBuff * 100) + '%</span>';
-    if (c.talShield) tags += '<span class="stance on">护体 · 本次减伤 ' + Math.round(c.talShield * 100) + '%</span>';
+       v10.7 P1：敌方身上的破绽/灼烧/迟滞/压制已移回敌方卡，
+       我方卡只留真正作用在自己身上的状态。 */
+    if (c.defending) tags += '<span class="stance on">守势 · 减伤50%</span>';
+    if (c.observed) tags += '<span class="stance on">看破 · 下一击无视卸力</span>';
+    /* v10.7 P1·战斗口径：增益符的显示写「直接伤害 +30%」并带剩余回合数，
+       与结算口径完全一致——面板与公式读同一份数据，不再各说各话。 */
+    if (c.talBuffTurns > 0 && c.talBuff) tags += '<span class="stance on">增益 · 直接伤害 +' + Math.round(c.talBuff * 100) + '%' + nw('（' + c.talBuffTurns + ' 回合）') + '</span>';
+    if (c.talShield) tags += '<span class="stance on">护体 · 下次受击减伤 ' + Math.round(c.talShield * 100) + '%</span>';
     if (c.noFoeFlee) tags += '<span class="stance on">锁灵 · 敌方不能遁走</span>';
     if (c.momentum > 0) tags += '<span class="stance bad">敌方气势 · 增伤 +' + Math.round((([1.0,1.10,1.20,1.35][c.momentum]||1) - 1) * 100) + '%</span>';
     /* v10.4 P1·S4：入场态势。玩家得看见「这一场是按什么势在打」，
@@ -9351,18 +9552,19 @@
       c.stanceUsed.stGuard = true;
       logLine('守中带攻：这一击被卸去了三成。', 'good');
     }
-    if (c.defending) {
-      let red = 0.5;
-      if (c.talShield) red -= c.talShield;
-      dmg *= clamp(red, 0.05, 0.9);
-    }
+    /* v10.7 P1·战斗口径：守势与护体取强，不叠乘。
+       旧写法 red = 0.5 − talShield，金刚符(0.6)叠在守势(0.5)上落到 0.05 下限，
+       实际减伤约 95%——文案写「减伤 60%」，玩家却挡掉了九成五。
+       现在：守势 0.5、护体 0.6 同时在场时取 0.6，即总减伤 60%。 */
+    const _red = Math.max(c.defending ? 0.5 : 0, c.talShield || 0);
+    if (_red > 0) dmg *= clamp(1 - _red, 0.05, 0.95);
     if (c.talShield) c.talShield = 0;
     // 滑头：血量低于一半会试着跑
     if (c.foe.trait === 'slippery' && c.foe.hp <= c.foe.hpMax * 0.5 && rng() < 0.35) {
       if (c.noFoeFlee) {
         logLine(c.foe.name + '欲遁，为锁灵阵所遏。', 'good');
         c.foe.trait = 'normal';
-        c.round++;
+        endCombatRound(c);
         return true;
       }
       S.combat = null; S.phase = 'play';
@@ -9384,7 +9586,7 @@
         if (!S.combat) return false;   // 钩子已把战斗结掉（反噬致死）
         if (c.foeMark > 0) c.foeMark--;
         if (c.foeWeaken > 0) c.foeWeaken--;
-        c.round++;
+        endCombatRound(c);
         return true;
       }
     }
@@ -9406,8 +9608,19 @@
     }
     if (c.foeMark > 0) c.foeMark--;
     if (c.foeWeaken > 0) c.foeWeaken--;
-    c.round++;
+    endCombatRound(c);
     return true;
+  }
+
+  /* v10.7 P1：回合收尾的唯一出口。
+     增益符的剩余回合数在这里递减——foeTurn 恰好有三条出口，
+     散在各处各写一遍，迟早会漏掉某一条（表现为「增益符永不过期」）。 */
+  function endCombatRound(c) {
+    if (c.talBuffTurns > 0) {
+      c.talBuffTurns--;
+      if (c.talBuffTurns <= 0) { c.talBuffTurns = 0; c.talBuff = 0; }
+    }
+    c.round++;
   }
 
   /* v10.4 P0·S3：胜利结算收成一处。
@@ -9500,16 +9713,26 @@
     if (sub === 'attack') {
       hit = true;                                   // v8.1：普攻必中，不再掷骰子
       const r = ratio;
-      if (c.talBuff) { mult *= (1 + c.talBuff); }
+      /* v10.7 P1·战斗口径：五雷符承诺「斗法首击必中，伤害 +80%」。
+         旧版只兑现了「必中」，+80% 从未存在；而且它只对术法分支生效，
+         玩家先普攻一手就把这次强化白费了。现在普攻与术法都吃这一次加成。 */
+      const _hadBoost = !!(S.preBuff && S.preBuff.boost);
+      const _bmul = preBoostMul();
+      let _sure = false;
+      if (S.preBuff && S.preBuff.sureHit) { S.preBuff.sureHit = false; _sure = true; }
       /* 看破破绽时无视卸力；太阴宝鉴这类命中加成按一半抵掉对方卸力 */
-      const defl = c.observed ? 0 : clamp(deflectOf(c, 'foe') - hitBonus * 0.5, 0, 0.55);
-      let raw = c.foe.hpMax * Math.max(0.10, 0.19 * r) * mult * keK * (1 + artBonus('atk') + beastBonus) * fateMul('dmg');
+      const defl = (_sure || c.observed) ? 0 : clamp(deflectOf(c, 'foe') - hitBonus * 0.5, 0, 0.55);
+      /* v10.7 P1·战斗口径：增益符改为「三回合内直接伤害 +30%」，
+         普攻 / 术法 / 符箓 / 神通统一乘 talBuffMul(c)。
+         旧写法在这一行单独乘 mult，只增幅普攻，且每贴一张无限累加。 */
+      let raw = c.foe.hpMax * Math.max(0.10, 0.19 * r) * mult * keK * (1 + artBonus('atk') + beastBonus) * fateMul('dmg') * talBuffMul(c) * _bmul;
       raw *= (1 - defl);
       if (c.observed) raw *= 1.6;
       dmg = Math.round(raw * (0.94 + rng() * 0.12));
       if (c.observed) note = '看破了破绽，' + combatLine('pHit');
       else if (defl >= 0.20) note = combatLine('pDefl') + '（卸去 ' + Math.round(defl * 100) + '%）';
       else note = combatLine('pHit');
+      if (_hadBoost) note += '（五雷符 +80%）';
       c.observed = false;
     } else if (sub === 'skill') {
       const nm = decodeURIComponent(arg || '');
@@ -9528,7 +9751,10 @@
       mul2 *= bodySpellMul(sk.kind);
       if (sk.kind === 'sword') mul2 *= fateMul('sword');   // v9.0 M1：一剑破法
       if (S.preBuff && S.preBuff.fire && sk.kind === 'fire') { mul2 *= (1 + S.preBuff.fire); S.preBuff.fire = 0; extra += '（符箓加成）'; }
-      if (S.preBuff && S.preBuff.sureHit) { sure = true; S.preBuff.sureHit = false; extra += '（五雷符）'; }
+      /* v10.7 P1·战斗口径：五雷符的「必中」＝无视卸力，+80% 与它同一次生效。 */
+      const _hadBoost = !!(S.preBuff && S.preBuff.boost);
+      const _bmul = preBoostMul();
+      if (S.preBuff && S.preBuff.sureHit) { sure = true; S.preBuff.sureHit = false; extra += '（五雷符 · 无视卸力）'; }
       hit = true;                                   // v8.1：招式同样必中
       const defl2 = (sure || c.observed) ? 0 : clamp(deflectOf(c, 'foe') - hitBonus * 0.5, 0, 0.55);
       const r2 = ratio;
@@ -9539,12 +9765,13 @@
       const _gk = (G.WXCS3_EXT && G.WXCS3_EXT.gongfaSkillMul)
         ? G.WXCS3_EXT.gongfaSkillMul(sk) : null;
       const _gkm = (_gk && _gk.mul) ? _gk.mul : 1;
-      let raw2 = c.foe.hpMax * Math.max(0.11, 0.21 * r2) * mul2 * _gkm * mult * keK * (1 + artBonus('atk') + beastBonus) * fateMul('dmg');
+      let raw2 = c.foe.hpMax * Math.max(0.11, 0.21 * r2) * mul2 * _gkm * mult * keK * (1 + artBonus('atk') + beastBonus) * fateMul('dmg') * talBuffMul(c) * _bmul;
       raw2 *= (1 - defl2);
       if (c.observed) raw2 *= 1.6;
       dmg = Math.round(raw2 * (0.94 + rng() * 0.12));
       c.observed = false;
       if (_gk && _gk.text) extra += '（功法 ' + _gk.text + '）';
+      if (_hadBoost) extra += '（五雷符 +80%）';
       note = '「' + nm + '」' + (defl2 >= 0.20 ? '（卸去 ' + Math.round(defl2 * 100) + '%）' : '') + extra;
     } else if (sub === 'shentong') {
       /* 神通不占装配格、可穿透位格压制的一部分，代价是「一道一场只能出一次」。
@@ -9676,7 +9903,7 @@
       }
       if (stTags.length) sextra = '（' + stTags.join('·') + '）';
       dmg = Math.round(c.foe.hpMax * Math.max(0.13, 0.26 * ratio) * sp.mul * _pzMul *
-        _fMul * _sixMul * mult * keK * (1 + artBonus('atk')) * fateMul('dmg'));
+        _fMul * _sixMul * mult * keK * (1 + artBonus('atk')) * fateMul('dmg') * talBuffMul(c));
       c.observed = false;
       note = '神通「' + stShort(snm) + '」' + sextra;
 
@@ -9697,7 +9924,7 @@
       const _gc = (G.WXCS3_EXT && G.WXCS3_EXT.gongfaCastInfo)
         ? G.WXCS3_EXT.gongfaCastInfo(null) : null;
       const _gm = _gc ? _gc.mul : 1;
-      dmg = Math.round(c.foe.hpMax * Math.max(0.08, 0.22 * ratio) * mult * keK * (1 + artBonus('atk')) * _gm);
+      dmg = Math.round(c.foe.hpMax * Math.max(0.08, 0.22 * ratio) * mult * keK * (1 + artBonus('atk')) * _gm * talBuffMul(c));
       note = `施展《${g.name}》` + (_gc && _gc.text ? '（' + _gc.text + '）' : '');
       /* 功法附带的持续状态（灼烧/迟滞/破防）由扩展决定，写进战斗态 */
       if (G.WXCS3_EXT && G.WXCS3_EXT.gongfaSpellStatus) {
@@ -9730,18 +9957,28 @@
       consumeQuality(tid);
       if (t.kind === 'atk') {
         hit = true;
-        dmg = Math.round(c.foe.hpMax * Math.max(0.12, 0.30 * ratio) * (t.v || 1) * mult * fateMul('tal'));
+        dmg = Math.round(c.foe.hpMax * Math.max(0.12, 0.30 * ratio) * (t.v || 1) * mult * fateMul('tal') * talBuffMul(c));
         note = '贴「' + t.name + '」' + (t.el ? '（' + (D.ELEMENTS[t.el] ? D.ELEMENTS[t.el].name : t.el) + '）' : '');
       } else if (t.kind === 'def') {
-        c.defending = true; c.talShield = t.v || 0.6;
-        note = '贴「' + t.name + '」，护住了要害';
+        /* v10.7 P1·战斗口径：金刚符是「下一次受击总减伤 60%」。
+           旧写法 c.talShield 会被守势再减一次（0.5−0.6 落到 0.05 下限），
+           实际减伤约 95%，文案完全对不上。现在护体与守势取强，不叠乘。 */
+        c.defending = true;
+        c.talShield = Math.max(c.talShield || 0, t.v || 0.6);
+        note = '贴「' + t.name + '」，护住了要害（下次受击减伤 ' + Math.round(c.talShield * 100) + '%）';
       } else if (t.kind === 'escape') {
         S.combat = null; S.phase = 'play';
         logLine('贴上「' + t.name + '」，身形一晃便不见了。', 'good');
         advanceXun(1); render(); return;
       } else if (t.kind === 'buff') {
-        c.talBuff = (c.talBuff || 0) + (t.v || 0.3);
-        note = '贴「' + t.name + '」，杀气涨了三成';
+        /* v10.7 P1·战斗口径：增益符是「三回合内直接伤害 +30%」。
+           旧写法每贴一张就 +0.3 无限累加（贴三张 +90%），也没有回合数，
+           而且只增幅普攻——文案写「伤害」，实际术法与符箓不吃。
+           回合数记 4：贴符这一手本身不是输出，回合结束时递减一次，
+           玩家在面板上看到的仍是「还有 3 回合」。 */
+        c.talBuff = t.v || 0.3;
+        c.talBuffTurns = TAL_BUFF_TURNS + 1;
+        note = '贴「' + t.name + '」，杀气涨了三成（' + TAL_BUFF_TURNS + ' 回合内有效）';
       }
     } else if (sub === 'bluff') {
       const odds = clamp(0.25 + st('insight') * 0.02 + S.fame / 2000 - diff * 0.05, 0.05, 0.7);
@@ -12616,6 +12853,11 @@
     resolveEnding,
     noteCombatWin,
     renderCombat,
+    /* v10.7 P1：导航探针。
+       回归测试要验「dockItems 的每个入口都在左导航里、且每个入口的动作都能派发」，
+       没有探针就只能靠肉眼数按钮——那正是本轮要消灭的验证盲区。 */
+    dockItems, navGroups, navGroupOf,
+    talBuffMul, preBoostMul, TAL_BUFF_TURNS,
     pageCount,
     setSeed,
     getSeed: currentSeed,

@@ -232,19 +232,29 @@ setup({});
 S.combat = {
   foe: { name: '散修', rank: 1, power: 20, hp: 80, hpMax: 100, trait: 'normal', el: 'fire' },
   round: 2, observed: true, defending: true,
-  foeMark: 2, foeWeaken: 1, talBuff: 0.3, talShield: 0.6, noFoeFlee: true, momentum: 2
+  foeMark: 2, foeWeaken: 1, talBuff: 0.3, talBuffTurns: 3, talShield: 0.6, noFoeFlee: true, momentum: 2
 };
 /* renderCombat 返回 HTML 字符串（不落 DOM），直接取返回值 */
 const cbHtml = G.renderCombat() || '';
 ok(cbHtml.indexOf('破绽') >= 0, '显示「破绽」（foeMark）');
 ok(cbHtml.indexOf('压制') >= 0, '显示「压制」（foeWeaken）');
-ok(cbHtml.indexOf('神通加成') >= 0, '显示「神通加成」（talBuff）');
+ok(cbHtml.indexOf('增益') >= 0, '显示「增益」（talBuff）');
 ok(cbHtml.indexOf('护体') >= 0, '显示「护体」（talShield）');
 ok(cbHtml.indexOf('锁灵') >= 0, '显示「锁灵」（noFoeFlee）');
 ok(cbHtml.indexOf('敌方气势') >= 0, '显示「敌方气势」增伤');
 /* 剩余回合应来自字段本身，而不是写死 */
 ok(cbHtml.indexOf('2 回合') >= 0, '破绽显示剩余 2 回合（读自 foeMark）');
 ok(cbHtml.indexOf('1 回合') >= 0, '压制显示剩余 1 回合（读自 foeWeaken）');
+/* v10.7 P1：破绽/压制/灼烧/迟滞是打在他身上的，标签必须落在敌方卡，
+   我方卡只留守势/看破/增益/护体这类作用在自己身上的状态。 */
+const foePart = cbHtml.slice(cbHtml.indexOf('敌方'), cbHtml.indexOf('我方'));
+const myPart = cbHtml.slice(cbHtml.indexOf('我方'));
+ok(foePart.indexOf('破绽') >= 0, '「破绽」在敌方卡上');
+ok(foePart.indexOf('压制') >= 0, '「压制」在敌方卡上');
+ok(myPart.indexOf('破绽') < 0, '「破绽」不再出现在我方卡');
+ok(myPart.indexOf('压制') < 0, '「压制」不再出现在我方卡');
+ok(myPart.indexOf('守势') >= 0, '「守势」仍在我方卡');
+ok(myPart.indexOf('增益') >= 0, '「增益」仍在我方卡');
 
 /* 干净状态不该堆 chip */
 setup({});

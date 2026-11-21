@@ -10,7 +10,7 @@
 ├─ wxcs3-data.js            数据层：全部表 107 张（境界/功法/事件/NPC/插画键…）
 ├─ wxcs3-art.js             插画层：ART_DATA 优先，缺图回落 art/scenes/*.jpg
 ├─ wxcs3-rules.js           纯规则层：34 个不碰 DOM、不写 S 的函数（含 SAVE_VER；v9.0 第2步新增）
-├─ wxcs3-game.js            规则与 UI：约 390 函数 / 175 个 ACT 入口（M1 后只留薄缝）
+├─ wxcs3-game.js            规则与 UI：约 390 函数 / 182 个 ACT 入口（M1 后只留薄缝）
 ├─ wxcs3-icons.js           图标层：内联 SVG（48 行 / 12KB）
 ├─ wxcs3-ext-10-fate.js        扩展：道痕命格（v9.0 M1）——六系命格、进阶、重悟
 ├─ wxcs3-ext-20-trib.js        扩展：五类天劫增强（v9.0 M1）——行为权重、劫类失败余波、破境预览
@@ -143,6 +143,7 @@ M3 的四个玩法（师徒/道统/时限/属性）都只往既有面板与结�
 | 来意/拍品暗线 | `EXT.npcIntentLine` / `EXT.auctionHint` | 神识 ≥13 |
 | 月账 | `EXT.fixedCosts2()` 链式包一层 | 91 弟子供奉、92 山门维护 |
 | 指令坞 | `EXT.dockItems()` 链式包一层 | 92「统」、93「急」 |
+| 左导航分组 | `G.NAV_GROUPS`（game.js 内置，非扩展出口） | v10.7 阶段一：底部功能坞拆进左栏，分组改由 `NAV_GROUPS` 唯一定义；扩展仍只往 `dockItems()` 追加入口 |
 | 月结 | `EXT.onMonthHooks` | 弟子月结/欠缴预警 |
 
 名字避让：`S.daotong` 是五行道统字符串，组织状态用 `S.school`；时限事件 `S.timed` + `S.timedDone`。
@@ -179,7 +180,7 @@ M3 的四个玩法（师徒/道统/时限/属性）都只往既有面板与结�
 ## 常用命令
 
 ```bash
-# 断言与检查（全绿 = 1233 条断言 + 三项检查）
+# 断言与检查（全绿 = 1308 条断言 + 三项检查）
 node tools/test_v80.js && node tools/test_play.js && node tools/test_loops.js
 node tools/test_hooks.js && node tools/test_econ.js && node tools/test_text.js
 node tools/test_beast_disciple.js && node tools/smoke_econ.js
@@ -188,6 +189,7 @@ node tools/test_reachability.js && node tools/test_tier2.js && node tools/test_t
 node tools/test_gate_e2e.js && node tools/test_save.js && node tools/test_p1.js
 node tools/test_p0_v104.js && node tools/test_p1_v104.js && node tools/test_p2_v104.js
 node tools/test_v106_story.js
+node tools/test_v107_layout.js
 python tools/check_actions.py && python tools/check_time.py && node tools/check_ach.js
 
 # 网页单文件

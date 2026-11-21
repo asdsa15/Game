@@ -331,13 +331,15 @@
     { id: 'xiang',    name: '信香',       price: 30,    tier: 'huang', type: 'xiang', v: 20, desc: '香火 +20（神道用）' }
   ];
 
-  /* ====== 符箓（制符产物，战斗中一次性消耗） ====== */
+  /* ====== 符箓（制符产物，战斗中一次性消耗） ======
+     v10.7 P1·战斗口径：eff 里的每一句都要能在结算里找到对应，
+     文案与实际对不上，比没有文案更坏——玩家会照着空头支票做决策。 */
   const TALISMANS = [
     { id: 'fuHuo',  name: '火符',   tier: 'huang', price: 110, eff: '一用即焚，火伤 0.9，不耗灵力', kind: 'atk', v: 0.9,  el: 'fire' },
-    { id: 'fuJin',  name: '金刚符', tier: 'huang', price: 130, eff: '当一击，减伤 60%',             kind: 'def', v: 0.6 },
-    { id: 'fuDun',  name: '遁符',   tier: 'huang', price: 150, eff: '必遁，境界之压不能阻',         kind: 'escape' },
-    { id: 'fuZeng', name: '增益符', tier: 'xuan',  price: 240, eff: '此后三回合，伤害 +30%',        kind: 'buff', v: 0.30 },
-    { id: 'fuLei',  name: '雷符',   tier: 'xuan',  price: 320, eff: '必中，破半甲，雷伤 1.3',       kind: 'atk', v: 1.3, el: 'thunder' }
+    { id: 'fuJin',  name: '金刚符', tier: 'huang', price: 130, eff: '下一次受击总减伤 60%（与守势取强，不叠乘）', kind: 'def', v: 0.6 },
+    { id: 'fuDun',  name: '遁符',   tier: 'huang', price: 150, eff: '必遁，境界之压不能阻（遁走无战利品）', kind: 'escape' },
+    { id: 'fuZeng', name: '增益符', tier: 'xuan',  price: 240, eff: '三回合内直接伤害 +30%（刷新不叠层）', kind: 'buff', v: 0.30 },
+    { id: 'fuLei',  name: '雷符',   tier: 'xuan',  price: 320, eff: '雷伤 ×1.3，无视卸力，不耗灵力', kind: 'atk', v: 1.3, el: 'thunder' }
   ];
 
   /* ====== 法器 / 法宝（扩充） ====== */
@@ -348,12 +350,12 @@
     { id: 'wanyePiu',    name: '百魂幡',     price: 2400,  tier: 'xuan',  slot: 'atk', bonus: { atk: 0.15, hpCost: 5 }, eff: '斗法伤害 +15%，耗气血 5' },
     { id: 'jiuzhuan',    name: '九转飞剑',   price: 3200,  tier: 'di',    slot: 'atk', bonus: { atk: 0.25 }, eff: '可为本命，攻击 +25%' },
     { id: 'taiyinBao',   name: '太阴宝鉴',   price: 4600,  tier: 'di',    slot: 'body', bonus: { hit: 0.10 }, eff: '照见虚妄，命中 +10，幻术立破' },
-    { id: 'huoyuyuan',   name: '火云符',     price: 180,   tier: 'huang', slot: 'once', eff: '一用之符：斗法首击火伤 +60%' },
-    { id: 'jinchuan',    name: '传音符',     price: 90,    tier: 'huang', slot: 'once', eff: '一用：传讯相识之人，好感 +5' },
+    { id: 'huoyuyuan',   name: '火云符',     price: 180,   tier: 'huang', slot: 'once', eff: '一用之符：斗法中火系术法伤害 +60%（限一次）' },
+    { id: 'jinchuan',    name: '传音符',     price: 90,    tier: 'huang', slot: 'once', eff: '一用：传讯相识之人，好感 +5（平时即可用）' },
     { id: 'wanlingfan',  name: '万灵幡',     price: 8600,  tier: 'tian',  slot: 'atk', bonus: { atk: 0.40 }, eff: '万灵归幡，斗法伤害 +40%，可收妖' },
-    { id: 'wuyun',       name: '五雷符',     price: 520,   tier: 'xuan',  slot: 'once', eff: '一用：斗法首击必中，伤害 +80%' },
+    { id: 'wuyun',       name: '五雷符',     price: 520,   tier: 'xuan',  slot: 'once', eff: '一用：斗法首击必中（无视卸力），伤害 +80%' },
     { id: 'hanhuo',      name: '祈雨符箓',   price: 160,   tier: 'huang', slot: 'once', eff: '神道：一场显圣，不耗香火' },
-    { id: 'juxian',      name: '拘仙敕神符', price: 2800,  tier: 'di',    slot: 'once', eff: '神道：位格压制 +1 档，限一场' }
+    { id: 'juxian',      name: '拘仙敕神符', price: 2800,  tier: 'di',    slot: 'once', eff: '一用：本场位格压制 +1 档（仙道 +1 阶／神道 +1 位），限一场' }
   ];
 
   /* ====== 炼器 / 炼丹材料 ====== */
