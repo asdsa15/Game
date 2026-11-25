@@ -7,10 +7,10 @@
 ├─ 问道长生v6.html          入口页（只含 CSS 与骨架，脚本外链）
 │
 ├─ ── 运行源码（加载顺序即下方顺序）──
-├─ wxcs3-data.js            数据层：全部表 107 张（境界/功法/事件/NPC/插画键…）
+├─ wxcs3-data.js            数据层：全部表 116 张（境界/功法/事件/NPC/杀招/插画键…）
 ├─ wxcs3-art.js             插画层：ART_DATA 优先，缺图回落 art/scenes/*.jpg
 ├─ wxcs3-rules.js           纯规则层：34 个不碰 DOM、不写 S 的函数（含 SAVE_VER；v9.0 第2步新增）
-├─ wxcs3-game.js            规则与 UI：约 390 函数 / 182 个 ACT 入口（M1 后只留薄缝）
+├─ wxcs3-game.js            规则与 UI：约 400 函数 / 194 个 ACT 入口（M1 后只留薄缝）
 ├─ wxcs3-icons.js           图标层：内联 SVG（48 行 / 12KB）
 ├─ wxcs3-ext-10-fate.js        扩展：道痕命格（v9.0 M1）——六系命格、进阶、重悟
 ├─ wxcs3-ext-20-trib.js        扩展：五类天劫增强（v9.0 M1）——行为权重、劫类失败余波、破境预览
@@ -203,7 +203,7 @@ M3 的四个玩法（师徒/道统/时限/属性）都只往既有面板与结�
 ## 常用命令
 
 ```bash
-# 断言与检查（全绿 = 1886 条断言 + 三项检查）
+# 断言与检查（全绿 = 1989 条断言 + 三项检查）
 node tools/test_v80.js && node tools/test_play.js && node tools/test_loops.js
 node tools/test_hooks.js && node tools/test_econ.js && node tools/test_text.js
 node tools/test_beast_disciple.js && node tools/smoke_econ.js
@@ -216,6 +216,8 @@ node tools/test_v107_layout.js && node tools/test_v107_natal.js
 node tools/test_v107_combat.js && node tools/test_v107_consumables.js
 node tools/test_v108_ui.js && node tools/test_v108_p1.js
 node tools/test_v108_p2.js
+node tools/test_v11_combo.js && node tools/test_v11_st.js
+node tools/test_v11_guowei.js && node tools/test_v11_p1.js && node tools/check_content.js
 python tools/check_actions.py && python tools/check_time.py && node tools/check_ach.js
 
 # 网页单文件

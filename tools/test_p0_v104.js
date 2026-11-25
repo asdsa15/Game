@@ -159,8 +159,16 @@ function stDmg(name) {
 const d命 = stDmg('结璘章（命）');
 const d命身 = stDmg('位从险（命身）');
 ok(d命身 > 0 && d命 > 0, '两种神通都能打出伤害（' + d命 + ' / ' + d命身 + '）');
-ok(d命身 / d命 <= 1.12, '双属倍率封顶 max×1.1（实际 ×' + (d命身 / d命).toFixed(3) + '）');
-ok(d命身 / d命 >= 1.05, '双属确实比单属强一点点（×' + (d命身 / d命).toFixed(3) + '）');
+/* v11 P0-3 修正：本断言要测的是「双属合成上限 ≤ max×1.1」这一层机制，
+   原先用「两道不同名字的神通打出的伤害比」当代理。v11 起变体（连击/穿透…）
+   成了按名字漂移的独立乘区，掺进伤害比就不是在测合成上限了（实测被带到 ×1.467）。
+   改读 shenTongSpec().mul —— 那是合成倍率本身（命身=max×1.1），
+   变体记在 variantAdj 里不计入，标尺重新变纯。伤害比仍作为出口对照保留。 */
+const mul命 = G.shenTongSpec('结璘章（命）').mul;
+const mul命身 = G.shenTongSpec('位从险（命身）').mul;
+const capRatio = mul命身 / mul命;
+ok(capRatio <= 1.12, '双属倍率封顶 max×1.1（合成倍率实得 ×' + capRatio.toFixed(3) + '）');
+ok(capRatio >= 1.05, '双属确实比单属强一点点（合成倍率 ×' + capRatio.toFixed(3) + '）');
 
 /* data.js 里真实存在的双属名，全部可解析 */
 const doubles = [];

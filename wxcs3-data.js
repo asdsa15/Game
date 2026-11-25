@@ -346,8 +346,15 @@
       desc: '同时恢复气血与灵力各 18%（单项弱于专用高阶丹）' },
     { id: 'kaiMai',   name: '开脉丹',     price: 280,   tier: 'xuan',  type: 'cultXun', v: 0.2, turns: 3,
       desc: '接下来 3 旬修炼收益 +20%（与日月玄浆取强，不叠加）' },
-    { id: 'wuXin',    name: '悟心丹',     price: 300,   tier: 'xuan',  type: 'insight', v: 3,
-      desc: '下一次读书或论道的悟道收益 +3（接入悟道点，不加破境率）' }
+    { id: 'wuXin',    name: '悟心丹',     price: 300,  tier: 'xuan',  type: 'insight', v: 3,
+      desc: '下一次读书或论道的悟道收益 +3（接入悟道点，不加破境率）' },
+    /* —— v11 P1-2：五洲专属丹药（place 标记仅此地有售）—— */
+    { id: 'qyPeiyuan',  name: '青岳培元丹', price: 120,  tier: 'huang', type: 'mp',   v: 60,  place: 'qingyue',  desc: '青岳宗门丹房所制，复灵力 60' },
+    { id: 'nyHuodan',   name: '赤炎火丹',   price: 160,  tier: 'huang', type: 'hp',   v: 100, place: 'nanyue',  desc: '南疆火脉所炼，复气血 100' },
+    { id: 'xsJingxin',  name: '流沙净心丹', price: 200,  tier: 'xuan',  type: 'heart', v: 3,   place: 'xisha',    desc: '西漠佛门所传，道心 +3' },
+    { id: 'byHumai',    name: '寒渊护脉丹', price: 240,  tier: 'xuan',  type: 'guard', v: 0.15, turns: 2, combat: true, place: 'beiyuan',
+      desc: '2 回合受击伤害 −15%（与守势取强，不叠乘）' },
+    { id: 'zzJuling',   name: '天阙聚灵丹', price: 320,  tier: 'xuan',  type: 'mpPct', v: 0.3, place: 'zhongzhou', desc: '中州天阙所聚，复灵力 30%' }
   ];
 
   /* ====== 符箓（制符产物，战斗中一次性消耗） ======
@@ -473,7 +480,18 @@
     { id: 'huanShi',    name: '幻属石',     price: 180, tier: 'xuan',  eff: '迷踪阵主材' },
     { id: 'jinLing',    name: '金灵砂',     price: 200, tier: 'xuan',  eff: '炼器刻阵所用，善导灵气' },
     { id: 'tieMu',      name: '铁木心',     price: 150, tier: 'huang', eff: '器胚主材，坚而韧' },
-    { id: 'longYan',    name: '龙岩铁',     price: 700, tier: 'di',    eff: '地阶器胚主材' }
+    { id: 'longYan',    name: '龙岩铁',     price: 700, tier: 'di',    eff: '地阶器胚主材' },
+    /* —— v11 P1-1：道书重读之注 ——
+       读完一层再读，读出的是「注」：前人批注、别家注解。
+       注疏可卖（坊市出价），也可在道书面板「以注易注」换一部已读尽之书的重读。 */
+    { id: 'zhuShu',     name: '注疏',       price: 260, tier: 'huang', eff: '道书重读所得。可售，亦可易他人之注' },
+    /* —— v11 P1-2：五洲专属灵材（各地只产这一种，坊市按地点上货）——
+       place 字段是「仅此地有售」的标记：非此地时不进货架，买走后随行。 */
+    { id: 'yueYunZhi',  name: '岳云芝',     price: 240, tier: 'xuan',  place: 'qingyue', eff: '东洲青岳所产，炼宁神诸丹之引' },
+    { id: 'chiYangSha', name: '赤阳砂',     price: 320, tier: 'xuan',  place: 'nanyue', eff: '南疆火脉所凝，火系器料' },
+    { id: 'liuShaJing', name: '流沙晶',     price: 280, tier: 'xuan',  place: 'xisha', eff: '西漠流沙所结，布阵之材' },
+    { id: 'hanYuanYu',  name: '寒渊玉',     price: 460, tier: 'di',    place: 'beiyuan', eff: '北原寒渊所孕，疗伤诸丹之引' },
+    { id: 'tianQueJin', name: '天阙金',     price: 880, tier: 'di',    place: 'zhongzhou', eff: '中州天阙所铸，高阶器胚主材' }
   ];
 
   /* ====== 斗法招式（法术池） ====== */
@@ -725,6 +743,36 @@
       effects: [{ type: 'interrupt' }] }
   ];
 
+  /* ====== 杀招（v11 P0-1）：招式与招式之间的关系 ======
+     对标《蛊真人》的「杀招」——不是第 15 个招式，而是 14 招之间的组合语言。
+     上一招（prev，可用 prevKind 泛指一类）→ 这一招（cur/curKind）→ 条件（cond）
+     满足 → 一次强化结算。条件全部读已有战斗状态（foeBurn/foeWeaken/foeShred/
+     foeCalm/气血比/上回合守势/同回合出招），不新增状态字段。
+     效果字段全部走 applyCombatEffect / 既有结算钩子：
+       mul 伤害乘区 · deflZero 卸力归零 · burnBurst 引爆灼烧（×倍率，清层）
+       selfHp 自损气血 · interrupt 打断蓄力 · slowTurns 迟滞 · shredV 破甲加深
+       dodge 本回合规避一次敌伤（复用神行符出口）· natalDmg 本命器损
+     触发时日志写专属文案（text），战况区标红（cls:'danger' 的 fl 样式反色——
+     实为金色高亮由 game.js 决定，这里只给文案）。 */
+  const COMBOS = [
+    { id: 'fenshan', name: '焚山煮海', prev: '焚山掌', cur: '毒火丝', cond: 'foeBurn',
+      fx: { burnBurst: 1.8, selfHp: 8 }, text: '毒火引燃旧焰，火借风势，海亦沸了！' },
+    { id: 'leiluo', name: '雷落九霄', prev: '惊雷引', cur: '神霄御剑', cond: 'seq',
+      fx: { mul: 1.5, interrupt: true }, text: '一雷未落二雷起，九霄之上连珠而下！' },
+    { id: 'fuer', name: '缚而后斩', prev: '缠木根', cur: '剑气纵横', cond: 'foeWeaken',
+      fx: { mul: 1.3, deflZero: true }, text: '根缚其形，剑走其隙——卸力成空！' },
+    { id: 'luojing', name: '落井下石', prev: '落石诀', cur: '白骨飞剑', cond: 'foeShred',
+      fx: { mul: 1.15, shredV: 0.4, shredTurns: 3 }, text: '甲裂之处再补一剑，伤口见骨！' },
+    { id: 'hantan', name: '寒潭照影', prev: '寒水箭', cur: '玄珠坠月', cond: 'hpHigh',
+      fx: { mul: 1.2, slowTurns: 2, interrupt: true }, text: '寒水入髓，玄珠压顶——他手脚都慢了下来！' },
+    { id: 'xuewei', name: '血喂剑', prev: '血炼神光', cur: '白骨飞剑', cond: 'hpLow',
+      fx: { mul: 1.6, natalDmg: 8 }, text: '血饲锋刃，剑身嗡鸣如饱饿十年！' },
+    { id: 'liuzhuan', name: '流转不绝', prev: '流转剑罡', curKind: 'sword', cond: 'wasGuard',
+      fx: { dodge: true }, text: '守到极处即是攻——剑罡绕回，这一击他碰不着你！' },
+    { id: 'zhenya', name: '镇压八荒', prev: '镇压八方', cur: '直取', cond: 'foeCalm',
+      fx: { mul: 2.2 }, text: '镇字未消，一拳直取——最平的招成了最重的招！' }
+  ];
+
   /* ====== 敌方路数与行动模板（v10.7 阶段三·批次C） ======
      性格（brute/veteran/slippery/normal）保留为数值与撤退倾向；
      路数决定「下一招做什么」。固定时序：
@@ -880,207 +928,286 @@
   /* ====== 奇遇池（机缘，按道途分支） ====== */
   const ENCOUNTERS = [
     {
-      id: 'oldman', name: '崖边老者', kind: 'common',
+      id: 'oldman', name: '崖边老者', kind: 'common', when: { maxRealm: 1 },
       poem: '道旁老叟啮冷粮，遇人无惊亦无问。',
       text: '山道尽头，一个披着旧袍的老者蹲在石头上啃干粮。他抬头看你，眼里没有半点惊疑。',
       opts: [
         { t: '上前问路', risk: 'risk', eff: '需通过命数判定', act: 'enc:oldman:ask' },
         { t: '绕道而行', risk: 'peace', eff: '稳妥，但什么也得不到', act: 'enc:oldman:pass' },
         { t: '递上半块饼', risk: 'chance', eff: '消耗 20 灵石，或有回报', act: 'enc:oldman:share' }
-      ]
+      ],
+      /* v11 P1-1：读完《人祖传·残页》后，多出「以书中之言应对」的第三选项 */
+      bookOpt: { book: 'renzu', t: '以书中之言应对', eff: '需读尽《人祖传·残页》',
+        act: 'enc:oldman:book',
+        res: { hit: 60,
+          ok: [['insight', 1], ['heart', 1]],
+          miss: [['karma', 5]],
+          m: '你借残页中「影子代死」之说应对，老者盯着你看了半晌，缓缓道：「你读的虽是残书，话倒是整的。」悟性 +1，道心 +1。',
+          nm: '你硬套书中之言，老者摇了摇头：「书是别人的事，与这条路无关。」业力 +5。' } }
     },
     {
-      id: 'cave', name: '无名古洞', kind: 'common',
+      id: 'cave', name: '无名古洞', kind: 'common', when: { maxRealm: 1 },
       poem: '雨裂山腹开一线，壁间残诀字犹温。',
       text: '雨后的山壁上裂开一道口子，往里走三步，灵气陡然浓了起来。洞壁上刻着半篇残缺的法诀。',
       opts: [
         { t: '抄录法诀', risk: 'chance', eff: '可能得功法残卷', act: 'enc:cave:copy' },
         { t: '就地打坐', risk: 'peace', eff: '修为 +30，但洞中灵气一次而竭', act: 'enc:cave:sit' },
         { t: '深入探查', risk: 'risk', eff: '可能遇妖，也可能得宝', act: 'enc:cave:deep' }
-      ]
+      ],
+      bookOpt: { book: 'xuanjing', t: '以书中之言应对', eff: '需读尽《玄景残卷》',
+        act: 'enc:cave:book',
+        res: { hit: 60,
+          ok: [['insight', 1], ['xiuwei', 30]],
+          miss: [['karma', 5]],
+          m: '你借残卷中「誓由心动」四字点破残诀关窍，壁上字迹如逢旧识，法诀豁然贯通。悟性 +1，修为 +30。',
+          nm: '你硬套书中之言，残诀反而更乱，白耗半日心力。业力 +5。' } }
     },
     {
-      id: 'dying', name: '濒死的修士', kind: 'xian',
+      id: 'dying', name: '濒死的修士', kind: 'xian', when: { minRealm: 2, maxRealm: 3 },
       poem: '草间残喘犹攥袋，抬手非为求生。',
       text: '草丛里躺着个修士，胸口一个碗大的窟窿，还在喘气。他攥着储物袋，看见你就抬手。',
       opts: [
         { t: '施药救人', risk: 'chance', eff: '耗一颗疗伤丹（或 200 灵石），可能得人情', act: 'enc:dying:save' },
         { t: '取走储物袋', risk: 'risk', eff: '得灵石若干，业力 +15', act: 'enc:dying:rob' },
         { t: '转身就走', risk: 'peace', eff: '无所得，心不亏', act: 'enc:dying:leave' }
-      ]
+      ],
+      bookOpt: { book: 'canxin', t: '以书中之言应对', eff: '需读尽《残心经》',
+        act: 'enc:dying:book',
+        res: { hit: 60,
+          ok: [['heart', 2], ['merit', 15]],
+          miss: [['karma', 6]],
+          m: '你借《残心经》中「以心予之」之说应他，他攥着储物袋的手松了，临去留下一句：「这书，我也读过。」道心 +2，功德 +15。',
+          nm: '你硬套书中之言，他笑了一声：「书里的心，替不了现实的血。」业力 +6。' } }
     },
     {
-      id: 'ruined', name: '野庙荒祠', kind: 'shen',
+      id: 'ruined', name: '野庙荒祠', kind: 'shen', when: { minRealm: 4 },
       poem: '泥塑半倾灰三寸，指端一按尚余温。',
       text: '一尊倒了半边的泥塑神像，供桌上积着三寸灰。你伸手一抹，指腹上有点暖意。',
       opts: [
         { t: '重立香火', risk: 'chance', eff: '耗 300 香火，庙址 +1，信众大增', act: 'enc:ruined:rebuild' },
         { t: '取走供品', risk: 'risk', eff: '得香火若干，业力 +10', act: 'enc:ruined:take' },
         { t: '上三炷香', risk: 'peace', eff: '香火 +80，无其他变化', act: 'enc:ruined:incense' }
-      ]
+      ],
+      bookOpt: { book: 'mingdeng', t: '以书中之言应对', eff: '需读尽《命灯录》',
+        act: 'enc:ruined:book',
+        res: { hit: 60,
+          ok: [['heart', 1], ['xianghuo', 60]],
+          miss: [['karma', 4]],
+          m: '你借《命灯录》中「认牌不认人」之说为泥像正名，残烛竟自己亮了半分。道心 +1，香火 +60。',
+          nm: '你硬套书中之言，泥像不会应答，你对着一尊灰塑讲了半天，徒耗心力。业力 +4。' } }
     },
     {
-      id: 'market', name: '坊市拍卖', kind: 'common',
+      id: 'market', name: '坊市拍卖', kind: 'common', when: { maxRealm: 1 },
       poem: '铜铃三响红未揭，价自众人心底定。',
       text: '拍卖行的铜铃响了第三遍。台上那件东西被红布盖着，台下有人已经举了三回牌子。',
       opts: [
         { t: '举牌竞拍', risk: 'chance', eff: '耗 800 灵石，得一件法器或功法', act: 'enc:market:bid' },
         { t: '观望行情', risk: 'peace', eff: '灵石 = 见识，声望 +8', act: 'enc:market:watch' },
         { t: '混进后台', risk: 'risk', eff: '可能偷得真货，也可能被打出来', act: 'enc:market:sneak' }
-      ]
+      ],
+      bookOpt: { book: 'bailian', t: '以书中之言应对', eff: '需读尽《百炼成仙道法·凡本》',
+        act: 'enc:market:book',
+        res: { hit: 60,
+          ok: [['insight', 1], ['fame', 5]],
+          miss: [['karma', 4]],
+          m: '你借凡本「以错养真」之语与拍卖师对答，对方愣了片刻，竞拍的架势竟缓了下来。悟性 +1，声望 +5。',
+          nm: '你硬套书中之言，拍卖师只当听了个笑话，你反落了个附庸风雅的名声。业力 +4。' } }
     },
     {
-      id: 'beast', name: '负伤的妖物', kind: 'xian',
+      id: 'beast', name: '负伤的妖物', kind: 'xian', when: { minRealm: 2, maxRealm: 3 },
       poem: '断足之兽眼不闭，看人如看一念间。',
       text: '一头开了灵智的妖兽倒在你必经的山道上，后腿骨头断了，眼睛却一直盯着你。',
       opts: [
         { t: '救它', risk: 'chance', eff: '耗 300 灵石，或得契约妖宠', act: 'enc:beast:heal' },
         { t: '杀了取丹', risk: 'risk', eff: '得妖丹，业力 +12', act: 'enc:beast:kill' },
         { t: '绕过去', risk: 'peace', eff: '无所得', act: 'enc:beast:pass' }
-      ]
+      ],
+      bookOpt: { book: 'taiyin', t: '以书中之言应对', eff: '需读尽《太阴吐纳养轮经·注本》',
+        act: 'enc:beast:book',
+        res: { hit: 60,
+          ok: [['heart', 1], ['insight', 1]],
+          miss: [['karma', 5]],
+          m: '你借注本中「养轮即养我」之说缓缓开口，妖兽听了很久，垂首舔了舔断腿，不再拦路。道心 +1，悟性 +1。',
+          nm: '你硬套书中之言，妖兽眼中凶光大盛，你险些被扑。业力 +5。' } }
     },
     {
-      id: 'storm', name: '荒村大旱', kind: 'shen',
+      id: 'storm', name: '荒村大旱', kind: 'shen', when: { minRealm: 4 },
       poem: '井见底时香火起，人跪门前问野神。',
       text: '三十几户人家的村子，水井见了底，老人跪在自家门口烧黄纸。有人在传：后山有个野神。',
       opts: [
         { t: '行雨显圣', risk: 'chance', eff: '仙道：耗灵力；神道：耗香火。信众大涨', act: 'enc:storm:rain' },
         { t: '收编村祭', risk: 'risk', eff: '立为一村香火，但要担起此村', act: 'enc:storm:take' },
         { t: '留下丹药', risk: 'peace', eff: '耗丹药，功德 +30', act: 'enc:storm:pill' }
-      ]
+      ],
+      bookOpt: { book: 'xianghuo', t: '以书中之言应对', eff: '需读尽《香火成神法·邪注本》',
+        act: 'enc:storm:book',
+        res: { hit: 60,
+          ok: [['heart', 1], ['followers', 60]],
+          miss: [['karma', 5]],
+          m: '你借邪注本中「香火是债，显圣是还债」之说开口，村民们愣了半晌，反而把香插得更齐。道心 +1，信众 +60。',
+          nm: '你硬套书中之言，村民听不大懂，只当你在推托。业力 +5。' } }
     },
     {
-      id: 'jade', name: '溪底玉匣', kind: 'common',
+      id: 'jade', name: '溪底玉匣', kind: 'common', when: { maxRealm: 1 },
       poem: '潮退石间露半匣，封蜡未损字曰勿开。',
       text: '退潮后的溪石间露出半只玉匣，封蜡还完好，匣底刻着两个字：勿开。',
       opts: [
         { t: '打开它', risk: 'risk', eff: '可能得宝，也可能放出祸祟', act: 'enc:jade:open' },
         { t: '原样带回去', risk: 'peace', eff: '可作奇物，价值未知', act: 'enc:jade:keep' },
         { t: '重新封好沉底', risk: 'chance', eff: '功德 +20，或得上天垂青', act: 'enc:jade:close' }
-      ]
+      ],
+      bookOpt: { book: 'meihua', t: '以书中之言应对', eff: '需读尽《梅花易·残页》',
+        act: 'enc:jade:book',
+        res: { hit: 60,
+          ok: [['insight', 1], ['merit', 15]],
+          miss: [['karma', 4]],
+          m: '你借残页中「卦不算自己」之说占断此匣，卦象示凶，你依言封好。悟性 +1，功德 +15。',
+          nm: '你硬套书中之言，占出的卦辞自相矛盾，封蜡时手一抖，匣缝开了半分。业力 +4。' } }
     },
     {
-      id: 'debtor', name: '叩门的旧识', kind: 'common',
+      id: 'debtor', name: '叩门的旧识', kind: 'common', when: { maxRealm: 1 },
       poem: '夜叩门者带血腥，但求一宿，不言明朝。',
       text: '夜里有人敲门，是个许久不见的旧识，一身血腥气，说只求躲一宿。',
       opts: [
         { t: '留他一夜', risk: 'risk', eff: '可能被仇家找上门，也可能得助力', act: 'enc:debtor:host' },
         { t: '拒之门外', risk: 'peace', eff: '无风险，好感 −10', act: 'enc:debtor:refuse' },
         { t: '问清缘由', risk: 'chance', eff: '可能牵出一条线索', act: 'enc:debtor:ask' }
-      ]
+      ],
+      bookOpt: { book: 'guancai', t: '以书中之言应对', eff: '需读尽《棺材庙记》',
+        act: 'enc:debtor:book',
+        res: { hit: 60,
+          ok: [['heart', 1], ['insight', 1]],
+          miss: [['karma', 4]],
+          m: '你借庙记中「庙在，人在」之说留他，把这一夜当作守一处小庙。道心 +1，悟性 +1。',
+          nm: '你硬套书中之言，旧识听罢惨笑：「我若还有庙，何至于来敲你这扇门。」业力 +4。' } }
     },
     {
-      id: 'scripture', name: '残页天书', kind: 'xian',
+      id: 'scripture', name: '残页天书', kind: 'xian', when: { minRealm: 2, maxRealm: 3 },
       poem: '三年废纸压书肆，翻开一行已成诀。',
       text: '旧书摊上一卷残页，摊主说不认得字，只当废纸压了三年。你翻开，第一行是半句口诀。',
       opts: [
         { t: '买下残页', risk: 'chance', eff: '耗 500 灵石，可能得功法残卷', act: 'enc:scripture:buy' },
         { t: '请他换一物', risk: 'risk', eff: '以物易物，或以人情换', act: 'enc:scripture:trade' },
         { t: '默默记下', risk: 'peace', eff: '记一半，机缘 +2', act: 'enc:scripture:memorize' }
-      ]
+      ],
+      bookOpt: { book: 'jiuhuan', t: '以书中之言应对', eff: '需读尽《九寰天书·地字卷》',
+        act: 'enc:scripture:book',
+        res: { hit: 60,
+          ok: [['insight', 1], ['xiuwei', 40]],
+          miss: [['karma', 4]],
+          m: '你借天书中「桥成之日未至，手印已先成路」之说辨读残页，口诀的断处竟一一接上。悟性 +1，修为 +40。',
+          nm: '你硬套书中之言，残页上的字越辨越虚，摊主看你如看怪人。业力 +4。' } }
     },
     /* ====== 2026-11-17 素材增补：十五处奇遇 ======
        结构对齐 enc:<id>:<opt>，每个选项在 do_enc 里都有分支。
        题诗一句，作开场的定调；正文只写看见的，不写该怎样想。 */
-    { id: 'stoneGate', name: '残符石门', kind: 'common', poem: '石门半掩刻残符，推者还须代守门。',
+    { id: 'stoneGate', name: '残符石门', kind: 'common', when: { maxRealm: 1 }, poem: '石门半掩刻残符，推者还须代守门。',
       text: '山行遇一石门，门上残符半张。符下刻着一行字：推门者，代守门者。',
       opts: [
         { t: '推门', risk: 'risk', eff: '门后有物，亦有因果', act: 'enc:stoneGate:push' },
         { t: '不推', risk: 'peace', eff: '道心 +1', act: 'enc:stoneGate:leave' },
         { t: '破符', risk: 'risk', eff: '修为 +40，业力 +5', act: 'enc:stoneGate:burn' }
-      ] },
-    { id: 'brokenSword', name: '断剑', kind: 'common', poem: '河滩半剑锈成泥，剑格犹存一个云。',
+      ],
+      bookOpt: { book: 'mingtu', t: '以书中之言应对', eff: '需读尽《命途残章》',
+        act: 'enc:stoneGate:book',
+        res: { hit: 60,
+          ok: [['heart', 1], ['insight', 1]],
+          miss: [['karma', 5]],
+          m: '你借残章中「门不在别处，门在你走投无路那一日」之说对符而立，石门上的残符竟寸寸剥落。道心 +1，悟性 +1。',
+          nm: '你硬套书中之言，残符不认这番道理，门上传来一声闷响，似有物在门后翻了个身。业力 +5。' } }
+    },
+    { id: 'brokenSword', name: '断剑', kind: 'common', when: { maxRealm: 1 }, poem: '河滩半剑锈成泥，剑格犹存一个云。',
       text: '河滩上有半截断剑，锈得只剩剑格。剑格上刻着一个「云」字。',
       opts: [
         { t: '拾起带走', risk: 'chance', eff: '以灵气养它三月', act: 'enc:brokenSword:keep' },
         { t: '原地插回', risk: 'peace', eff: '机缘 +2', act: 'enc:brokenSword:back' },
         { t: '熔了打农具', risk: 'risk', eff: '灵石 +80，剑系声望 −', act: 'enc:brokenSword:melt' }
       ] },
-    { id: 'nightTeach', name: '夜半授业', kind: 'common', poem: '夜半有人隔空语，一字一句教法诀。',
+    { id: 'nightTeach', name: '夜半授业', kind: 'common', when: { maxRealm: 1 }, poem: '夜半有人隔空语，一字一句教法诀。',
       text: '闭关半夜，忽有人隔空传音，一字一句教一式法诀。睁眼，四下无人。',
       opts: [
         { t: '照诀修行', risk: 'chance', eff: '修为 +50，悟性 +1', act: 'enc:nightTeach:learn' },
         { t: '硬压心神', risk: 'peace', eff: '道心 +2', act: 'enc:nightTeach:refuse' },
         { t: '反循传音', risk: 'risk', eff: '机缘 +3，寿元 −5', act: 'enc:nightTeach:trace' }
       ] },
-    { id: 'corpseHall', name: '义庄老尸', kind: 'common', poem: '义庄看门人劝酒，说庄里客人快醒。',
+    { id: 'corpseHall', name: '义庄老尸', kind: 'common', when: { maxRealm: 1 }, poem: '义庄看门人劝酒，说庄里客人快醒。',
       text: '义庄看门人请你喝一碗酒，说庄里那位客人快醒了，问你怕不怕。',
       opts: [
         { t: '留下守夜', risk: 'chance', eff: '道心 +2，得残篇', act: 'enc:corpseHall:stay' },
         { t: '烧了棺材', risk: 'risk', eff: '业力 +10，得尸丹', act: 'enc:corpseHall:burn' },
         { t: '收钱走人', risk: 'peace', eff: '灵石 +60', act: 'enc:corpseHall:leave' }
       ] },
-    { id: 'fallenFairy', name: '落难仙子', kind: 'common', poem: '山道三人围一女，袖口绣着不识花。',
+    { id: 'fallenFairy', name: '落难仙子', kind: 'common', when: { maxRealm: 1 }, poem: '山道三人围一女，袖口绣着不识花。',
       text: '山道遇一女子被三名黑衣人围困。女子袖口绣着一朵你不认识的教中花。',
       opts: [
         { t: '出手相助', risk: 'risk', eff: '声望 +6，被记了脸', act: 'enc:fallenFairy:save' },
         { t: '报官', risk: 'peace', eff: '声望 +5，灵石 +30', act: 'enc:fallenFairy:report' },
         { t: '观望', risk: 'risk', eff: '道心 −2，业力 +3', act: 'enc:fallenFairy:watch' }
       ] },
-    { id: 'wellMoon', name: '井中月', kind: 'common', poem: '庙后枯井月自圆，影中月比天上全。',
+    { id: 'wellMoon', name: '井中月', kind: 'common', when: { minRealm: 2, maxRealm: 3 }, poem: '庙后枯井月自圆，影中月比天上全。',
       text: '庙后枯井，月圆之夜井里有月。水影里的月，比天上那个完整。',
       opts: [
         { t: '伸手捞月', risk: 'chance', eff: '悟性 +2，寿元 −3', act: 'enc:wellMoon:reach' },
         { t: '投一炷香', risk: 'peace', eff: '虔诚 +，信众 +30', act: 'enc:wellMoon:incense' },
         { t: '封井', risk: 'peace', eff: '道心 +3，业力 −2', act: 'enc:wellMoon:seal' }
       ] },
-    { id: 'bookSeller', name: '贩书人', kind: 'common', poem: '坊市拐角一书摊，只在雨天卖错版。',
+    { id: 'bookSeller', name: '贩书人', kind: 'common', when: { minRealm: 2, maxRealm: 3 }, poem: '坊市拐角一书摊，只在雨天卖错版。',
       text: '坊市拐角有个书摊，摊主只在雨天出摊，卖的都是错版书。',
       opts: [
         { t: '买一本', risk: 'chance', eff: '灵石 −30，悟性 +1', act: 'enc:bookSeller:buy' },
         { t: '问他为何雨天出摊', risk: 'peace', eff: '悟性 +2', act: 'enc:bookSeller:ask' },
         { t: '报给巡查', risk: 'risk', eff: '灵石 +50，业力 +5', act: 'enc:bookSeller:report' }
       ] },
-    { id: 'oldDebt', name: '故人之账', kind: 'common', poem: '三十年前半炉丹，如今拦路问人还。',
+    { id: 'oldDebt', name: '故人之账', kind: 'common', when: { minRealm: 2, maxRealm: 3 }, poem: '三十年前半炉丹，如今拦路问人还。',
       text: '一个陌生老者拦路，说三十年前你师父欠他半炉丹药。',
       opts: [
         { t: '认账代还', risk: 'peace', eff: '灵石 −30，功德 +15', act: 'enc:oldDebt:pay' },
         { t: '让他拿凭据', risk: 'chance', eff: '道心 −1，修为 +30', act: 'enc:oldDebt:proof' },
         { t: '不认', risk: 'risk', eff: '结一段仇', act: 'enc:oldDebt:refuse' }
       ] },
-    { id: 'foxCub', name: '妖物认亲', kind: 'common', poem: '三眼幼狐跟十里，不讨食，卧脚背。',
+    { id: 'foxCub', name: '妖物认亲', kind: 'common', when: { minRealm: 2, maxRealm: 3 }, poem: '三眼幼狐跟十里，不讨食，卧脚背。',
       text: '一只三眼幼狐跟了你十里，不讨食，只把尾巴搭在你脚背上，睡了一觉。',
       opts: [
         { t: '收养', risk: 'chance', eff: '得妖丹，业力 +2', act: 'enc:foxCub:keep' },
         { t: '送归山林', risk: 'peace', eff: '道心 +2，山中不遇兽', act: 'enc:foxCub:return' },
         { t: '卖给坊市', risk: 'risk', eff: '灵石 +88，业力 +8', act: 'enc:foxCub:sell' }
       ] },
-    { id: 'oldCave', name: '前人洞府', kind: 'common', poem: '雷雨山崩露洞府，门大开着主人急。',
+    { id: 'oldCave', name: '前人洞府', kind: 'common', when: { minRealm: 2, maxRealm: 3 }, poem: '雷雨山崩露洞府，门大开着主人急。',
       text: '雷雨夜山体滑坡，露出一处洞府。府门大开着，不是没人，是主人走得急。',
       opts: [
         { t: '只取丹药书籍', risk: 'peace', eff: '修为 +60，得道书', act: 'enc:oldCave:take' },
         { t: '连洞府一起占了', risk: 'risk', eff: '灵气提一档', act: 'enc:oldCave:occupy' },
         { t: '报给宗门', risk: 'peace', eff: '贡献 +200', act: 'enc:oldCave:report' }
       ] },
-    { id: 'snowLodge', name: '雪夜借宿', kind: 'common', poem: '雪夜迷路叩柴门，一床一粥皆热的。',
+    { id: 'snowLodge', name: '雪夜借宿', kind: 'common', when: { minRealm: 2, maxRealm: 3 }, poem: '雪夜迷路叩柴门，一床一粥皆热的。',
       text: '雪夜迷路，敲开一户猎户的门。屋里有一张多余的床，一碗热的粥。',
       opts: [
         { t: '给钱', risk: 'peace', eff: '道心 +1', act: 'enc:snowLodge:pay' },
         { t: '讲故事抵饭钱', risk: 'peace', eff: '悟性 +1', act: 'enc:snowLodge:tale' },
         { t: '夜里修行扰人', risk: 'risk', eff: '修为 +20，业力 +2', act: 'enc:snowLodge:cultivate' }
       ] },
-    { id: 'noNameStele', name: '断香的名号', kind: 'common', poem: '荒庙无字碑一块，碑前三支断头香。',
+    { id: 'noNameStele', name: '断香的名号', kind: 'common', when: { minRealm: 4 }, poem: '荒庙无字碑一块，碑前三支断头香。',
       text: '荒庙里一块无字碑，碑前香炉断着三支香。有人来过，没敢留名。',
       opts: [
         { t: '补上三支香', risk: 'peace', eff: '道心 +2，悟性 +1', act: 'enc:noNameStele:incense' },
         { t: '刻自己的名号', risk: 'risk', eff: '声望 +3，机缘 −1', act: 'enc:noNameStele:carve' },
         { t: '拓印碑文', risk: 'chance', eff: '得符材', act: 'enc:noNameStele:rubbing' }
       ] },
-    { id: 'riverBride', name: '河伯娶亲', kind: 'common', poem: '沿河村子办娶亲，花轿哭声细如丝。',
+    { id: 'riverBride', name: '河伯娶亲', kind: 'common', when: { minRealm: 4 }, poem: '沿河村子办娶亲，花轿哭声细如丝。',
       text: '沿河村子在办娶亲，花轿往河边抬，轿里哭声很小。今日不是吉日。',
       opts: [
         { t: '掀轿', risk: 'risk', eff: '功德 +20，村里记恨', act: 'enc:riverBride:lift' },
         { t: '假扮神棍接这单', risk: 'chance', eff: '灵石 +40，信众 +40', act: 'enc:riverBride:sham' },
         { t: '转身走', risk: 'warn', eff: '道心 −1', act: 'enc:riverBride:leave' }
       ] },
-    { id: 'escortRaid', name: '官道截杀', kind: 'common', poem: '官道镖车被截住，镖旗是祀部的旗。',
+    { id: 'escortRaid', name: '官道截杀', kind: 'common', when: { minRealm: 4 }, poem: '官道镖车被截住，镖旗是祀部的旗。',
       text: '官道上，一队镖车被截。镖师们背靠背站着，镖旗是祀部的旗。',
       opts: [
         { t: '助镖师', risk: 'risk', eff: '灵石 +120，声望 +8', act: 'enc:escortRaid:help' },
         { t: '趁乱摸鱼', risk: 'risk', eff: '灵石 +150，业力 +10', act: 'enc:escortRaid:loot' },
         { t: '先救人再问是非', risk: 'peace', eff: '功德 +15，两头欠情', act: 'enc:escortRaid:save' }
       ] },
-    { id: 'mirrorLake', name: '镜湖照影', kind: 'common', poem: '山间平湖无风纹，湖中照影慢半拍。',
+    { id: 'mirrorLake', name: '镜湖照影', kind: 'common', when: { minRealm: 2, maxRealm: 3 }, poem: '山间平湖无风纹，湖中照影慢半拍。',
       text: '一面山间平湖，无风自起纹。湖面照出的「你」，动作总比你慢半拍。',
       opts: [
         { t: '与影对坐一夜', risk: 'chance', eff: '悟性 +2，道心 +1', act: 'enc:mirrorLake:sit' },
@@ -1092,40 +1219,613 @@
        取材：《我以机缘觅长生》的石液观机、《蛊真人》的三关与命灯、
             《白骨大圣》的伪箓、《黄昏分界》的三炷香。
        机缘不是随机，是应你此刻最急之事而现——所以三选一里没有一条是「稳赚」。 */
-    { id: 'shiyeguanji', name: '石液观机', kind: 'xian', poem: '崖畔石瓶一旬滴，滴入目中见白青。',
+    { id: 'shiyeguanji', name: '石液观机', kind: 'xian', when: { minRealm: 4 }, poem: '崖畔石瓶一旬滴，滴入目中见白青。',
       text: '崖畔有石瓶，每一旬凝一滴白液。滴入目中，可见天地间「机缘」——白光者微，青光者巨。所现之机，非随机，乃应你此刻最急之事。',
       opts: [
         { t: '滴液观洞府', risk: 'chance', eff: '机缘 +2，来月破境稳三分', act: 'enc:shiyeguanji:cave' },
         { t: '滴液观旧债', risk: 'risk', eff: '见银中带金一缕，闪烁不定', act: 'enc:shiyeguanji:debt' },
         { t: '封瓶不观', risk: 'peace', eff: '「百鸟在林，不如一鸟在手」', act: 'enc:shiyeguanji:seal' }
       ] },
-    { id: 'sanguandanghun', name: '三关·荡魂', kind: 'xian', poem: '山摇其魂谷夺魄，逆流而上者逆天。',
+    { id: 'sanguandanghun', name: '三关·荡魂', kind: 'xian', when: { minRealm: 4 }, poem: '山摇其魂谷夺魄，逆流而上者逆天。',
       text: '入一古门，门后三关：荡魂山、落魄谷、逆流河。过关者留一句话：「山摇其魂，谷夺其魄，河逆其行。」',
       opts: [
         { t: '闯荡魂山', risk: 'risk', eff: '见平生所悔之事一一走过', act: 'enc:sanguandanghun:mountain' },
         { t: '绕谷而行', risk: 'chance', eff: '不夺其魄，然失一物', act: 'enc:sanguandanghun:valley' },
         { t: '逆流而上', risk: 'risk', eff: '逆河者，逆命', act: 'enc:sanguandanghun:river' }
       ] },
-    { id: 'mingdengzhiwen', name: '命灯之问', kind: 'xian', poem: '两盏灯前一明灭，执事不答只推灯。',
+    { id: 'mingdengzhiwen', name: '命灯之问', kind: 'xian', when: { minRealm: 4 }, poem: '两盏灯前一明灭，执事不答只推灯。',
       text: '石台上有两盏灯，一盏亮，一盏将灭。执事把亮的那盏往前推了半寸，什么也没说。',
       opts: [
         { t: '点亮自己的灯', risk: 'chance', eff: '命火燃起，成记名弟子', act: 'enc:mingdengzhiwen:light' },
         { t: '吹灭将熄之灯', risk: 'risk', eff: '灯灭时，听见远处有人笑', act: 'enc:mingdengzhiwen:blow' },
         { t: '不点灯，转身走', risk: 'peace', eff: '「命牌认牌不认人」', act: 'enc:mingdengzhiwen:leave' }
       ] },
-    { id: 'weiluzhiwen', name: '伪箓之问', kind: 'common', poem: '黄符半厘画错了，月光底下字犹新。',
+    { id: 'weiluzhiwen', name: '伪箓之问', kind: 'common', when: { minRealm: 4 }, poem: '黄符半厘画错了，月光底下字犹新。',
       text: '有人持黄符来投，说受了箓。月光下看那符，笔画错半厘——歪得很轻，像画的人手在抖。',
       opts: [
         { t: '指出其伪', risk: 'chance', eff: '「这不是符，是名籍」', act: 'enc:weiluzhiwen:point' },
         { t: '收下不戳破', risk: 'risk', eff: '假符也是符，糊弄鬼神未必不成', act: 'enc:weiluzhiwen:take' },
         { t: '焚符逐客', risk: 'risk', eff: '火起时，那人说了一句话', act: 'enc:weiluzhiwen:burn' }
       ] },
-    { id: 'sanzhuxiang', name: '三炷香', kind: 'shen', poem: '香点三炷人未答，死人只认亲不认理。',
+    { id: 'sanzhuxiang', name: '三炷香', kind: 'shen', when: { minRealm: 4 }, poem: '香点三炷人未答，死人只认亲不认理。',
       text: '婆婆要为你结一门阴亲。「你媳妇在下面护你，你给她烧纸。」香已点了三炷，第三炷还没插正。',
       opts: [
         { t: '允', risk: 'chance', eff: '祠堂添一炷香，阴邪绕行', act: 'enc:sanzhuxiang:yes' },
         { t: '拒', risk: 'peace', eff: '「死人只认亲不认理」', act: 'enc:sanzhuxiang:no' },
         { t: '追问「我是谁」', risk: 'chance', eff: '婆婆不答，只把香插正', act: 'enc:sanzhuxiang:ask' }
+      ] },
+
+    /* ====== v11 P0-2 素材增补：三十处奇遇，按境界分三档 ======
+       以前 30 条奇遇一条 when 都没写，胎息期与道胎期抽到的是同一批事，
+       「崖边老者」对一个手握果位的人不该还算机缘。这里补的不只是分档，
+       还有金丹之后的空白——天机档十条全部挂在果位与位格上。
+       分档：凡尘 maxRealm:1（生计、山野、凡人纠葛）
+             修行 minRealm:2 maxRealm:3（道统、宗门、遗迹线索，开始有代价）
+             天机 minRealm:4（果位、位格、天地异变，选项会留痕）
+       每档 8 条 common + 1 条 xian + 1 条 shen，保证仙道/神道玩家
+       在任何境界都有 8 条以上可抽，不至于把池子抽空退化。
+       结算走通用解释器（game.js applyEncOps），res 里写的账就是真的会改的账。 */
+
+    /* ---- 凡尘档（胎息~练气）：生计、山野、凡人之间的事 ---- */
+    { id: 'fenChai', name: '两樵争柴', kind: 'common', gx: 1, when: { maxRealm: 1 }, poem: '一束枯柴分两半，半山人在半山争。',
+      text: '两个樵夫为一束枯柴吵起来，一个说先看见，一个说先动手砍。两双眼睛同时看向你。',
+      opts: [
+        { t: '替他们分了', risk: 'peace', eff: '功德 +8，两人各记你一分', act: 'enc:fenChai:split',
+          res: { ok: [['merit', 8], ['fame', 3]], m: '你把柴束拆成两半分给他们。两个人都没赢，但都没打起来。功德 +8。' } },
+        { t: '出钱把整束买走', risk: 'chance', eff: '灵石 −10，得一根好柴', act: 'enc:fenChai:buy',
+          res: { hit: 70, ok: [['stones', -10], ['mat', 'tieMu', 1]], miss: [['stones', -10]],
+            m: '你花十灵石买下整束，从中挑出一根铁木心的干柴。', nm: '钱给了，柴是湿的，晾三天也烧不着。' } },
+        { t: '不掺和，走你的', risk: 'warn', eff: '身后吵到一半动了手', act: 'enc:fenChai:leave',
+          res: { ok: [['heart', -1]], m: '你走出半里，身后还是动了手。修仙人不管凡人的事，是对的，也只是对的。道心 −1。' } }
+      ] },
+    { id: 'yeDu', name: '夜渡涨水', kind: 'common', gx: 1, when: { maxRealm: 1 }, poem: '渡头灯小水声大，船家开口要双钱。',
+      text: '夜里涨水，渡口只剩一条船。船夫说今夜渡钱翻倍，先给钱后上船。上游还有人喊，声音被水吃了一半。',
+      opts: [
+        { t: '给钱过河', risk: 'peace', eff: '灵石 −20，安稳到岸', act: 'enc:yeDu:pay',
+          res: { ok: [['stones', -20]], m: '你付了双钱。船到半渡，上游的喊声没了。' } },
+        { t: '让上游的人先上', risk: 'chance', eff: '灵石 −20，功德 +15，可能船翻', act: 'enc:yeDu:yield',
+          res: { hit: 75, ok: [['stones', -20], ['merit', 15], ['fame', 5]], miss: [['stones', -20], ['hp', -20], ['karma', 0]],
+            m: '那是一家三口。船重了一半，摇得厉害，还是过了。功德 +15。', nm: '船撞到暗石，水灌进鞋里。你湿透了，寒气入体，气血 −20。' } },
+        { t: '自己御器渡过去', risk: 'risk', eff: '耗灵力 30，境界太低可能落水', act: 'enc:yeDu:fly',
+          res: { hit: 55, ok: [['mp', -30]], miss: [['mp', -30], ['hp', -30]],
+            m: '你踩着一件旧法器过去了，比船稳。灵力 −30。', nm: '水气太重，法器在半渡失了灵。你从三丈高摔进河里，气血 −30。' } }
+      ] },
+    { id: 'bingFu', name: '求一道符', kind: 'common', gx: 1, when: { maxRealm: 1 }, poem: '邻家小儿夜啼久，叩门只为一张符。',
+      text: '邻家孩子夜啼半月，请医不管用。他母亲半夜来叩你的门，手里攥着二十个铜钱，问你会不会画符。',
+      opts: [
+        { t: '认真画一道', risk: 'chance', eff: '制符 +10，孩子若真好则功德 +20', act: 'enc:bingFu:draw',
+          res: { hit: 60, ok: [['craftFu', 10], ['merit', 20]], miss: [['craftFu', 10]],
+            m: '你那道符画得比上一道稳。孩子当真睡了整夜——也许本来就是夜啼。制符 +10，功德 +20。', nm: '符贴上门框，孩子照哭。你只多练了一道手熟。制符 +10。' } },
+        { t: '收钱，随便画一张', risk: 'warn', eff: '灵石 +20，业力 +6', act: 'enc:bingFu:fake',
+          res: { ok: [['stones', 20], ['karma', 6]], m: '你收了二十个铜钱，画了一张谁也看不出差别的符。业力 +6。' } },
+        { t: '说实话：我不会', risk: 'peace', eff: '道心 +2，另指一条路', act: 'enc:bingFu:honest',
+          res: { ok: [['heart', 2], ['merit', 5]], m: '你说不会，带她去请了山下真正会的人。她走时回头看了两次。道心 +2。' } }
+      ] },
+    { id: 'yeKui', name: '墙脚野葵', kind: 'common', gx: 1, when: { maxRealm: 1 }, poem: '废墙脚下一株葵，向阳开着不值钱。',
+      text: '废墙脚长出一株野葵，开得比别处的都大。你多看了一眼——它根下的土，比旁边的松。',
+      opts: [
+        { t: '连根挖走', risk: 'chance', eff: '得材料一株', act: 'enc:yeKui:dig',
+          res: { hit: 65, ok: [['mat', 'fuZhi', 2]], miss: [],
+            m: '根下是一小包前人埋的油纸符，两沓，还能用。', nm: '根下只有虫。葵离土就蔫了。' } },
+        { t: '浇一点灵水就走', risk: 'peace', eff: '功德 +10，来日或有用', act: 'enc:yeKui:water',
+          res: { ok: [['merit', 10], ['fate', 1]], m: '你浇了半壶灵水。一株葵而已，但那块土确实松了些。功德 +10，机缘 +1。' } },
+        { t: '烧了它', risk: 'risk', eff: '修为 +20，业力 +4', act: 'enc:yeKui:burn',
+          res: { ok: [['xiuwei', 20], ['karma', 4]], m: '葵中有一缕活气，你烧了它，把那缕活气炼进自己身上。修为 +20，业力 +4。' } }
+      ] },
+    { id: 'shiNiu', name: '走失的黄牛', kind: 'common', gx: 1, when: { maxRealm: 1 }, poem: '三日寻牛人未睡，牛在云中不在山。',
+      text: '村口老农蹲着不肯回家：牛丢了三天。有人说往云深的方向去了，那方向是你闭关处的上游。',
+      opts: [
+        { t: '替他找回来', risk: 'chance', eff: '灵石 +50，功德 +25', act: 'enc:shiNiu:find',
+          res: { hit: 70, ok: [['stones', 50], ['merit', 25]], miss: [['merit', 10]],
+            m: '牛在你洞府上头的坡上吃草，吃得很好。老农塞给你五十灵石，你收了。功德 +25。', nm: '找了两天没找到。你多少做了一点事，功德 +10。' } },
+        { t: '帮他算一卦', risk: 'risk', eff: '机缘 +2，寿元 −1', act: 'enc:shiNiu:divine',
+          res: { ok: [['fate', 2], ['life', -1]], m: '卦说在南坡第三个弯。你说了，也没去。寿元折一年，卦金收了。机缘 +2。' } },
+        { t: '劝他别找了', risk: 'warn', eff: '道心 −1', act: 'enc:shiNiu:giveup',
+          res: { ok: [['heart', -1]], m: '一头牛是他半年的收成。你劝他别找了，他答应了，第二天还在找。道心 −1。' } }
+      ] },
+    { id: 'jiuZhuang', name: '旧状纸', kind: 'common', gx: 1, when: { maxRealm: 1 }, poem: '状纸一封求代笔，写状之人不识字。',
+      text: '有人递上一封写了一半的状纸，求你代笔。被告的那个人，是本乡最有钱的粮商。',
+      opts: [
+        { t: '代他写', risk: 'risk', eff: '声望 +10，可能结仇', act: 'enc:jiuZhuang:write',
+          res: { hit: 55, ok: [['fame', 10], ['merit', 15]], miss: [['fame', 10], ['enemy', '粮商请的人']],
+            m: '状子递上去了，粮商退了七成粮。乡人记得你的字。声望 +10，功德 +15。', nm: '状子被驳了回来。粮商打听是谁代笔，你听见了名字。声望 +10。' } },
+        { t: '收了钱不写', risk: 'warn', eff: '灵石 +40，业力 +10', act: 'enc:jiuZhuang:take',
+          res: { ok: [['stones', 40], ['karma', 10]], m: '你收了定钱，把那封状纸拿去引了火。业力 +10。' } },
+        { t: '教他自己写', risk: 'peace', eff: '悟性 +1，功德 +10', act: 'enc:jiuZhuang:teach',
+          res: { ok: [['insight', 1], ['merit', 10]], m: '你教他写下自己的名字，一共十七笔。他写了四十遍。悟性 +1，功德 +10。' } }
+      ] },
+    { id: 'miDui', name: '迷路的商队', kind: 'common', gx: 1, when: { maxRealm: 1 }, poem: '商队三日失正道，货在车上人在山。',
+      text: '一支商队在山里转了三天，货物还在车上，人已经分成两拨在吵架。他们认得你身上的道袍。',
+      opts: [
+        { t: '带他们出山', risk: 'peace', eff: '灵石 +80，声望 +6', act: 'enc:miDui:guide',
+          res: { ok: [['stones', 80], ['fame', 6]], m: '你走了半日光，把他们带到官道。掌柜给了八十灵石，你没推。' } },
+        { t: '顺手收一件货抵偿', risk: 'risk', eff: '灵石 +150，业力 +12', act: 'enc:miDui:loot',
+          res: { ok: [['stones', 150], ['karma', 12]], m: '你从车尾取了一只不重的小箱。商队没敢拦你。灵石 +150，业力 +12。' } },
+        { t: '指个方向就好', risk: 'chance', eff: '机缘 +1，可能指错', act: 'enc:miDui:point',
+          res: { hit: 65, ok: [['fate', 1]], miss: [['karma', 5]],
+            m: '你指了东边。他们走了两个时辰就见了官道。机缘 +1。', nm: '你指错了。三日后听人说那支商队在沟里丢了半辆车。业力 +5。' } }
+      ] },
+    { id: 'jiangMi', name: '减价的米', kind: 'common', gx: 1, when: { maxRealm: 1 }, poem: '米铺清仓因主顾，让价三成只为空。',
+      text: '米铺清仓，比别处便宜三成。掌柜说原主顾不做了，货多得没处放。他说话的时侯一直看你身后。',
+      opts: [
+        { t: '买十斗米存着', risk: 'chance', eff: '灵石 −60，辟谷期省去买粮', act: 'enc:jiangMi:buy',
+          res: { ok: [['stones', -60], ['merit', 5]], m: '你买了十斗。辟谷之前，人还得吃饭——这是给自己留的后路。' } },
+        { t: '问他躲谁', risk: 'risk', eff: '可能得知一条线索', act: 'enc:jiangMi:ask',
+          res: { hit: 55, ok: [['insight', 2], ['fate', 1]], miss: [['fame', -3]],
+            m: '他说了。有人说附近来了一位要「整货」的人物。你多知道了一件事。悟性 +2，机缘 +1。', nm: '他变了脸色，请你出门。街上有两个人在看你。声望 −3。' } },
+        { t: '不占这便宜', risk: 'peace', eff: '道心 +1', act: 'enc:jiangMi:pass',
+          res: { ok: [['heart', 1]], m: '你按原价买了一斗，走了。掌柜追出来要退钱，你没回头。道心 +1。' } }
+      ] },
+    { id: 'qingTong', name: '青童传话', kind: 'xian', gx: 1, when: { maxRealm: 1 }, poem: '午睡有人青衣立，不入座，只传一句话。',
+      text: '午间打坐，眼前站了一个青衣童子，不落地。他说有人托他带一句话，但不说是谁。说完就走。',
+      opts: [
+        { t: '听他传话', risk: 'chance', eff: '悟性 +2，可能只是一句空话', act: 'enc:qingTong:listen',
+          res: { hit: 70, ok: [['insight', 2]], miss: [['xiuwei', 15]],
+            m: '他说：“你今年不该往南。”说完就散了。你三日后才听说南边闹了妖。悟性 +2。', nm: '他什么也没说，只行了一礼就散了。你白坐了一个时辰，修为 +15。' } },
+        { t: '问他借一步说话', risk: 'risk', eff: '可能得罪其主，也可能得一路', act: 'enc:qingTong:ask',
+          res: { hit: 45, ok: [['fate', 3], ['xiuwei', 30]], miss: [['karma', 8]],
+            m: '童子停了。他说：“我家主人说，你问问题，答你一句。”机缘 +3，修为 +30。', nm: '童子脸一沉：“你也配问。”你被弹出定境，业力 +8。' } },
+        { t: '不看、不听、不问', risk: 'peace', eff: '道心 +2', act: 'enc:qingTong:ignore',
+          res: { ok: [['heart', 2]], m: '你当他是眼花。童子等了三个呼吸，散了。道心 +2。' } }
+      ] },
+    { id: 'kongTuDi', name: '空了的地土地', kind: 'shen', gx: 1, when: { maxRealm: 1 }, poem: '社树砍了坛土裂，无人再叫土地名。',
+      text: '路边土地坛空了。社树被人砍去卖了木料，坛里的灰被雨冲成一摊。有一缕极小的气在坛口绕着不走。',
+      opts: [
+        { t: '重新堆坛立位', risk: 'chance', eff: '香火 +120，业力 −5', act: 'enc:kongTuDi:rebuild',
+          res: { hit: 70, ok: [['xianghuo', 120], ['karma', -5]], miss: [['xianghuo', 40]],
+            m: '你堆了坛，写了位。第二天坛前多了三炷不知谁插的香。香火 +120。', nm: '坛堆了，位写了，坛口那缕气还是散了。香火 +40。' } },
+        { t: '招那缕气入自己名下', risk: 'risk', eff: '信众 +40，业力 +8', act: 'enc:kongTuDi:claim',
+          res: { ok: [['followers', 40], ['karma', 8]], m: '你把那缕气收了。它很小，但它是无主的。信众 +40，业力 +8。' } },
+        { t: '拔脚走开', risk: 'warn', eff: '那一缕绕了你三里地', act: 'enc:kongTuDi:leave',
+          res: { ok: [['heart', -1]], m: '那一缕跟着你三里地才散。它不是想害你，它只是没人叫。道心 −1。' } }
+      ] },
+
+    /* ---- 修行档（筑基~紫府）：道统、宗门、遗迹线索，开始有代价 ---- */
+    { id: 'shouYe', name: '守夜的同门', kind: 'common', gx: 1, when: { minRealm: 2, maxRealm: 3 }, poem: '丹房轮守四百夜，一夜失手百日空。',
+      text: '丹房今夜轮到你师门守。上一炉炸了，师父被记了一次过。守夜的老执事问你：这一夜你在，还是不在。',
+      opts: [
+        { t: '守完一夜', risk: 'peace', eff: '修为 +40，声望 +8', act: 'enc:shouYe:stay',
+          res: { ok: [['xiuwei', 40], ['fame', 8]], m: '一夜无事。天亮时丹炉还是温的，你第一次觉得无事就是功。修为 +40。' } },
+        { t: '半夜开炉偷炼一炉', risk: 'risk', eff: '得丹药两枚，也可能炸炉', act: 'enc:shouYe:steal',
+          res: { hit: 50, ok: [['bagPill', 2], ['craftDan', 15]], miss: [['fame', -15], ['stones', -200]],
+            m: '炉子成了一炉丹。你没敢多拿，只取两枚。制丹 +15。', nm: '炉炸了。你跑掉，把现场留给那个倒霉的执事。声望 −15，赔了二百灵石。' } },
+        { t: '举报上一炉是谁炸的', risk: 'warn', eff: '声望 +10，同门好感 −20', act: 'enc:shouYe:tell',
+          res: { ok: [['fame', 10], ['karma', 5]], m: '你说了一个名字。执事记下，当夜就罚了那人半年柴薪。声望 +10，业力 +5。' } }
+      ] },
+    { id: 'kanJing', name: '刻一部经', kind: 'common', gx: 1, when: { minRealm: 2, maxRealm: 3 }, poem: '匠人刻错一个字，整版废掉不重来。',
+      text: '有经坊要刻一部你道统的经，请你看样。第三版刻错了一个字，匠人跪在版房不出来——错了要赔一整年。',
+      opts: [
+        { t: '替他改了那一版', risk: 'chance', eff: '功德 +30，悟性 +1', act: 'enc:kanJing:fix',
+          res: { ok: [['merit', 30], ['insight', 1]], m: '你以法力把那一个字抹了重刻。经坊不知道是谁做的。功德 +30。' } },
+        { t: '指出这个字本可两解', risk: 'chance', eff: '声望 +12，可能得罪经师', act: 'enc:kanJing:argue',
+          res: { hit: 60, ok: [['fame', 12], ['insight', 1]], miss: [['fame', -8]],
+            m: '你说那一处本就两解。经师想了三天，认了，把注添在版尾。声望 +12。', nm: '经师说你是外行。那一版还是废了，你白挨一场气。声望 −8。' } },
+        { t: '买一套刻版自己留着', risk: 'peace', eff: '灵石 −300，得符材一批', act: 'enc:kanJing:buy',
+          res: { ok: [['stones', -300], ['mat', 'fuZhi', 6]], m: '你把那套版买下来，拆了得六沓好符纸。字还在版上。' } }
+      ] },
+    { id: 'maiXin', name: '卖消息的散修', kind: 'common', gx: 1, when: { minRealm: 2, maxRealm: 3 }, poem: '一钱一句山中事，真假先自掂三分。',
+      text: '坊市角落有个散修专卖消息，一钱一句。他说你身上有一件东西值得他告诉你一句。',
+      opts: [
+        { t: '花钱买一句', risk: 'chance', eff: '灵石 −200，得一条线索', act: 'enc:maiXin:buy',
+          res: { hit: 65, ok: [['stones', -200], ['fate', 2], ['ruinClue', 1]], miss: [['stones', -200]],
+            m: '他说了一处遗迹的名字与一个入口。你记下。机缘 +2。', nm: '他说的是三个月前满城都知的事。灵石 −200。' } },
+        { t: '拿一个消息换', risk: 'risk', eff: '以物易物，真假互抵', act: 'enc:maiXin:trade',
+          res: { hit: 55, ok: [['fate', 2]], miss: [['karma', 4]],
+            m: '你说了一个人情，他耳语了一处所在。两不相欠。机缘 +2。', nm: '他听了笑了：“这事我也知。”白折一个消息，业力 +4。' } },
+        { t: '问他是哪个宗门的', risk: 'peace', eff: '悟性 +2', act: 'enc:maiXin:who',
+          res: { ok: [['insight', 2]], m: '他想了很久才说：“我不是谁的。”这句话里有东西。悟性 +2。' } }
+      ] },
+    { id: 'yinLu', name: '遗迹引路人', kind: 'common', gx: 1, when: { minRealm: 2, maxRealm: 3 }, poem: '引路只送到门前，进去的人自己算。',
+      text: '有人说能带你去一处未探的上古遗迹，费用先付，只送到门口。他右手缺了两指，左手拿图。',
+      opts: [
+        { t: '付钱同去', risk: 'risk', eff: '灵石 −400，得遗迹线索', act: 'enc:yinLu:go',
+          res: { hit: 60, ok: [['stones', -400], ['ruinClue', 1], ['fate', 1]], miss: [['stones', -400], ['hp', -30]],
+            m: '他把你送到一处石门前，自己退了三步。他说：“到这里为止。”得遗迹线索。', nm: '门口有伏。你先伤，后逃，他跑了。气血 −30。' } },
+        { t: '只买图，不让他带路', risk: 'chance', eff: '灵石 −200，图可能是假的', act: 'enc:yinLu:map',
+          res: { hit: 50, ok: [['stones', -200], ['ruinClue', 1]], miss: [['stones', -200]],
+            m: '图是真的，画得很实在。灵石 −200，得遗迹线索。', nm: '图是一张旧坊市水文图，被人改过。灵石 −200。' } },
+        { t: '问为何缺了两指', risk: 'peace', eff: '悟性 +2', act: 'enc:yinLu:finger',
+          res: { ok: [['insight', 2]], m: '他说：“送到门口的人，都要缺一双里的两指。”悟性 +2。' } }
+      ] },
+    { id: 'zhaLu', name: '炸炉的丹师', kind: 'common', gx: 1, when: { minRealm: 2, maxRealm: 3 }, poem: '炉前一跪不认错，只问何人肯再试。',
+      text: '一位丹师在你坊市炸了三回炉，铺面抵给债主。他问你收不收他的方子，只收一次钱，方子全给你。',
+      opts: [
+        { t: '收方子并雇他', risk: 'risk', eff: '灵石 −500，制丹 +25', act: 'enc:zhaLu:hire',
+          res: { hit: 70, ok: [['stones', -500], ['craftDan', 25]], miss: [['stones', -500]],
+            m: '他真有一手，只有一手。你那三炉丹是他炼的。制丹 +25。', nm: '他到第三天就走了，方子留下，是错的。灵石 −500。' } },
+        { t: '只收方子', risk: 'chance', eff: '灵石 −200，可能是一张好方', act: 'enc:zhaLu:sheet',
+          res: { hit: 55, ok: [['stones', -200], ['craftDan', 12]], miss: [['stones', -200]],
+            m: '方子是好方，只是难炼。你看了四遍才看懂第三行。制丹 +12。', nm: '方子前九行都对，第十行是空的。' } },
+        { t: '帮他在坊市重开一炉', risk: 'peace', eff: '功德 +25，灵石 −300', act: 'enc:zhaLu:aid',
+          res: { ok: [['stones', -300], ['merit', 25], ['fame', 6]], m: '你替他借了一间公共炉房。他炼了四十九炉，第四十九成了。功德 +25。' } }
+      ] },
+    { id: 'jieJian', name: '借剑', kind: 'common', gx: 1, when: { minRealm: 2, maxRealm: 3 }, poem: '剑去三日人不还，剑回之时刃已缺。',
+      text: '一位旧识来借剑，说只借三日，去讨一笔账。他走时没看你的脸。',
+      opts: [
+        { t: '借', risk: 'risk', eff: '法器可能带回也可能带不回', act: 'enc:jieJian:lend',
+          res: { hit: 55, ok: [['fame', 8], ['mat', 'wulianXue', 1]], miss: [['fame', -5], ['loseArt', 1]],
+            m: '三日后剑回来了，刃上有一道新缺。他把债讨了，业力自己担了。', nm: '剑没回来。你少了一件法器，也少了一个旧识。' } },
+        { t: '不借，同行', risk: 'chance', eff: '修为 +40，可能见血', act: 'enc:jieJian:go',
+          res: { hit: 65, ok: [['xiuwei', 40], ['fame', 6]], miss: [['hp', -25]],
+            m: '你跟着去了。那笔账不用剑讨，用一句话说完。你白站了一日，但看见了一件事怎么结。修为 +40。', nm: '说到一半就动了手。你替他把人拦下，挨了一下。气血 −25。' } },
+        { t: '不借也不解释', risk: 'warn', eff: '好感 −15，自己清静', act: 'enc:jieJian:refuse',
+          res: { ok: [['heart', 1]], m: '他站在门口听完，点了下头就走了。道心 +1，此后不再来往。' } }
+      ] },
+    { id: 'xunShan', name: '巡山盘问', kind: 'common', gx: 1, when: { minRealm: 2, maxRealm: 3 }, poem: '巡山只问三件事，名、师、所习何法。',
+      text: '巡山弟子拦住你，问名号、师承、所习何法。三件都答得上就放行；答不上就要你同行回山说明。',
+      opts: [
+        { t: '如实答', risk: 'peace', eff: '声望 +8，可能被记住', act: 'enc:xunShan:truth',
+          res: { ok: [['fame', 8]], m: '三问三答。他们在簿上记了你一笔，字迹潦草。' } },
+        { t: '编一个名号', risk: 'risk', eff: '灵石 +100 免差，可能被拆穿', act: 'enc:xunShan:lie',
+          res: { hit: 50, ok: [['stones', 100], ['karma', 6]], miss: [['fame', -12], ['karma', 10]],
+            m: '名号对了。他们放行，还给了你一百灵石的山金返还。', nm: '那个名号三年前死过一个。你在山上坐了半日，声望 −12，业力 +10。' } },
+        { t: '问他巡山巡的是什么', risk: 'chance', eff: '悟性 +2，可能惹事', act: 'enc:xunShan:ask',
+          res: { hit: 60, ok: [['insight', 2]], miss: [['fame', -4]],
+            m: '他犹豫了一下：“巡不是妖，是人多。”悟性 +2。', nm: '他记录你“言行可疑”。山上报了，声望 −4。' } }
+      ] },
+    { id: 'duShu', name: '书肆赌局', kind: 'common', gx: 1, when: { minRealm: 2, maxRealm: 3 }, poem: '遮面一页任人赌，读到第行算谁赢。',
+      text: '书肆摆了一个局：一页书遮着，只露前一行，众人赌下面写的是什么。你身上带着一部同源的注本。',
+      opts: [
+        { t: '照注本答', risk: 'chance', eff: '灵石 +300，悟性 +1', act: 'enc:duShu:answer',
+          res: { hit: 75, ok: [['stones', 300], ['insight', 1]], miss: [['stones', -50]],
+            m: '你一字不差。书肆老板要求你写一部同体的注。灵石 +300。', nm: '那一页是抄的人手抖那一页，注本也没有。' } },
+        { t: '故意答错', risk: 'risk', eff: '灵石 +150，业力 +5', act: 'enc:duShu:lose',
+          res: { ok: [['stones', 150], ['karma', 5]], m: '你答了一个很像但不对的字，反手赢了对家。业力 +5。' } },
+        { t: '把注本借给旁人', risk: 'peace', eff: '功德 +20，此局你输', act: 'enc:duShu:lend',
+          res: { ok: [['merit', 20], ['stones', -50]], m: '一个年轻人照着你的注本答对了，他谢了你三次。功德 +20。' } }
+      ] },
+    { id: 'sanWen', name: '洞主三问', kind: 'xian', gx: 1, when: { minRealm: 2, maxRealm: 3 }, poem: '入洞先答三句话，句句都要你自己。',
+      text: '一处无主洞府前立着一石碑，刻三问：你从何处来、你往何处去、你以何物入洞。第三问后是一句空白。',
+      opts: [
+        { t: '以本命物入洞', risk: 'chance', eff: '修为 +80，失一半本命温养', act: 'enc:sanWen:bond',
+          res: { ok: [['xiuwei', 80], ['natalMark', 1]], m: '你把本命器按在碑上。碑答了，洞门开了，本命器上多了一道细纹。修为 +80。' } },
+        { t: '以一句实话作答', risk: 'chance', eff: '道心 +3，修为 +50', act: 'enc:sanWen:honest',
+          res: { hit: 60, ok: [['heart', 3], ['xiuwei', 50]], miss: [['heart', 1]],
+            m: '你只说了自己修不成什么。碑上多了一行字，洞门没开，但你不再想开它。道心 +3。', nm: '碑无应。你白站一夜，道心 +1。' } },
+        { t: '不答，拓下碑文', risk: 'risk', eff: '得符材三沓，业力 +6', act: 'enc:sanWen:rub',
+          res: { ok: [['mat', 'fuZhi', 3], ['karma', 6]], m: '拓完第三问，石碑上你自己的答字化掉了。业力 +6。' } }
+      ] },
+    { id: 'xiangHuoZhai', name: '香火债', kind: 'shen', gx: 1, when: { minRealm: 2, maxRealm: 3 }, poem: '许愿之时不受礼，还愿之日要三牲。',
+      text: '一处你名下的庙，村民替你许了一个愿，现在愿成了。按旧例要还三牲，但他们穷得只剩一只鸡。',
+      opts: [
+        { t: '收那一只鸡', risk: 'peace', eff: '香火 +200，信众 +30', act: 'enc:xiangHuoZhai:chicken',
+          res: { ok: [['xianghuo', 200], ['followers', 30]], m: '你当众收了鸡，说这个礼正好。他们哭了。香火 +200。' } },
+        { t: '自己贴三牲', risk: 'risk', eff: '灵石 −400，信众 +120', act: 'enc:xiangHuoZhai:pay',
+          res: { ok: [['stones', -400], ['followers', 120], ['fame', 8]], m: '你按旧例备了三牲，钱从你出。此后这一片只认你这一个名字。' } },
+        { t: '免了这一回愿', risk: 'warn', eff: '香火 −150，道心 +2', act: 'enc:xiangHuoZhai:free',
+          res: { ok: [['xianghuo', -150], ['heart', 2]], m: '你说不必还。他们不听，此后许愿也不再找你。香火 −150。' } }
+      ] },
+
+    /* ---- 天机档（金丹~道胎）：果位、位格、天地异变，选完会留痕 ---- */
+    { id: 'tianXiang', name: '天象倒悬', kind: 'common', gx: 1, when: { minRealm: 4 }, poem: '三日星不出位，观台有人不上值。',
+      text: '连续三夜，星位不对。观星台的人少了一半，没来的那几位都没留话。山下有村开始祭祀不认识的名字。',
+      opts: [
+        { t: '上台查星位', risk: 'chance', eff: '悟性 +3，果位稳固 +10', act: 'enc:tianXiang:observe',
+          res: { hit: 70, ok: [['insight', 3], ['stab', 10]], miss: [['insight', 1]],
+            m: '星位没错，错的是有人把历改了一格。你改回来了。这一格是你名下的人改的。果位稳固 +10。', nm: '你看不懂那格。悟性 +1。' } },
+        { t: '去祭那个不认识的名字', risk: 'risk', eff: '信众 +200，业力 +20', act: 'enc:tianXiang:worship',
+          res: { ok: [['followers', 200], ['karma', 20], ['stab', -12], ['flag', 'strange_name']],
+            m: '你上了三炷香。名字接了。果位稳固 −12，业力 +20——此后有人以这个名字叫你。' } },
+        { t: '把观星台的人找回来', risk: 'peace', eff: '功德 +30，果位稳固 +8', act: 'enc:tianXiang:recall',
+          res: { ok: [['merit', 30], ['stab', 8]], m: '你寻回两人。他们说不是不来，是有人让他们别看。果位稳固 +8。' } }
+      ] },
+    { id: 'weiZheng', name: '位证文书', kind: 'common', gx: 1, when: { minRealm: 4 }, poem: '果位原来有文书，文书上无你的名。',
+      text: '有司送来一份旧文书，说你的果位原本另有所属，前任并未殁，只是“退避”。文书要你签一个附条件。',
+      opts: [
+        { t: '签', risk: 'risk', eff: '果位稳固 −25，得一段旧传承', act: 'enc:weiZheng:sign',
+          res: { ok: [['stab', -25], ['gongfa', 1], ['karma', 10]], m: '你签了。果位多了一个共有人，你多了一部不该你有的法。' } },
+        { t: '当众烧了', risk: 'chance', eff: '果位稳固 +20，结一个旧怨', act: 'enc:weiZheng:burn',
+          res: { hit: 65, ok: [['stab', 20], ['enemy', '退避的那位']], miss: [['stab', 5], ['enemy', '退避的那位']],
+            m: '你在坊市直街烧了它。看的人比看果位时还多。果位稳固 +20。', nm: '烧了，但文书还有一份。果位稳固 +5。' } },
+        { t: '按条件查下去', risk: 'chance', eff: '悟性 +3，果位稳固 −5', act: 'enc:weiZheng:probe',
+          res: { hit: 60, ok: [['insight', 3], ['flag', 'wei_doubt']], miss: [['insight', 1]],
+            m: '前任的名字和你师门谱上一个人重合。你没声张。悟性 +3，果位稳固 −5。', nm: '纸是旧的，字是新的。你查到的只是有人在试你。' } }
+      ] },
+    { id: 'laoZhai', name: '老债主登门', kind: 'common', gx: 1, when: { minRealm: 4 }, poem: '果位已成债未成，门前站着一个“等”。',
+      text: '你微末时欠过一笔人情，那时你还不起。现在你有了果位。那个人来了，不带东西，只带一句话：现在可以了吧。',
+      opts: [
+        { t: '应下来', risk: 'risk', eff: '果位稳固 +15，应一件难事', act: 'enc:laoZhai:keep',
+          res: { ok: [['stab', 15], ['flag', 'wei_favor_owed']], m: '你说可以。他说不急，他会来提。果位稳固 +15。' } },
+        { t: '以果位偿', risk: 'risk', eff: '果位稳固 −40，人情清了', act: 'enc:laoZhai:payBack',
+          res: { ok: [['stab', -40]], m: '你把名下的三处香火给了他。人情清了，位子空了一半。果位稳固 −40。' } },
+        { t: '认得他，但不认得这笔账', risk: 'warn', eff: '业力 +15，果位稳固 −10', act: 'enc:laoZhai:deny',
+          res: { ok: [['karma', 15], ['stab', -10]], m: '他说：“你记得的。”你请他明天再来。他没有明天再来。业力 +15。' } }
+      ] },
+    { id: 'chenBao', name: '沉宝出水位', kind: 'common', gx: 1, when: { minRealm: 4 }, poem: '海底三年退一丈，退到宝出不出人。',
+      text: '海退了一丈，露出一段旧航道与一件大得离谱的东西。围观的有七个果位，其中一个今晚死了。',
+      opts: [
+        { t: '下水去取', risk: 'risk', eff: '灵石 +1500，果位稳固 −15', act: 'enc:chenBao:dive',
+          res: { hit: 55, ok: [['stones', 1500], ['stab', -15]], miss: [['hp', -60], ['stab', -10]],
+            m: '你取到一块小的。取的时候，岸上少了一个人。灵石 +1500，果位稳固 −15。', nm: '宝上有主，你被推开了一回。气血 −60，果位稳固 −10。' } },
+        { t: '守着不退，让别人先下', risk: 'chance', eff: '果位稳固 +12，得一份分成', act: 'enc:chenBao:wait',
+          res: { hit: 65, ok: [['stab', 12], ['stones', 400]], miss: [['stab', -5]],
+            m: '下过的三个都没回来，你拿了两家给的看护钱。果位稳固 +12。', nm: '他们回来时什么都没说，也没分你。果位稳固 −5。' } },
+        { t: '报与海若，立此为新位', risk: 'risk', eff: '果位稳固 +25，结诸果位之怨', act: 'enc:chenBao:claim',
+          res: { ok: [['stab', 25], ['karma', 12], ['flag', 'wei_greedy']], m: '你当众报了一个位置。六个名字里，四个记住了你。' } }
+      ] },
+    { id: 'huDao', name: '护道来投', kind: 'common', gx: 1, when: { minRealm: 4 }, poem: '一人投来求立名，名在我下食我禄。',
+      text: '一个散修来投你，要在你果位下挂一个名。他不要灵石，只要你在他文书上签一个字。',
+      opts: [
+        { t: '收下', risk: 'chance', eff: '果位稳固 +18，每月多一份口粮', act: 'enc:huDao:accept',
+          res: { hit: 70, ok: [['stab', 18], ['flag', 'wei_hudao']], miss: [['stab', -8]],
+            m: '你签了。三个月内他把三处散修安了下来。果位稳固 +18。', nm: '他挂上名，半年不见人影，你的香火被分走一层。果位稳固 −8。' } },
+        { t: '让他先做一事', risk: 'chance', eff: '果位稳固 +10，可能白等', act: 'enc:huDao:test',
+          res: { hit: 60, ok: [['stab', 10]], miss: [],
+            m: '你让他去把一件事做完。他做了。果位稳固 +10。', nm: '他没做完，也没回来。什么都没变，只是少了个人。' } },
+        { t: '不收名，只给一路', risk: 'peace', eff: '功德 +25，果位稳固 +5', act: 'enc:huDao:free',
+          res: { ok: [['merit', 25], ['stab', 5]], m: '你没签，给了他一封信。他后来在别处立住了。果位稳固 +5。' } }
+      ] },
+    { id: 'jieYuan', name: '借一段缘', kind: 'common', gx: 1, when: { minRealm: 4 }, poem: '缘可借时不可赎，借时容易还时难。',
+      text: '有人来借你的一段缘，说只借一用。他说得出你三件旧事，也说得出两件你从未对任何人说过的事。',
+      opts: [
+        { t: '借', risk: 'risk', eff: '果位稳固 −20，得一件本该没有的事', act: 'enc:jieYuan:lend',
+          res: { ok: [['stab', -20], ['stones', 800], ['flag', 'yuan_lent']], m: '三日后你想不起那两件事的细节了。灵石 +800，果位稳固 −20。' } },
+        { t: '问他从哪知道', risk: 'chance', eff: '果位稳固 +15，悟性 +2', act: 'enc:jieYuan:ask',
+          res: { hit: 60, ok: [['stab', 15], ['insight', 2]], miss: [['stab', -6]],
+            m: '他说：“你自己写在果位上。”你回去查了，果位上真有。果位稳固 +15。', nm: '他笑而不答，走了。你夜里检查了三遍果位。果位稳固 −6。' } },
+        { t: '把这段缘当场了结', risk: 'risk', eff: '业力 −20，气血 −30', act: 'enc:jieYuan:cut',
+          res: { ok: [['karma', -20], ['hp', -30]], m: '你以自身为凭把这段缘斩了。斩的时候你才知道，缘是有筋的。业力 −20，气血 −30。' } }
+      ] },
+    { id: 'xingMing', name: '星命对照', kind: 'common', gx: 1, when: { minRealm: 4 }, poem: '星盘上有一个空，空处写着你的字。',
+      text: '一位星官把你的名字排进星盘，盘上有一格是空的。他说这一格原本有两个人，其中一个是你，但你不知道另一个。',
+      opts: [
+        { t: '问那另一个是谁', risk: 'risk', eff: '果位稳固 +12，结一个新敌', act: 'enc:xingMing:who',
+          res: { ok: [['stab', 12], ['enemy', '星盘上另一个名字'], ['insight', 2]], m: '星官说了。你听见的时候脸上什么都没有。果位稳固 +12。' } },
+        { t: '请他把空处填上', risk: 'chance', eff: '果位稳固 −15，破一个旧瓶颈', act: 'enc:xingMing:fill',
+          res: { hit: 60, ok: [['stab', -15], ['breakBonus', 6]], miss: [['stab', -15]],
+            m: '填上了。你此后破境都顺三分，但星盘不再映你。果位稳固 −15，破境加成 +6%。', nm: '填上了，只多了不安。果位稳固 −15。' } },
+        { t: '把星盘砸了', risk: 'warn', eff: '业力 +12，果位稳固 +8', act: 'enc:xingMing:smash',
+          res: { ok: [['karma', 12], ['stab', 8]], m: '盘碎的时候星官没有拦。他说：“你比上一个砸盘的人客气。”果位稳固 +8。' } }
+      ] },
+    { id: 'xuanBiao', name: '玄表无主', kind: 'common', gx: 1, when: { minRealm: 4 }, poem: '一表无人来取，表针仍在走动。',
+      text: '有司送来一只玄表，说果位应有一个“表”：你殁后由谁接。表上一个名字都没有，但针在走。',
+      opts: [
+        { t: '写上一个人的名', risk: 'risk', eff: '果位稳固 +20，种一个因', act: 'enc:xuanBiao:write',
+          res: { ok: [['stab', 20], ['flag', 'wei_heir']], m: '你写了一个名字，写完就后悔了一半。果位稳固 +20。' } },
+        { t: '把表退回', risk: 'peace', eff: '果位稳固 −8，道心 +2', act: 'enc:xuanBiao:return',
+          res: { ok: [['stab', -8], ['heart', 2]], m: '有司收下了，说这一项记为“未立”。果位稳固 −8。' } },
+        { t: '把表留给下一个来的人', risk: 'risk', eff: '果位稳固 −25，业力 −10', act: 'enc:xuanBiao:leave',
+          res: { ok: [['stab', -25], ['karma', -10], ['flag', 'wei_noheir']], m: '你把表放在山门口，谁拿谁接。果位稳固 −25，业力 −10。' } }
+      ] },
+    { id: 'zhuDong', name: '诸洞主议事', kind: 'xian', gx: 1, when: { minRealm: 4 }, poem: '三十六洞共一议，议的是要不要出一个头。',
+      text: '三十六洞请你去议事，议的是要不要共推一位“头”。去的人已有十二位，十二位里没人愿意当。',
+      opts: [
+        { t: '推别人', risk: 'chance', eff: '果位稳固 +10，被记住', act: 'enc:zhuDong:nominate',
+          res: { hit: 60, ok: [['stab', 10], ['karma', 5]], miss: [['stab', -6]],
+            m: '你推了一个名字，众人都松了口气。那个人当晚就知是谁推的。果位稳固 +10。', nm: '你推的人不接，议事散会，什么也没定。果位稳固 −6。' } },
+        { t: '自己应下', risk: 'risk', eff: '果位稳固 +30，诸洞之事上身', act: 'enc:zhuDong:take',
+          res: { ok: [['stab', 30], ['fame', 20], ['flag', 'wei_head']], m: '你应了。第二天有十七件事来，其中九件与修道无关。果位稳固 +30。' } },
+        { t: '中途告退', risk: 'warn', eff: '果位稳固 −10', act: 'enc:zhuDong:leave',
+          res: { ok: [['stab', -10]], m: '你走到门口，三十六洞里只有两位抬头看你。果位稳固 −10。' } }
+      ] },
+    { id: 'wanMinSan', name: '万民伞', kind: 'shen', gx: 1, when: { minRealm: 4 }, poem: '伞上千人不识字，名字都由一人写。',
+      text: '三县之民共送你一把伞，伞面写满名字，一个都不认识。抬伞的人说：接了，这三县的事就是你的。',
+      opts: [
+        { t: '接伞', risk: 'risk', eff: '果位稳固 +25，信众 +400，三县事上身', act: 'enc:wanMinSan:take',
+          res: { ok: [['stab', 25], ['followers', 400], ['xianghuo', 300], ['flag', 'wanmin']], m: '你接了。三日内有十一件讼状，其中两件要你去现场。果位稳固 +25。' } },
+        { t: '接伞，但把名字还回去', risk: 'chance', eff: '果位稳固 +12，功德 +40', act: 'enc:wanMinSan:giveBack',
+          res: { hit: 65, ok: [['stab', 12], ['merit', 40]], miss: [['stab', -5]],
+            m: '你抄了一份伞面，把原件烧了还他们。从此事他们自己议。果位稳固 +12，功德 +40。', nm: '他们以为你嫌名字写得丑，把伞抬回去了。果位稳固 −5。' } },
+        { t: '闭门不接', risk: 'warn', eff: '信众 −200，果位稳固 −15', act: 'enc:wanMinSan:refuse',
+          res: { ok: [['followers', -200], ['stab', -15]], m: '伞在门外站了三日，被抬走了。此后三县修庙不请你。果位稳固 −15。' } }
+      ] },
+
+    /* ====== v11 P1-2：五洲专属奇遇（各 3 条） ======
+       月度事件管「这个月发生了什么」，奇遇管「你撞上了什么」。
+       旧版 30+30 条奇遇全是「走到哪都可能遇见」，五洲只差灵气系数；
+       这里给每个洲补三条只有本地才会遇见的：青岳的宗门、赤炎的兽、流沙的佛、
+       寒渊的雪族与鬼修、天阙的道统与拍卖。
+       条件用 when.place（解释器早已支持，一直没人写），不新增机制；
+       结算全部走 encOp 通用解释器，res 里写的账就是真会改的账。 */
+
+    /* ---- 东洲·青岳：宗门政治、坊市、散修生计 ---- */
+    { id: 'qyGateTest', name: '山门试', kind: 'xian', gx: 1, when: { place: 'qingyue', maxRealm: 3 },
+      poem: '石阶三百六十级，一级一问心。',
+      text: '青云宗在山门设试，石阶三百六十级，每级站一名执事，问一句。答得慢不要紧，答错就请下山。',
+      opts: [
+        { t: '一级一级答上去', risk: 'chance', eff: '声望 +6，悟道 +2；答错则被请下山', act: 'enc:qyGateTest:climb',
+          res: { hit: 65, ok: [['fame', 6], ['insightXp', 2]], miss: [['fame', -2], ['heart', 1]],
+            m: '你答到第二百级时，执事不再问了，只让路。声望 +6，悟道 +2。', nm: '第一百八十级上被问住了。执事很客气，请你从侧门下山。声望 −2，道心 +1。' } },
+        { t: '只答最后一问', risk: 'risk', eff: '若答对，直接记名；答错，三年不得再试', act: 'enc:qyGateTest:skip',
+          res: { hit: 35, ok: [['fame', 10], ['flag', 'qy_named']], miss: [['fame', -6], ['flag', 'qy_banned']],
+            m: '你直上第三百六十级。那一问是「你为何来」。你答了，他记了你的名字。声望 +10。',
+            nm: '「你为何来」——你答得太快。执事摇头：「三年后再来。」声望 −6。' } },
+        { t: '在阶下看一日，不试', risk: 'peace', eff: '悟道 +3', act: 'enc:qyGateTest:watch',
+          res: { ok: [['insightXp', 3]], m: '你在阶下坐了一日，听别人怎么答。有些答得比你好，有些不如。悟道 +3。' } }
+      ] },
+    { id: 'qyOldSmith', name: '坊市老匠', kind: 'common', gx: 1, when: { place: 'qingyue' },
+      poem: '锤声一停，满市都听见了。',
+      text: '坊市尽头有个打铁的，锤了四十年。他说他打的不是器，是「器胚的脾气」。你不懂，他也不解释，只递给你一块烧红的铁。',
+      opts: [
+        { t: '接过来，替他锤三十下', risk: 'peace', eff: '炼器 +12，气血 −10', act: 'enc:qyOldSmith:hammer',
+          res: { ok: [['craftQi', 12], ['hp', -10]], m: '锤到第十七下，你忽然知道该往哪儿落。炼器 +12，气血 −10。' } },
+        { t: '问他这手艺传给谁', risk: 'chance', eff: '可能得一句实话', act: 'enc:qyOldSmith:ask',
+          res: { hit: 70, ok: [['insightXp', 2], ['mat', 'longYan', 1]], miss: [['insightXp', 1]],
+            m: '他停下锤，说：「传给肯听锤声的人。」然后把一块龙岩铁塞给你。悟道 +2。',
+            nm: '他没答，只继续锤。你听了一下午，听出一点东西。悟道 +1。' } },
+        { t: '买他一件现成的', risk: 'peace', eff: '灵石 −150，得器胚', act: 'enc:qyOldSmith:buy',
+          res: { ok: [['stones', -150], ['mat', 'tieMu', 2]], m: '你挑了一件，他没让价。灵石 −150，得铁木心 ×2。' } }
+      ] },
+    { id: 'qyClanLedger', name: '族谱添名', kind: 'common', gx: 1, when: { place: 'qingyue', minRealm: 1 },
+      poem: '一笔添上去，前头几百行都活了。',
+      text: '族里修谱，管事的来问你：这一辈添不添你的名字。添了，往后族里的事你要出人出钱；不添，你就真是外人了。',
+      opts: [
+        { t: '添上', risk: 'peace', eff: '声望 +4，每月有族中琐事', act: 'enc:qyClanLedger:join',
+          res: { ok: [['fame', 4], ['merit', 6], ['flag', 'clan_listed']], m: '管事的把你的名字写上去，墨还没干就有人来道喜。声望 +4，功德 +6。' } },
+        { t: '不添，只留一句话', risk: 'peace', eff: '道心 +2', act: 'enc:qyClanLedger:refuse',
+          res: { ok: [['heart', 2]], m: '你说：「名字不添了。往后族里有难，我还是会来。」管事的愣了愣，把笔搁下。道心 +2。' } },
+        { t: '添上，但另立一支', risk: 'chance', eff: '声望 +6，须自出资', act: 'enc:qyClanLedger:branch',
+          res: { hit: 55, ok: [['fame', 6], ['stones', -200]], miss: [['stones', -200], ['fame', -2]],
+            m: '你另立一支，族老议了三日，准了。声望 +6，出资 200 灵石。', nm: '族老不认这一支，钱花了，名没立成。灵石 −200。' } }
+      ] },
+
+    /* ---- 南疆·赤炎：火脉、妖兽、赤阳宗 ---- */
+    { id: 'nyBeastCub', name: '兽谷弃崽', kind: 'common', gx: 1, when: { place: 'nanyue' },
+      poem: '它咬住你的衣角，牙还没长齐。',
+      text: '万兽谷口躺着一头幼兽，后腿断了，眼睛还睁着。母兽不在，地上有拖行的血痕，往谷里去的。',
+      opts: [
+        { t: '抱回去治', risk: 'chance', eff: '得灵兽，或染兽瘟', act: 'enc:nyBeastCub:heal',
+          res: { hit: 60, ok: [['flag', 'beast_cub'], ['merit', 12]], miss: [['hp', -30], ['karma', 2]],
+            m: '你把它抱回去，接了骨。它活下来了，从此跟着你。功德 +12。', nm: '伤口有毒。你救了它三日，自己也病了半月。气血 −30。' } },
+        { t: '送它进谷，跟血痕走', risk: 'risk', eff: '可能找到母兽，也可能撞上兽群', act: 'enc:nyBeastCub:track',
+          res: { hit: 50, ok: [['mat', 'chiYangSha', 2], ['insightXp', 1]], miss: [['hp', -45]],
+            m: '你找到了母兽，它断了一条腿，还活着。它看了你一眼，没动。谷口有两块赤阳砂。',
+            nm: '血痕通向兽群。你退得不算慢，还是被撞了一下。气血 −45。' } },
+        { t: '不管', risk: 'warn', eff: '道心 −1', act: 'enc:nyBeastCub:leave',
+          res: { ok: [['heart', -1]], m: '你走了。走出很远还听见它叫，叫得很短，像在试自己还能不能叫。道心 −1。' } }
+      ] },
+    { id: 'nyFirePit', name: '火脉深坑', kind: 'xian', gx: 1, when: { place: 'nanyue', minRealm: 2 },
+      poem: '坑底有光，不是火的光。',
+      text: '地裂开了一道口子，往下看不到底，只有一线暗红。风从下面上来，是热的，带着铁锈味。',
+      opts: [
+        { t: '下去看看', risk: 'risk', eff: '火系灵材，或烧伤', act: 'enc:nyFirePit:down',
+          res: { hit: 55, ok: [['mat', 'chiYangSha', 3], ['insightXp', 2]], miss: [['hp', -60], ['heart', 1]],
+            m: '坑底是一间旧炉房，炉早冷了，炉边堆着赤阳砂。你捡了三块上来。', nm: '下到一半，热气把衣裳点着了。你爬上来时，头发焦了半边。气血 −60。' } },
+        { t: '在坑口打坐，借地火', risk: 'chance', eff: '修为 +，可能走火', act: 'enc:nyFirePit:sit',
+          res: { hit: 70, ok: [['xiuwei', 160]], miss: [['hp', -35], ['heart', -1]],
+            m: '地火顺着经脉走了一周，比平日打坐快得多。修为 +160。', nm: '火气太烈，走到第三周天就乱了。气血 −35，道心 −1。' } },
+        { t: '记下方位，回去再说', risk: 'peace', eff: '悟道 +1，留一线', act: 'enc:nyFirePit:mark',
+          res: { ok: [['insightXp', 1], ['flag', 'firepit_known']], m: '你在坑口垒了三块石头做记号。有些地方，先记着比先下去好。悟道 +1。' } }
+      ] },
+    { id: 'nyChiyangOffer', name: '赤阳招揽', kind: 'xian', gx: 1, when: { place: 'nanyue', minRealm: 2 },
+      poem: '他把刀横在膝上，说话却很客气。',
+      text: '赤阳宗的人来找你，说宗里缺一个能镇住火脉的人。条件开得很好，好得让人想问他图什么。',
+      opts: [
+        { t: '应下', risk: 'chance', eff: '灵石 +400，从此担一份差事', act: 'enc:nyChiyangOffer:accept',
+          res: { hit: 75, ok: [['stones', 400], ['fame', 5], ['flag', 'chiyang_serve']], miss: [['stones', 200], ['fame', -3]],
+            m: '你应了。第一个月就有人来报火脉异动，你去看了，是虚惊。灵石 +400。', nm: '你应了，可宗里有人不服。差事先给了半个，灵石 +200。' } },
+        { t: '问他们图什么', risk: 'chance', eff: '可能听到实话', act: 'enc:nyChiyangOffer:ask',
+          res: { hit: 60, ok: [['insightXp', 2], ['flag', 'chiyang_truth']], miss: [['fame', -2]],
+            m: '他沉默了一会，说：「火脉底下压着东西。镇不住的时候，得有人先下去。」悟道 +2。',
+            nm: '他笑了笑，说：「图你。」然后不再说话。声望 −2。' } },
+        { t: '推了', risk: 'peace', eff: '道心 +1，少一桩事', act: 'enc:nyChiyangOffer:refuse',
+          res: { ok: [['heart', 1]], m: '你推了。他收起刀，说：「可惜。」走的时候没有回头。道心 +1。' } }
+      ] },
+
+    /* ---- 西漠·流沙：佛门、上古遗迹、沙暴 ---- */
+    { id: 'xsStupaBones', name: '塔下白骨', kind: 'shen', gx: 1, when: { place: 'xisha' },
+      poem: '塔是新的，骨头是旧的。',
+      text: '浮屠寺新修一座塔，挖地基时挖出层层白骨，一层压一层，摆得很整齐，不像乱葬。僧人围着念了三日经。',
+      opts: [
+        { t: '帮着念一夜', risk: 'peace', eff: '功德 +15，道心 +1', act: 'enc:xsStupaBones:chant',
+          res: { ok: [['merit', 15], ['heart', 1]], m: '念到天快亮，你听见檐角铃响了一声，没有风。功德 +15。' } },
+        { t: '问这些骨头是谁的', risk: 'chance', eff: '可能触到一段旧事', act: 'enc:xsStupaBones:ask',
+          res: { hit: 60, ok: [['insightXp', 2], ['karma', 2]], miss: [['heart', -1]],
+            m: '老僧说：「是造这塔的人的。」然后不再说。悟道 +2，业力 +2。', nm: '没人答你。你问了三次，第三次那个僧人转身走了。道心 −1。' } },
+        { t: '取一块骨头带走', risk: 'risk', eff: '得遗迹线索，业力 +6', act: 'enc:xsStupaBones:take_bone',
+          res: { ok: [['ruinClue', 1], ['karma', 6]], m: '你拿了一块，指骨，很轻。当夜梦里有人在数骨头，数到你就停了。业力 +6。' } }
+      ] },
+    { id: 'xsSandMonk', name: '沙中枯僧', kind: 'shen', gx: 1, when: { place: 'xisha', minRealm: 2 },
+      poem: '他坐着，沙埋到胸口，还在坐。',
+      text: '沙丘背风处坐着一个人，已经干枯，衣裳还完整。手里攥着一串念珠，珠子是骨做的。',
+      opts: [
+        { t: '替他把沙拂开', risk: 'peace', eff: '功德 +12，得念珠', act: 'enc:xsSandMonk:brush',
+          res: { ok: [['merit', 12], ['mat', 'liuShaJing', 1]], m: '你拂开沙，他的衣裳一见风就散了。念珠还在，你收了起来。功德 +12。' } },
+        { t: '坐下，陪他坐一炷香', risk: 'chance', eff: '悟道 +3，可能入定太久', act: 'enc:xsSandMonk:sit',
+          res: { hit: 70, ok: [['insightXp', 3], ['heart', 1]], miss: [['hp', -25], ['insightXp', 1]],
+            m: '一炷香后你睁眼，沙又埋了半寸。心里很静。悟道 +3。', nm: '你坐了不知多久，醒来时天已经黑透了，冻得发抖。气血 −25。' } },
+        { t: '看他的脸', risk: 'risk', eff: '道心 −2，或悟一死', act: 'enc:xsSandMonk:face',
+          res: { hit: 50, ok: [['heart', 2], ['insightXp', 2]], miss: [['heart', -2]],
+            m: '他的脸很平静，嘴角甚至是往上的。你忽然不怕死了。道心 +2。', nm: '他的眼睛是睁着的，眼窝里全是沙。你后退了一步。道心 −2。' } }
+      ] },
+    { id: 'xsDesertCaravan', name: '商队求水', kind: 'common', gx: 1, when: { place: 'xisha' },
+      poem: '二十七个人，十一头骆驼，剩半囊水。',
+      text: '商队的水提前喝完了，走到你这儿时，骆驼已经开始倒。领队的拿出一整袋灵石，问有没有水。',
+      opts: [
+        { t: '把水给他们', risk: 'peace', eff: '功德 +20，灵石 +200', act: 'enc:xsDesertCaravan:water',
+          res: { ok: [['merit', 20], ['stones', 200], ['fame', 3]], m: '你把水囊都给了。领队的硬塞了灵石，说：「这不算买，算记着。」功德 +20。' } },
+        { t: '收灵石，给一半', risk: 'warn', eff: '灵石 +400，功德 −5', act: 'enc:xsDesertCaravan:half',
+          res: { ok: [['stones', 400], ['merit', -5]], m: '你给了一半。他们能走出去，但走得很勉强。灵石 +400，功德 −5。' } },
+        { t: '带他们去找水', risk: 'risk', eff: '耗三日，可能真找到', act: 'enc:xsDesertCaravan:guide',
+          res: { hit: 60, ok: [['merit', 25], ['stones', 150], ['insightXp', 1]], miss: [['hp', -40], ['merit', 10]],
+            m: '你带他们走了三日，找到一处旧井。井水是咸的，但能喝。功德 +25。', nm: '走了三日，井是干的。回程有人没撑住。你救不了所有人。气血 −40。' } }
+      ] },
+
+    /* ---- 北原·寒渊：雪族、鬼修、冰 ---- */
+    { id: 'bySnowChild', name: '雪族孩子', kind: 'common', gx: 1, when: { place: 'beiyuan' },
+      poem: '她把手伸进冰里，取出一尾鱼。',
+      text: '雪族的孩子在冰面上凿洞钓鱼，钓上来不吃，放回去，再钓。你问她为什么，她说：「鱼也要过年。」',
+      opts: [
+        { t: '陪她钓一会', risk: 'peace', eff: '道心 +2，寒疾', act: 'enc:bySnowChild:fish',
+          res: { ok: [['heart', 2], ['hp', -12]], m: '你陪她钓到天黑，一条也没要。回去时手指冻得不能弯。道心 +2。' } },
+        { t: '教她一句中原话', risk: 'chance', eff: '可能结一段缘', act: 'enc:bySnowChild:teach',
+          res: { hit: 70, ok: [['merit', 10], ['flag', 'snow_friend']], miss: [['insightXp', 1]],
+            m: '你教她说「谢谢」。她学了三遍，说得很准，然后跑回家喊给她娘听。功德 +10。',
+            nm: '她听不懂，只笑。你也笑了。悟道 +1。' } },
+        { t: '问她冰下面有什么', risk: 'risk', eff: '可能听到不该听的', act: 'enc:bySnowChild:ask',
+          res: { hit: 55, ok: [['insightXp', 2]], miss: [['heart', -1], ['karma', 2]],
+            m: '她说：「有睡着的人。很多。」然后指着冰面：「那里，那里，还有那里。」悟道 +2。',
+            nm: '她忽然不说话了，看着她身后。你回头，什么也没有。道心 −1。' } }
+      ] },
+    { id: 'byGhostBorrow', name: '鬼修借体', kind: 'shen', gx: 1, when: { place: 'beiyuan', minRealm: 3 },
+      poem: '他借你的影子站了一会。',
+      text: '一个鬼修在雪地里等你。他说他没有恶意，只想借你的影子站一会——他自己的已经散了。',
+      opts: [
+        { t: '借他', risk: 'risk', eff: '业力 +4，得鬼修一诺', act: 'enc:byGhostBorrow:lend',
+          res: { hit: 65, ok: [['karma', 4], ['flag', 'ghost_owe'], ['insightXp', 2]], miss: [['karma', 8], ['heart', -2]],
+            m: '他站进你的影子里，很久，然后出来，行了一礼：「记下了。」业力 +4。',
+            nm: '他站得太久。你感觉有什么东西跟着回了家。业力 +8。' } },
+        { t: '不借，但问他叫什么', risk: 'peace', eff: '悟道 +1', act: 'enc:byGhostBorrow:name',
+          res: { ok: [['insightXp', 1]], m: '他报了个名字，很旧的叫法，你没听过。他走后你忘了那名字，只记得音。悟道 +1。' } },
+        { t: '动手', risk: 'risk', eff: '一场恶斗', act: 'enc:byGhostBorrow:fight',
+          res: { hit: 55, ok: [['fame', 6], ['stones', 150]], miss: [['hp', -50], ['karma', 3]],
+            m: '你先动的手。他散得很快，散之前笑了一下。声望 +6。', nm: '他比看上去难缠。你退了，身上多了几道不流血的伤。气血 −50。' } }
+      ] },
+    { id: 'byIceCoffin', name: '冰棺无字', kind: 'xian', gx: 1, when: { place: 'beiyuan', minRealm: 3 },
+      poem: '棺上没有字，只有一层霜。',
+      text: '冰里封着一口棺，棺是石头的，冻在冰里不知多少年。棺盖上没有字，只有一层霜，霜的纹路像字。',
+      opts: [
+        { t: '照着霜纹描下来', risk: 'chance', eff: '悟道 +3，得残篇', act: 'enc:byIceCoffin:trace',
+          res: { hit: 60, ok: [['insightXp', 3], ['flag', 'ice_text']], miss: [['insightXp', 1], ['hp', -20]],
+            m: '你描了半日，霜化了，纸上是些不成句的字。可你记住了它们的顺序。悟道 +3。',
+            nm: '霜化得太快，你只描到一半。手冻在纸上，撕下来时掉了一层皮。气血 −20。' } },
+        { t: '化冰开棺', risk: 'risk', eff: '或许有大机缘，或许有活物', act: 'enc:byIceCoffin:open',
+          res: { hit: 40, ok: [['mat', 'hanYuanYu', 3], ['insightXp', 2]], miss: [['hp', -70], ['karma', 6]],
+            m: '棺里只有一件旧袍和三块寒渊玉。没有尸身。', nm: '棺盖开了一半，里面有东西动了。你退得很快，还是被抓住了手腕。气血 −70。' } },
+        { t: '不碰，只在棺前立一块石', risk: 'peace', eff: '功德 +8，道心 +1', act: 'enc:byIceCoffin:mark',
+          res: { ok: [['merit', 8], ['heart', 1]], m: '你立了一块无字石。走的时候回头看，霜又结上了。功德 +8。' } }
+      ] },
+
+    /* ---- 中州·天阙：诸道统、拍卖会、果位争夺 ---- */
+    { id: 'zzThreeSchools', name: '三道争一席', kind: 'xian', gx: 1, when: { place: 'zhongzhou', minRealm: 2 },
+      poem: '三个人争一个位子，位子上没人。',
+      text: '论法会上三个道统争一个席位，从辰时争到申时。主持的人一直没说话，只在最后问了一句：「你们谁愿意先坐下？」',
+      opts: [
+        { t: '先坐下', risk: 'chance', eff: '声望 +8 或被三家共弃', act: 'enc:zzThreeSchools:sit',
+          res: { hit: 50, ok: [['fame', 8], ['insightXp', 2]], miss: [['fame', -8], ['karma', 2]],
+            m: '你坐下了。三家都安静了。主持的人说：「那就这样。」声望 +8。', nm: '你坐下了，三家一起看你。主持的人说：「不算。」声望 −8。' } },
+        { t: '说一句「位子不该有人」', risk: 'risk', eff: '可能一句话解三家之争', act: 'enc:zzThreeSchools:speak',
+          res: { hit: 45, ok: [['insightXp', 4], ['heart', 2], ['fame', 5]], miss: [['fame', -4], ['heart', -1]],
+            m: '满场静了很久。有个老道人先笑了，然后三家都散了。悟道 +4。', nm: '有人反问：「那你说谁该有？」你答不上来。声望 −4。' } },
+        { t: '听完就走', risk: 'peace', eff: '悟道 +1', act: 'enc:zzThreeSchools:leave',
+          res: { ok: [['insightXp', 1]], m: '你听到最后一句才走。那句话是：「散了吧。」你走出很远还在想它。悟道 +1。' } }
+      ] },
+    { id: 'zzAuctionLot', name: '无名之物', kind: 'common', gx: 1, when: { place: 'zhongzhou' },
+      poem: '红布掀开，台下没人出价。',
+      text: '拍卖会压轴，红布掀开是一件看不出用途的旧物。主持人说「出处不便说」，起价很低。台下三十几个人，没有一个开口。',
+      opts: [
+        { t: '出价', risk: 'chance', eff: '灵石 −300，可能捡漏', act: 'enc:zzAuctionLot:bid',
+          res: { hit: 55, ok: [['stones', -300], ['insightXp', 3], ['flag', 'nameless_lot']], miss: [['stones', -300], ['karma', 2]],
+            m: '你出了底价。没人跟。东西拿到手，是一块旧玉，摸着是温的。悟道 +3。',
+            nm: '你拿到了。回去研究了半月，什么也没看出来。灵石 −300。' } },
+        { t: '问出处', risk: 'warn', eff: '可能被记下', act: 'enc:zzAuctionLot:ask',
+          res: { ok: [['fame', -2], ['flag', 'auction_marked']], m: '主持人看了你一眼，说：「不便说。」那天散场，有人跟了你三条街。声望 −2。' } },
+        { t: '看看别人出不出', risk: 'peace', eff: '悟道 +1', act: 'enc:zzAuctionLot:wait',
+          res: { ok: [['insightXp', 1]], m: '到最后也没人出价。东西被抬下去了。你注意到主持人松了口气。悟道 +1。' } }
+      ] },
+    { id: 'zzGuoweiClaim', name: '空位之议', kind: 'xian', gx: 1, when: { place: 'zhongzhou', minRealm: 4 },
+      poem: '那个位子空了三十年，没人敢坐。',
+      text: '茶楼里有人压低声音说，某位果位空悬已久，主人大概是化进那个位里了。他说完看了一圈，看到你，停了一下。',
+      opts: [
+        { t: '问他凭什么这么讲', risk: 'chance', eff: '得一条真消息，或惹一身腥', act: 'enc:zzGuoweiClaim:ask',
+          res: { hit: 60, ok: [['insightXp', 2], ['flag', 'guowei_lead']], miss: [['karma', 3], ['fame', -2]],
+            m: '他掏出一张旧图，指着上面一处：「三十年没人从这里出来过。」悟道 +2。',
+            nm: '他忽然改口，说是听来的。第二天全城都在传你在打听果位。业力 +3。' } },
+        { t: '不接话，添茶', risk: 'peace', eff: '道心 +1', act: 'enc:zzGuoweiClaim:silent',
+          res: { ok: [['heart', 1]], m: '你给他添了茶。他看了你一眼，也不再说了。有些话，说出来就成事，不说就什么都不是。道心 +1。' } },
+        { t: '当众说「我去坐」', risk: 'risk', eff: '声望大涨，成为众矢之的', act: 'enc:zzGuoweiClaim:declare',
+          res: { hit: 45, ok: [['fame', 12], ['flag', 'guowei_declared']], miss: [['fame', -10], ['hp', -30]],
+            m: '满楼安静。有人先鼓了掌，然后所有人都鼓了。声望 +12。', nm: '话出口就有人笑。当夜你在回住处路上挨了一下。声望 −10。' } }
       ] }
   ];
 
@@ -1330,37 +2030,41 @@
   const DIZHA = ['摄提格（寅）', '单阏（卯）', '执徐（辰）', '大荒落（巳）', '敦牂（午）', '协洽（未）', '涒滩（申）', '作噩（酉）', '阉茂（戌）', '大渊献（亥）', '困敦（子）', '赤奋若（丑）'];
 
   /* ====== 三十纳音果位 ====== */
+  /* v11 P0-4：每个果位补一句 domain「这一位管什么」，
+     对应不同月度维护事件与觊觎 flavor。方案要求「30 条果位文案」——
+     这里用 domain 承载「海中金=沉宝、剑锋金=兵戈」的司掌，
+     月度事件按 domain 生成专属文案，不新造 30 段独立事件。 */
   const GUOWEI = [
-    { n: '海中金', gz: '甲子·乙丑', img: '沉于海底，宝而不可见', rank: '余位' },
-    { n: '炉中火', gz: '丙寅·丁卯', img: '炉中之焰，炼物亦自焚', rank: '闰位' },
-    { n: '大林木', gz: '戊辰·己巳', img: '林海遮天，独木与林', rank: '正统' },
-    { n: '路旁土', gz: '庚午·辛未', img: '任人践踏，却能承万乘', rank: '闰位' },
-    { n: '剑锋金', gz: '壬申·癸酉', img: '已成之刃，锋利而易折', rank: '正统' },
-    { n: '山头火', gz: '甲戌·乙亥', img: '山巅之火，照远而不暖近', rank: '余位' },
-    { n: '涧下水', gz: '丙子·丁丑', img: '石间细流，清而难蓄', rank: '余位' },
-    { n: '城头土', gz: '戊寅·己卯', img: '城墙之土，护人亦困人', rank: '闰位' },
-    { n: '白蜡金', gz: '庚辰·辛巳', img: '韧金可器，弱而不折', rank: '正统' },
-    { n: '杨柳木', gz: '壬午·癸未', img: '随风而摆，柔极则断', rank: '余位' },
-    { n: '泉中水', gz: '甲申·乙酉', img: '泉眼活水，细而不断', rank: '余位' },
-    { n: '屋上土', gz: '丙戌·丁亥', img: '覆屋之瓦，遮雨不遮天', rank: '闰位' },
-    { n: '霹雳火', gz: '戊子·己丑', img: '天雷落地，一击而尽', rank: '正统' },
-    { n: '松柏木', gz: '庚寅·辛卯', img: '岁寒不凋，长得极慢', rank: '正统' },
-    { n: '长流水', gz: '壬辰·癸巳', img: '不舍昼夜，去而不返', rank: '正统' },
-    { n: '沙中金', gz: '甲午·乙未', img: '淘之乃得，弃之亦不惜', rank: '闰位' },
-    { n: '山下火', gz: '丙申·丁酉', img: '夕照余晖，美而短', rank: '余位' },
-    { n: '平地木', gz: '戊戌·己亥', img: '独木平地，无遮无靠', rank: '闰位' },
-    { n: '壁上土', gz: '庚子·辛丑', img: '墙垣屏障，护而不进', rank: '正统' },
-    { n: '金箔金', gz: '壬寅·癸卯', img: '贴于器物，光而薄', rank: '闰位' },
-    { n: '覆灯火', gz: '甲辰·乙巳', img: '灯烛照夜，风一吹就灭', rank: '闰位' },
-    { n: '天河水', gz: '丙午·丁未', img: '自天而降，润物无声', rank: '至尊' },
-    { n: '大驿土', gz: '戊申·己酉', img: '通衢大道，万人走过', rank: '正统' },
-    { n: '钗钏金', gz: '庚戌·辛亥', img: '饰于人身，为悦己者容', rank: '余位' },
-    { n: '桑柘木', gz: '壬子·癸丑', img: '养蚕之木，为人作嫁', rank: '余位' },
-    { n: '大溪水', gz: '甲寅·乙卯', img: '奔流成溪，可渡可溺', rank: '正统' },
-    { n: '沙中土', gz: '丙辰·丁巳', img: '散沙难聚，聚则成洲', rank: '闰位' },
-    { n: '天上火', gz: '戊午·己未', img: '日轮当空，普照无遗', rank: '至尊' },
-    { n: '石榴木', gz: '庚申·辛酉', img: '繁茂多子，盛而易折', rank: '余位' },
-    { n: '大海水', gz: '壬戌·癸亥', img: '万流归处，深不可测', rank: '至尊' }
+    { n: '海中金', gz: '甲子·乙丑', img: '沉于海底，宝而不可见', rank: '余位', domain: '沉宝' },
+    { n: '炉中火', gz: '丙寅·丁卯', img: '炉中之焰，炼物亦自焚', rank: '闰位', domain: '熔炼' },
+    { n: '大林木', gz: '戊辰·己巳', img: '林海遮天，独木与林', rank: '正统', domain: '生发' },
+    { n: '路旁土', gz: '庚午·辛未', img: '任人践踏，却能承万乘', rank: '闰位', domain: '承载' },
+    { n: '剑锋金', gz: '壬申·癸酉', img: '已成之刃，锋利而易折', rank: '正统', domain: '兵戈' },
+    { n: '山头火', gz: '甲戌·乙亥', img: '山巅之火，照远而不暖近', rank: '余位', domain: '照远' },
+    { n: '涧下水', gz: '丙子·丁丑', img: '石间细流，清而难蓄', rank: '余位', domain: '清源' },
+    { n: '城头土', gz: '戊寅·己卯', img: '城墙之土，护人亦困人', rank: '闰位', domain: '守御' },
+    { n: '白蜡金', gz: '庚辰·辛巳', img: '韧金可器，弱而不折', rank: '正统', domain: '韧性' },
+    { n: '杨柳木', gz: '壬午·癸未', img: '随风而摆，柔极则断', rank: '余位', domain: '随风' },
+    { n: '泉中水', gz: '甲申·乙酉', img: '泉眼活水，细而不断', rank: '余位', domain: '活脉' },
+    { n: '屋上土', gz: '丙戌·丁亥', img: '覆屋之瓦，遮雨不遮天', rank: '闰位', domain: '覆护' },
+    { n: '霹雳火', gz: '戊子·己丑', img: '天雷落地，一击而尽', rank: '正统', domain: '天罚' },
+    { n: '松柏木', gz: '庚寅·辛卯', img: '岁寒不凋，长得极慢', rank: '正统', domain: '岁寒' },
+    { n: '长流水', gz: '壬辰·癸巳', img: '不舍昼夜，去而不返', rank: '正统', domain: '不竭' },
+    { n: '沙中金', gz: '甲午·乙未', img: '淘之乃得，弃之亦不惜', rank: '闰位', domain: '淘洗' },
+    { n: '山下火', gz: '丙申·丁酉', img: '夕照余晖，美而短', rank: '余位', domain: '余晖' },
+    { n: '平地木', gz: '戊戌·己亥', img: '独木平地，无遮无靠', rank: '闰位', domain: '独立' },
+    { n: '壁上土', gz: '庚子·辛丑', img: '墙垣屏障，护而不进', rank: '正统', domain: '屏障' },
+    { n: '金箔金', gz: '壬寅·癸卯', img: '贴于器物，光而薄', rank: '闰位', domain: '虚饰' },
+    { n: '覆灯火', gz: '甲辰·乙巳', img: '灯烛照夜，风一吹就灭', rank: '闰位', domain: '传灯' },
+    { n: '天河水', gz: '丙午·丁未', img: '自天而降，润物无声', rank: '至尊', domain: '天恩' },
+    { n: '大驿土', gz: '戊申·己酉', img: '通衢大道，万人走过', rank: '正统', domain: '通衢' },
+    { n: '钗钏金', gz: '庚戌·辛亥', img: '饰于人身，为悦己者容', rank: '余位', domain: '妆点' },
+    { n: '桑柘木', gz: '壬子·癸丑', img: '养蚕之木，为人作嫁', rank: '余位', domain: '养人' },
+    { n: '大溪水', gz: '甲寅·乙卯', img: '奔流成溪，可渡可溺', rank: '正统', domain: '奔流' },
+    { n: '沙中土', gz: '丙辰·丁巳', img: '散沙难聚，聚则成洲', rank: '闰位', domain: '聚散' },
+    { n: '天上火', gz: '戊午·己未', img: '日轮当空，普照无遗', rank: '至尊', domain: '普照' },
+    { n: '石榴木', gz: '庚申·辛酉', img: '繁茂多子，盛而易折', rank: '余位', domain: '繁子' },
+    { n: '大海水', gz: '壬戌·癸亥', img: '万流归处，深不可测', rank: '至尊', domain: '归藏' }
   ];
   const GUOWEI_RANK = {
     '闰位': { mul: 2.5, power: 2000, rate: 60, cost: '每年「行泆」一次' },
@@ -2545,8 +3249,93 @@
       when: { needTemple: true, minRealm: 1 },
       text: '庙里泥像在吃人。梦里小孩哭着喊痛，说「快逃」。醒来找遍寺庙，不见那孩子。',
       after: '香灰上有一行小字：不是梦，是你终于记起来了。',
-      log: '纸人夜哭，香灰留字。', eff: { heart: -1, karma: 3, flag: 'paper_weep' } }
+      log: '纸人夜哭，香灰留字。', eff: { heart: -1, karma: 3, flag: 'paper_weep' } },
 
+    /* ====== v11 P1-2：五洲专属月度事件 ======
+       旧版地点只有 danger 门槛与 lingqi 系数，去哪儿都一样——「换地方」= 换灵气数字。
+       这里给每个地点一条自己的月度事件池：事件按 when.place 只在本地入池，
+       所以同一件事不会在五个洲同时发生（灵田虫害只在青岳，妖潮只在赤炎）。
+       每地 3 条，挂当地方物（宗门 / 火脉 / 佛门 / 雪族 / 拍卖会），
+       不新增机制，只借已有的 data-driven eff 结算。 */
+    { id: 'qySectRecruit', name: '宗门开山门', kind: 'good', path: 'xian',
+      when: { place: 'qingyue' },
+      text: '青云宗三年一开山门，山道上排了半里长。有人背着铺盖，有人背着爹娘的骨头。',
+      after: '你在队伍边上站了半个时辰。有人认出了你，让出半个位置。',
+      log: '青云开山门，山道半里。', eff: { fame: 3, insightXp: 1 } },
+    { id: 'qyMarketRush', name: '坊市赶集', kind: 'good',
+      when: { place: 'qingyue' },
+      text: '天机坊市逢初一十五赶集，摊子从街口摆到河边。有个卖旧货的老头，摊上摆着一截断剑。',
+      after: '你翻了翻，没买。老头说：「不买也看看，看看不要钱。」',
+      log: '坊市赶集，得见旧货。', eff: { stones: 80, sense: 1 } },
+    { id: 'qyClanFeud', name: '两姓争水', kind: 'risk',
+      when: { place: 'qingyue' },
+      text: '山下两个村子争一条水渠，争了三代。今年动了锄头，伤了两个人，抬到你家门口。',
+      after: '你把人治了，水渠没断。第二天两村的族长一起来，各带一坛酒，谁也不肯先开口。',
+      log: '两姓争水，伤者抬至门前。', eff: { merit: 8, stones: -60, fame: 2 } },
+
+    { id: 'nyBeastTide', name: '妖兽潮', kind: 'risk',
+      when: { place: 'nanyue', minRealm: 1 },
+      text: '赤炎山里的兽群今年下得早。火脉一燥，兽就往外走，走到村口才停下，站着看人。',
+      after: '你在村口守了三夜。第四夜它们退了，退得很有秩序，像有人吹了哨。',
+      log: '妖兽下山的潮，守三夜。', eff: { hp: -40, fame: 5, merit: 10 } },
+    { id: 'nyFireVein', name: '火脉喷涌', kind: 'good',
+      when: { place: 'nanyue' },
+      text: '地底的裂缝喷了一夜的火，天亮时那一片石头都是红的，踩上去鞋底发软。',
+      after: '你在裂缝边上捡了几块冷凝的火石。烫手，得用铁钳夹。',
+      log: '火脉喷涌，拾得火石。', eff: { mat: ['chiYangSha', 2], hp: -15 } },
+    { id: 'nyChiyangTax', name: '赤阳宗抽成', kind: 'risk',
+      when: { place: 'nanyue', needSect: false },
+      text: '赤阳宗的人来了，说这一带的火脉归他们管，采火石的都要交三成。他们说话时手按在刀上。',
+      after: '你交了。他们走的时候还留了张凭据，说凭这个下次少收半成。',
+      log: '赤阳宗抽成三成。', eff: { stones: -100, fame: 1 } },
+
+    { id: 'xsFutuSermon', name: '浮屠讲经', kind: 'good',
+      when: { place: 'xisha' },
+      text: '浮屠寺开坛讲经，讲的是「一切有为法」。台下坐着的人，有一半是来避沙的。',
+      after: '讲完散场，你在门口遇见讲经的僧人。他看了你一眼，说：「你身上有沙子。」',
+      log: '浮屠讲经，如露如电。', eff: { heart: 2, insightXp: 1 } },
+    { id: 'xsSandStorm', name: '流沙陷境', kind: 'risk',
+      when: { place: 'xisha' },
+      text: '沙暴来得没有预兆。等你看见那堵黄墙的时候，它已经离你不到三里。',
+      after: '你伏在一处背风的岩后，埋了半宿。沙停之后，地貌全变了，来路找不着了。',
+      log: '沙暴埋路，半宿方出。', eff: { hp: -30, stones: -40, sense: 1 } },
+    { id: 'xsAncientRelic', name: '沙下露脊', kind: 'good',
+      when: { place: 'xisha', minRealm: 2 },
+      text: '风把一片沙掀开了，底下是一排石脊，脊上有字，字被磨得只剩深浅。不是这一朝的东西。',
+      after: '你拓了三张。第三张拓到一半，风又把沙盖回去了。',
+      log: '沙下露脊，拓得残文。', eff: { ruinClue: 1, insightXp: 2 } },
+
+    { id: 'bySnowClan', name: '雪族换盐', kind: 'good',
+      when: { place: 'beiyuan' },
+      text: '雪族的人下山换盐，赶着六头白鹿。他们不说官话，用手指，指一下盐袋，指一下鹿背上的皮子。',
+      after: '你换了半袋盐给他们。领头的老妇掰了一块盐，放进嘴里，闭眼点了点头。',
+      log: '雪族换盐，以皮易之。', eff: { merit: 6, mat: ['hanYuanYu', 1] } },
+    { id: 'byGhostCultivator', name: '鬼修借道', kind: 'risk',
+      when: { place: 'beiyuan', minRealm: 2 },
+      text: '夜里有人敲门，敲三下停一下。开门没有人，只有一行脚印，从雪地里来，到门口就断了。',
+      after: '你关上门，屋里的灯自己暗了一寸。第二天雪地上什么也没有。',
+      log: '鬼修借道，灯暗一寸。', eff: { heart: -1, karma: 2, insightXp: 1 } },
+    { id: 'byFrozenCorpse', name: '冰中坐化', kind: 'good',
+      when: { place: 'beiyuan' },
+      text: '冰壁里坐着一个人，姿势很正，双手结印，脸上没有痛苦。冰是透明的，看得见他睫毛上的霜。',
+      after: '你对着他行了一礼。走出很远，还在想他坐进去的时候，是知道会死，还是不知道。',
+      log: '冰中见坐化者，行礼。', eff: { heart: 2, insightXp: 1 } },
+
+    { id: 'zzAuction', name: '天阙拍卖', kind: 'good',
+      when: { place: 'zhongzhou', minRealm: 2 },
+      text: '拍卖会开了三日。第三日压轴的东西盖着红布，主持人说「此物出处不便说」，台下没人笑。',
+      after: '你没拍到。散场时有人在你耳边说了一个价，比成交价低一半。你没接。',
+      log: '天阙拍卖，压轴未得。', eff: { insightXp: 1, fame: 2, stones: -50 } },
+    { id: 'zzDaotongDebate', name: '诸道统论法', kind: 'good', path: 'xian',
+      when: { place: 'zhongzhou', minRealm: 1 },
+      text: '三个道统在广场上论法，从辰时论到申时，围观的人换了两拨。争的是一句话该怎么断句。',
+      after: '你听到最后，忽然明白了自己这些年修行，卡在哪个字上。',
+      log: '诸道统论法，解一字之惑。', eff: { insightXp: 3, heart: 1 } },
+    { id: 'zzGuoweiRumor', name: '果位有主', kind: 'risk',
+      when: { place: 'zhongzhou', minRealm: 4 },
+      text: '茶楼里在传，某位果位的主人已经三百年没露面了。有人说他死了，有人说他化进了那个位里。',
+      after: '你放下茶钱。这话你听了不止一次，每一次都有人在等一个敢动手的人。',
+      log: '果位空悬之说，传于茶楼。', eff: { fate: 1, flag: 'guowei_rumor' } }
   ];
 
   /* ====== 结局 ====== */
@@ -2823,6 +3612,15 @@
         { need: { realm: 2 }, needText: '筑基以上',
           text: '最后一页有批注，字迹和正文不同。\n只写了三个字：「我追到了。」\n——写这行字的人，后来怎样了？',
           gain: '线索：某处洞府（舆图上浮现一处遗迹）' }
+      ],
+      /* v11 P1-1：重读。同一部书读完再读，读出的是前人的注。 */
+      reread: [
+        { needText: '读尽此书',
+          text: '注者在页边写：见影时，已是回头时。追鹿三年，鹿行之路，即是心行之路。',
+          gain: '道心 +1' },
+        { needText: '再读一遍',
+          text: '重读那句「我追到了」。注者后来成了守山人，把追鹿的三年，讲给每个过山的人听。',
+          gain: '悟性 +1' }
       ]
     },
     {
@@ -2841,6 +3639,14 @@
         { need: { realm: 3 }, needText: '紫府以上',
           text: '你在卷末看到一行小字，是自己先前写的。\n笔迹是你自己的，可你从没写过这行字。',
           gain: '线索：身世（后续剧情）' }
+      ],
+      reread: [
+        { needText: '读尽此书',
+          text: '重读影子代死那一段。注者批：影死一次，人活一世；替人者，来世自有人替他。',
+          gain: '道心 +1' },
+        { needText: '再读一遍',
+          text: '再读「名字分成七份」。注者在缺页处补了一行：分名之人，最后把自己的名也分了出去。',
+          gain: '悟性 +1' }
       ]
     },
     /* ====== 2026-11-17 素材增补：《蛊真人·人祖传》式四读 ======
@@ -2863,6 +3669,14 @@
         { need: { realm: 2 }, needText: '筑基以上',
           text: '最后一页有半枚脚印，不是刻的，是踏出来的。你把脚放上去，恰好合。\n此后再看桥，便知何处该沉锚。',
           gain: '道心 +3' }
+      ],
+      reread: [
+        { needText: '读尽此书',
+          text: '重读桥匠一生。注者批：桥成之日他没等到，可每个过桥的人，都踩着他的手印往前走。',
+          gain: '道心 +1' },
+        { needText: '再读一遍',
+          text: '再读那个脚印。注者说，脚合上去的那一刻，桥就算成了一半，另一半要自己走过去。',
+          gain: '悟性 +1' }
       ]
     },
     {
@@ -2881,6 +3695,14 @@
         { need: { realm: 3 }, needText: '紫府以上',
           text: '你终于看懂残页边缘那行蝇头小字：卦不算自己。算自己的，都是别人替你算好的。',
           gain: '道心 +3' }
+      ],
+      reread: [
+        { needText: '读尽此书',
+          text: '重读那四字卦辞。注者批：路遇故人，不是路上遇人，是路上遇见从前的自己。',
+          gain: '道心 +1' },
+        { needText: '再读一遍',
+          text: '再读「故物重逢，其价自现」。注者说，价不现于物，现于你此刻正缺什么。',
+          gain: '悟性 +1' }
       ]
     },
     {
@@ -2899,6 +3721,14 @@
         { need: { realm: 4 }, needText: '金丹以上',
           text: '最后一页只有一行：我养轮三百年，轮最后养了我。\n你合上书，觉得这句话往上还有一层意思，等你到了道胎再看。',
           gain: '寿元 +20' }
+      ],
+      reread: [
+        { needText: '读尽此书',
+          text: '重读月圆夜的禁令。注者批：不出声，不是怕惊了轮，是怕轮认得你的声音，不肯再等。',
+          gain: '道心 +1' },
+        { needText: '再读一遍',
+          text: '再读「轮最后养了我」。注者在页脚添了四个字：养轮即养我。',
+          gain: '悟性 +1' }
       ]
     },
     {
@@ -2917,6 +3747,14 @@
         { need: { pillar: 6 }, needText: '神道六柱以上',
           text: '你忽然懂了批注者为何下落成谜。他没有失踪，他被记成了账。\n从此你看香火簿，看的是人名，不是数目。',
           gain: '道心 +3' }
+      ],
+      reread: [
+        { needText: '读尽此书',
+          text: '重读省香火三招。注者批：省下的不是香火，是债。债少一分，显圣时多一分自在。',
+          gain: '道心 +1' },
+        { needText: '再读一遍',
+          text: '再读那个被拆了庙的土地。注者说，他的批注句句反着来，是因为正着写，没人肯信。',
+          gain: '悟性 +1' }
       ]
     },
     {
@@ -2935,6 +3773,14 @@
         { need: { realm: 4 }, needText: '金丹以上',
           text: '书末盖着一个闲章：贩书人也修道。\n你托坊市书商打听，书商笑而不语，只多送了你一本。',
           gain: '道心 +3' }
+      ],
+      reread: [
+        { needText: '读尽此书',
+          text: '重读那些错字。注者批：错得最离谱的那几处，恰是真诀的入口。改错，即是参悟。',
+          gain: '道心 +1' },
+        { needText: '再读一遍',
+          text: '再读书末的闲章。注者说，贩书人修的道，就藏在他多送的那一本里，从不标价。',
+          gain: '悟性 +1' }
       ]
     },
 
@@ -2957,6 +3803,14 @@
         { need: { realm: 2 }, needText: '筑基以上',
           text: '四读，见页脚另有一行小字，笔迹迥异：「我追到了。」\n不知何人，于何时，亦曾在困中读此书。\n合上书，你觉得自己比方才稳了一线。',
           gain: '道心 +1', fx: { breakBonus: 0.02 } }
+      ],
+      reread: [
+        { needText: '读尽此书',
+          text: '重读希望蛊一节。注者批：群困畏它，非畏其力，畏的是困中人不肯先弃希望。',
+          gain: '道心 +1' },
+        { needText: '再读一遍',
+          text: '再读「以心予之」。注者说，予出去的心没有消失，它化作了蛊的光，替后来的人照路。',
+          gain: '悟性 +1' }
       ]
     },
     {
@@ -2975,6 +3829,14 @@
         { need: { realm: 3 }, needText: '紫府以上',
           text: '你把残章读到最后，见页边有人用指甲刻了四字：走生路者，皆曾入死路。\n门不在别处。门在你走投无路那一日。',
           gain: '道心 +3' }
+      ],
+      reread: [
+        { needText: '读尽此书',
+          text: '重读三关之序。注者批：先摇魂，再夺魄，后逆其行，次序乱了，门便不认。',
+          gain: '道心 +1' },
+        { needText: '再读一遍',
+          text: '再读那四字刻痕。注者说，刻字的人走过生路，他刻的不是教训，是给后来人的灯。',
+          gain: '悟性 +1' }
       ]
     },
     {
@@ -2993,6 +3855,14 @@
         { need: { realm: 4 }, needText: '金丹以上',
           text: '「资质好的，早死了；平庸的，活着创造价值。」\n这句话刻薄，但你在这行里活得越久，越难反驳它。',
           gain: '道心 +2' }
+      ],
+      reread: [
+        { needText: '读尽此书',
+          text: '重读执事那一挪。注者批：灯往前半寸，是让人看清灯芯。看清灯芯的人，才配谈命。',
+          gain: '道心 +1' },
+        { needText: '再读一遍',
+          text: '再读「认牌不认人」。注者说，牌是死物，可死物不骗人。认人的人，迟早被人情所误。',
+          gain: '悟性 +1' }
       ]
     },
     {
@@ -3011,6 +3881,14 @@
         { need: { realm: 3 }, needText: '紫府以上',
           text: '最后几页挤着一行小字：庙在，人在；庙塌，人再死一次。\n你合上书，忽然想知道那座庙现在还在不在。',
           gain: '道心 +1' }
+      ],
+      reread: [
+        { needText: '读尽此书',
+          text: '重读庙的营造。注者批：无窗不留眼，中矮压气，一门只进不出。修庙的人，修的是一口棺。',
+          gain: '道心 +1' },
+        { needText: '再读一遍',
+          text: '再读最后那行小字。注者说，庙塌人再死一次，所以守庙的人，守的其实是自己的前尘。',
+          gain: '悟性 +1' }
       ]
     }
   ];
@@ -4071,7 +4949,7 @@
     UNLOCK_XIAN, UNLOCK_SHEN,
     SHOP, SHOP_GONGFA, SHOP_CATS, GATE, SHENWEI, EVENTS, ENDINGS, SCRIPTS,
     EXCHANGE, XIANG_GONG, MIAO_UP,
-    GONGFA_EXT, PILL_EXT, ARTIFACT_EXT, NATAL_FORMS, MATERIAL_EXT, SKILLS, ENCOUNTERS,
+    GONGFA_EXT, PILL_EXT, ARTIFACT_EXT, NATAL_FORMS, MATERIAL_EXT, SKILLS, COMBOS, ENCOUNTERS,
     LITURGY, TRANSMISSIONS,
     DAOGONG_CAP, SHENG, SECT, SKILL_PRICE, CLAN, DAOTONG_CLASS,
     RECIPES, TALISMANS, ARRAY_DISKS, CRAFT_LEVELS, CRAFT_REALM_GATE, CRAFT_BOOKS, CRAFT_ARTS,

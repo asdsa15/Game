@@ -221,6 +221,7 @@
   .tag.peace{background:var(--jade-deep)} .tag.chance{background:var(--mystic)}
   .tag.risk{background:var(--cinnabar)} .tag.love{background:var(--peach)}
   .tag.warn{background:var(--warnink)}
+  .tag.combo{background:#B8410F;box-shadow:0 0 0 1px rgba(184,65,15,.35)}
 
   /* ============ 事件流（左栏） ============ */
   .logbox{font-size:13px;line-height:1.75;padding-right:2px}
@@ -557,6 +558,8 @@
   .fightlog .fl .t{display:block;color:var(--muted);font-size:10.5px;letter-spacing:.5px}
   .fightlog .fl.good{color:var(--merit)}
   .fightlog .fl.danger{color:var(--cinnabar)}
+  .fightlog .fl.combo{color:#B8410F;font-weight:700;background:rgba(216,178,120,.14);
+    border-left:3px solid #B8410F;padding-left:7px;margin-left:-7px}
   .fightlog--all{max-height:64vh}
   .fightall{margin-top:6px;text-align:right;font-size:11.5px;color:var(--jade-deep);cursor:pointer}
   .fightall:hover{text-decoration:underline}
@@ -716,6 +719,18 @@
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .slotline .tier{flex:0 0 auto;font-size:11px;color:#fff;border-radius:3px;padding:0 7px}
   .slotnote{font-size:11.5px;color:var(--muted);line-height:1.5;margin:0 0 4px}
+  /* v11 P0-4：果位经营卡片（道基页）。稳固度条 + 三个维持按钮。 */
+  .gwbar{height:6px;border-radius:3px;background:rgba(90,80,60,.16);overflow:hidden;margin:3px 0 7px}
+  .gwbar i{display:block;height:100%;border-radius:3px;transition:width .25s}
+  .gwbuts{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 6px}
+  .gwbuts .optbtn{flex:1 1 auto;min-width:46%;cursor:pointer;font-size:12.5px;font-weight:700;
+    color:var(--strong);background:#fff;border:1px solid var(--line,#E5DFCF);border-radius:6px;
+    padding:6px 9px;line-height:1.4;transition:transform .08s,border-color .12s}
+  .gwbuts .optbtn:hover{border-color:var(--jade);transform:translateY(-1px)}
+  .gwbuts .optbtn .muted{font-weight:400;font-size:11px}
+  .gwbuts .optbtn.dis{opacity:.42;cursor:not-allowed}
+  .gwbuts .optbtn.dis:hover{border-color:var(--line,#E5DFCF);transform:none}
+  .dangerish{color:var(--cinnabar);font-weight:700}
 
   /* ============ 叙事：NPC 台词 / 道书 ============ */
   .npcline{

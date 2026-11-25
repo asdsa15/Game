@@ -152,7 +152,7 @@
 
       // —— v6.3 年谱（完整纪事，不截断） ——
       chronicle: [],
-      books: [], bookRead: {}, insightXp: 0,   // 道书与阅读进度
+      books: [], bookRead: {}, bookReread: {}, insightXp: 0,   // 道书与阅读进度（v11 P1-1：bookReread 为重读计数）
       /* v10.6：叙事标记。事件与奇遇写下的事，后续事件用它作前置——
          「火塘不认」先落 ancestor_reject，才轮得到「阴亲之议」。 */
       flags: {},
@@ -245,6 +245,7 @@
       hooks: [],          // 你欠别人的（可能被收割）
       hooksGiven: [],     // 别人欠你的（可以讨，但可能赖账）
       hookPending: null,  // 正在被索（挡住奇遇，别把面板顶掉）
+      favorPending: null, // v11 P1-3：已托人「若动手就来」，进战斗后可兑现一次
       hookSeen: 0         // 被窥视次数
     };
   }
@@ -699,6 +700,9 @@
 
       // —— 固定开销（v8.1 收尾项 2）：不做事也要付的钱
       applyFixedCosts();
+
+      // —— v11 P0-4：果位经营月结（每月 −1，归零被夺，低稳固招觊觎）
+      guoweiTick();
 
       // —— 香火反噬
       if (isShen() && S.karma > 50 && !S.sui) {
@@ -1480,11 +1484,49 @@
     b += '<div class="hint">账本每月初一重置；所有灵石增减都走同一条账本。</div>';
     return b;
   }
+  /* v11 P0-4：果位卡片。金丹后主行动页多一块「这一位要守」的面板——
+     没有它，稳固度就是一条玩家看不见的暗账（本项目最忌讳的「设计了但没长出来」）。
+     三个维持按钮对应方案三种手段；应战是被动的，写在提示里。 */
+  function renderGuoweiCard() {
+    if (!S.guowei || S.xRealm < 4) return '';
+    const gw = S.guowei;
+    const rk = D.GUOWEI_RANK[gw.rank] || {};
+    const stab = S.guoweiStab == null ? 60 : S.guoweiStab;
+    const RANK_COLOR = { '余位': '#8B98A6', '闰位': '#6E8BA0', '正统': '#B08D2E', '至尊': '#B8410F' };
+    const barColor = stab >= 60 ? 'var(--merit)' : (stab >= 30 ? '#C9932F' : 'var(--cinnabar)');
+    const stamp = S.year * 12 + S.month;
+    const fayed = S.gwMonth && S.gwMonth.fayi === stamp;
+    const danger = stab < 30
+      ? '<div class="slotnote dangerish">位已很虚。再不去守，下个月就有人来坐这把椅子。</div>'
+      : '';
+    const btn = function (kind, label, note, dis) {
+      return '<span class="optbtn' + (dis ? ' dis' : '') + '"' +
+        (dis ? '' : ' data-act="do;gw:' + kind + '"') + '>' + esc(label) +
+        '<span class="muted">　' + esc(note) + '</span></span>';
+    };
+    return '<div class="slotline"><span class="sk">果位</span>' +
+      '<span class="sv">' + esc(gw.n) + '（' + esc(gw.gz) + '）</span>' +
+      '<span class="tier" style="background:' + (RANK_COLOR[gw.rank] || '#8B98A6') + '">' +
+      esc(gw.rank) + ' ×' + (rk.mul || '?') + '</span></div>' +
+      '<div class="slotnote">' + esc(gw.img) + '　｜　这一位管「' + esc(gw.domain || '一方') + '」</div>' +
+      '<div class="slotnote">果位稳固 <b style="color:' + barColor + '">' + stab + '/100</b>' +
+      '<span class="muted">　每月 −1；归零则果位被夺，掉回紫府</span></div>' +
+      '<div class="gwbar"><i style="width:' + stab + '%;background:' + barColor + '"></i></div>' +
+      danger +
+      '<div class="gwbuts">' +
+        btn('fayi', '行法仪', fayed ? '本月已行' : '灵石 500 · 稳固 +8', fayed) +
+        btn('xianxing', '显圣', isShen() ? '香火 300 · 稳固 +5' : '功德 40 · 稳固 +5', false) +
+        btn('budao', '布道', '稳固 +3 · 招觊觎', false) +
+      '</div>' +
+      '<div class="hint">有人来夺位时，迎战赢了 +15、输了 −25；花钱退兵 −10、闭门不见 −15。</div>';
+  }
+
   function renderBaseTab() {
     const g = getDaogong();
     const cap = D.DAOGONG_CAP[g.tier] || D.DAOGONG_CAP.huang;
     let b = '<div class="tabhead">道基 · 术法 · 神通</div>';
     b += renderRealmBar();
+    b += renderGuoweiCard();
     b += '<div class="slotline"><span class="sk">道基</span>' +
       '<span class="sv">' + esc(g.name) + '</span>' +
       '<span class="tier" style="background:' + D.GONGFA_TIERS[g.tier].color + '">' +
@@ -3819,7 +3861,12 @@
       closeModal(); advanceXun(1); if (S.phase === 'play') render();
       return;
     }
-    S.guowei = g;
+    /* v11 P0-4：果位是经营对象了，不能再存表行引用（会污染 30 人共享表）。
+       存副本 + 顶层稳固度。初始稳固度按档位给：位越高越难坐稳
+       （至尊=天下共抢，起步就比余位虚），呼应「越强的位越多人觊觎」。 */
+    S.guowei = Object.assign({}, g);
+    const _stab0 = { '余位': 70, '闰位': 65, '正统': 55, '至尊': 45 }[g.rank] || 60;
+    S.guoweiStab = _stab0;
     S.xRealm = 4; S.xStage = 0; S.xiuwei = 0;
     S.lifeMax = 1200;
     recalcCaps(true);
@@ -3833,6 +3880,80 @@
     logLine(`结丹得果位：${g.n}（${g.rank}）。以己心代天心。`, 'good', 'cult');
     toast('金丹 · ' + g.n);
     closeModal(); advanceXun(1); render();
+  };
+
+  /* ============================================================
+     v11 P0-4 · 果位经营：金丹之后从「修为满了」变成「果位要守」
+     ------------------------------------------------------------
+     XIAN_REALMS[4]/[5] 的 need:0/base:0 让 monthXiuwei 返回 0，
+     金丹后打坐变白坐——打完这局的人会以为游戏结束了。这里换成
+     另一条资源线：果位稳固度 S.guoweiStab（0~100）。
+       · 每月自然 −1（无人问津）
+       · 维持：法仪 +8（花灵石，同月限一次）/ 显圣 +5（花功德/香火）/
+               布道 +3（招来觊觎）/ 应战赢 +15 输 −25（见 noteCombatWin/combatLose）
+       · 落到 0 → 果位被夺：掉级回紫府、果位消失、留 guowei_lost 标记
+     觊觎者复用 openVengeance 的战斗框架（第三类 src='guowei'），不写新战斗。
+     稳固度存顶层 S.guoweiStab，不塞进 S.guowei（那是表行副本，
+     塞进去会随每次结丹被覆盖，且旧档引用有污染表风险——见 applyState）。
+     ============================================================ */
+  function guoweiActive() { return !!(S.guowei && S.xRealm >= 4); }
+  function guoweiGain(n) {
+    if (!guoweiActive()) return;
+    S.guoweiStab = clamp((S.guoweiStab == null ? 60 : S.guoweiStab) + n, 0, 100);
+  }
+  /* 果位被夺 → 掉级回紫府（照 do_sectquit 的掉境界写法） */
+  function loseGuowei() {
+    if (!S.guowei) return;
+    const nm = S.guowei.n;
+    S.guowei = null; S.guoweiStab = 0;
+    S.xRealm = 3; S.xStage = 0; S.xiuwei = 0;   // 紫府 idx=3
+    S.lifeMax = Math.min(S.lifeMax, D.XIAN_REALMS[3].life);
+    S.karma += 10;
+    S.flags = S.flags || {}; S.flags.guowei_lost = 1;   // 夺回支线的入口标记
+    recalcCaps(true);
+    logLine('果位「' + nm + '」被人夺去。位格崩散，金性跌落回紫府——道没丢，位没了。', 'danger');
+    toast('果位被夺');
+  }
+  /* 月结钩子：自然衰减 + 归零被夺 + 按稳固度反比概率招觊觎 */
+  function guoweiTick() {
+    if (!guoweiActive() || S.phase !== 'play') return;
+    guoweiGain(-1);
+    if ((S.guoweiStab || 0) <= 0) { loseGuowei(); return; }
+    /* 稳固度越低越虚，越多人敢来抢。布道留下的张扬也会抬高概率。 */
+    const risk = clamp(0.015 + (100 - S.guoweiStab) / 100 * 0.10 + (S.gwRiskBoost || 0), 0.015, 0.16);
+    if (!S.pendingVengeance && rng() < risk) S.pendingVengeance = 'guowei';
+    if (S.gwRiskBoost) S.gwRiskBoost = Math.max(0, S.gwRiskBoost - 0.04);   // 张扬随时间平息
+  }
+  /* 维持动作：法仪 / 显圣 / 布道。应战是被动，挂在战斗胜负里。 */
+  ACT.do_gw = (kind) => {
+    if (!guoweiActive()) { toast('尚无果位可经营'); render(); return; }
+    S.gwMonth = S.gwMonth || {};
+    const stamp = S.year * 12 + S.month;
+    if (kind === 'fayi') {                       // 法仪：花灵石，同月限一次
+      if (S.gwMonth.fayi === stamp) { toast('法仪本月已行，仪轨需重新备齐'); render(); return; }
+      const cost = 500;
+      if (S.stones < cost) { toast('灵石不足（法仪需 ' + cost + '）'); render(); return; }
+      S.stones -= cost; S.gwMonth.fayi = stamp;
+      guoweiGain(8); ledgerAdd('out', '果位法仪', cost);
+      logLine('你设坛行法仪，告天地此位有人主掌。果位稳固 +8。', 'good');
+    } else if (kind === 'xianxing') {            // 显圣：神道烧香火 / 仙道折功德
+      const shen = isShen();
+      if (shen) {
+        if ((S.xianghuo || 0) < 300) { toast('香火不足（显圣需 300）'); render(); return; }
+        S.xianghuo -= 300;
+      } else {
+        if ((S.merit || 0) < 40) { toast('功德不足（显圣需 40）'); render(); return; }
+        S.merit -= 40;
+      }
+      guoweiGain(5);
+      logLine('你显圣于一方，凡人重新记起这一位的主名。果位稳固 +5。', 'good');
+    } else if (kind === 'budao') {               // 布道：+3，但招来觊觎
+      guoweiGain(3);
+      S.gwRiskBoost = (S.gwRiskBoost || 0) + 0.10;
+      logLine('你向凡人布道显灵，名声越响，盯着这个位子的人越多。果位稳固 +3（此后更易被觊觎）。', '');
+    } else { render(); return; }
+    checkAch();
+    render();
   };
 
   /* 道胎：需三个剧情条件 */
@@ -4765,11 +4886,17 @@
           owned ? '已习得' : fmtNum(g.price) + ' 石', owned || S.stones < g.price, 'do;buyg:' + g.id);
       });
     } else {
+      const _here = S.place || 'qingyue';
       const list = D.SHOP.filter(function (x) {
         if (x.cat !== cat || !shopNameHit(x.name)) return false;
         if (x.cat === 'pill' && x.type === 'xiang' && !usesShenLine()) return false;
         /* 祈雨符箓是神道之物，仙道货架不列（与信香同一口径） */
         if (x.cat === 'tal' && x.id === 'hanhuo' && !usesShenLine()) return false;
+        /* v11 P1-2：产地货只在产地卖。五洲各有一丹一材打 place 标记，
+           旧版它们在全地图任何坊市都能买——「南疆火丹」在北极也买得到，
+           地点就等于只是一个灵气数字。现在标了 place 的就只在本地进货架；
+           买走之后仍可随行带走（库存不绑地点，只有「上货」绑）。 */
+        if (x.place && x.place !== _here) return false;
         return true;
       });
       list.sort(function (a, b2) {
@@ -4855,6 +4982,16 @@
     if (cat === 'pill' || cat === 'tal' || cat === 'mat') {
       b += qtyChips([{ v: 1, n: '买 1' }, { v: 5, n: '买 5' }, { v: 10, n: '买 10' }, { v: 0, n: '买满' }],
         shopQty(), 'do;shopqty', '每次买');
+    }
+    /* v11 P1-2：让「产地」这件事在货架上看得到。
+       旧版换了地方，货架长得一模一样——玩家没有理由记得自己在哪。
+       现在列出本地特产（标了 place 的丹药与材料），并明说别处不进货。 */
+    const _localGoods = (D.SHOP || []).filter(function (x) { return x.place === (S.place || 'qingyue'); });
+    if (_localGoods.length) {
+      b += '<div class="slotnote" style="margin:2px 0 6px">此地特产：' +
+        _localGoods.map(function (g) {
+          return '<span class="chip on" style="margin-right:4px">' + esc(g.name) + '</span>';
+        }).join('') + '<span class="muted">（只在本洲上货）</span></div>';
     }
     b += '<ul class="opts" id="shop-list">' + shopListInner(cat) + '</ul>';
     b += '<div class="hint">坊市只售黄、玄两阶。地阶以上不上市——那要靠「传法机缘」自己撞。</div>';
@@ -6417,6 +6554,15 @@
       S.flags = S.flags || {};
       S.flags[eff.flag] = 1;
     }
+    /* v11 P1-2：事件也能给遗迹线索。旧版只有奇遇结算器认这个键，
+       事件里写 ruinClue 就是一句空话——地点事件要「沙下露脊」给出真线索，
+       所以把同一段解释搬到这里（reuse，不另写一套）。 */
+    if (eff.ruinClue) {
+      const _E = G.WXCS3_EXT;
+      const site = (_E && _E.revealRuin) ? _E.revealRuin() : null;
+      if (site) { out.push('摸到' + site.name + '的方位'); }
+      else { S.stones += 200; out.push('灵石 +200（遗迹线索折价）'); }
+    }
     return out;
   }
 
@@ -6700,6 +6846,9 @@
       if (h && !h.done && !h.refuseDebuff) h.blocked = false;
     });
     if (!Array.isArray(out.hooksGiven)) out.hooksGiven = [];
+    /* v11 P1-3：求人的「已托人来援」是一个可选字段。旧档没有就补空，
+       读档不报错、SAVE_VER 不动（与 v10.8 的 batchN 同一口径）。 */
+    if (out.favorPending === undefined) out.favorPending = null;
     if (!Array.isArray(out.log)) out.log = [];
     if (!Array.isArray(out.gongfa) || !out.gongfa.length) out.gongfa = ['juqi'];
     // B2：ownedGongfa 是后加的字段，旧档里没有。三处「得功法」都是裸 push，
@@ -6748,6 +6897,8 @@
     if (!Array.isArray(out.chronicle)) out.chronicle = [];
     if (!Array.isArray(out.books)) out.books = [];
     if (!out.bookRead || typeof out.bookRead !== 'object') out.bookRead = {};
+    /* v11 P1-1：旧档没有重读计数，补空对象即可——重读从 0 开始，不影响初读进度 */
+    if (!out.bookReread || typeof out.bookReread !== 'object') out.bookReread = {};
     if (typeof out.insightXp !== 'number') out.insightXp = 0;
     // v6.4 四艺
     if (!out.craft || typeof out.craft !== 'object') out.craft = { dan: 0, qi: 0, fu: 0, zhen: 0 };
@@ -6831,6 +6982,17 @@
     out.tally = Object.assign(tallyInit(), (out.tally && typeof out.tally === 'object') ? out.tally : {});
     if (!out.achTab) out.achTab = 'gong';
     if (typeof out.bloodDebt !== 'number') out.bloodDebt = 0;
+    /* v11 P0-4：果位稳固度。旧档没有这个字段，兜底 60（方案：旧档无 stab 补 60）。
+       S.guowei 新档结丹时存 GUOWEI 表行的副本，但 v10 及更早的旧档存的是表行
+       「引用」——若不 copy 就写子字段，会污染 30 个果位共享的同一张表。
+       所以这里统一转成 plain 对象，stab 另存顶层 S.guoweiStab（不塞进 guowei）。 */
+    if (out.guowei && typeof out.guowei === 'object') out.guowei = Object.assign({}, out.guowei);
+    if (out.guowei) {
+      if (typeof out.guoweiStab !== 'number') out.guoweiStab = 60;
+      out.guoweiStab = clamp(out.guoweiStab, 0, 100);
+    } else {
+      out.guoweiStab = 0;
+    }
     if (typeof out.xRealm !== 'number') out.xRealm = 0;
     if (typeof out.pillar !== 'number') out.pillar = 0;
     if (!out.started) { toast('这份存档还没有开局'); return false; }
@@ -7345,6 +7507,51 @@
     return null;
   }
 
+  /* ============================================================
+     v11 P0-3 · 神通变体：4 模板 × 5 修饰 = 20 格
+     ------------------------------------------------------------
+     227 个名字此前只有 4 个答案（SHENTONG_SPEC 四行），「分阳钗」和
+     「金窍心」除了名字没有任何区别。这里不做 227 个机制（数据量爆炸
+     且玩家感知不到），做 20 个「修饰格」：派生规则 = 模板 × 道统大类
+     的稳定散列——同一道统同类神通永远同一变体，这就是流派感。
+     全部用已有状态实现（burn/weaken/stun/temperPierce/护体消费链），
+     不新增状态字段；S.stVariant 只做缓存，删了也能重算。
+     ============================================================ */
+  const ST_VARIANTS = {
+    lianji:  { name: '连击型', adj: 1.24, hits: 2,
+      desc: '法力两波叠打，总伤一成二（×1.24）' },
+    chuanto: { name: '穿透型', adj: 0.85, pierce: true,
+      desc: '直伤 −15%，撕破其护体，并凌位一档' },
+    chixu:   { name: '持续型', adj: 0.60, linger: true,
+      desc: '直伤 −40%，挂灼蚀三回合并压势延长' },
+    fanzhuan:{ name: '反转型', adj: 0.90, recoil: true,
+      desc: '倍率 −10%，自愈大增但两回合受击 +25%' },
+    kongzhi: { name: '控制型', adj: 0.80, stun: true,
+      desc: '伤害 −20%，追加定神一回合' }
+  };
+  const ST_VARIANT_KEYS = ['lianji', 'chuanto', 'chixu', 'fanzhuan', 'kongzhi'];
+  function daotongKeyOf(dt) {
+    if (!dt) return '';
+    for (const k in D.DAOTONG) {
+      if ((D.DAOTONG[k] || []).indexOf(dt) >= 0) return k;
+    }
+    return '';
+  }
+  /* 变体派生：缓存 → 稳定散列(模板+道统大类)。
+     散列与 shenTongKind 同一血统（h*31+charCode），但取 %5。 */
+  function shenTongVariant(name) {
+    S.stVariant = S.stVariant || {};
+    if (S.stVariant[name]) return S.stVariant[name];
+    const kind = shenTongKind(name).charAt(0);
+    const key = daotongKeyOf(S.daotong) || (name || '');
+    let h = 7;
+    const src = kind + '|' + key + '|' + stShort(name).slice(0, 2);
+    for (let i = 0; i < src.length; i++) h = (h * 31 + src.charCodeAt(i)) % 9973;
+    const v = ST_VARIANT_KEYS[h % 5];
+    S.stVariant[name] = v;
+    return v;
+  }
+
   function shenTongSpec(name) {
     const k = shenTongKind(name);
     const parts = stParts(k);
@@ -7394,6 +7601,22 @@
     /* v10.5 P1·C4：单独记一份「基础耗灵」，
        百分比兜底只作用于它，气质的加减改动不被抹平。 */
     base.costBase = baseCost;
+    /* v11 P0-3：变体不并进 base.mul。v10.4 的「双属合成 ≤ max×1.1」与
+       「气质 +0.10 是加法」两条护栏，读的都是面板 ×N 的跨神通比值——
+       把按名字漂移的变体乘区掺进合成倍率，等于往标尺里掺沙（实跑撞出
+       ×1.467 的假越界）。正交口径：合成倍率保持纯净，变体记成独立乘区
+       variantAdj，伤害结算处单乘；面板把变体名单独标出，修饰描述里写死
+       了各自增减百分比，玩家看到的每一层都对得上账。
+       连击型 adj = 0.62 × 2 段 = 1.24 已是两段总和，结算处只乘一次。 */
+    const _vk = shenTongVariant(name);
+    const _v = ST_VARIANTS[_vk];
+    if (_v) {
+      base.variant = _vk;
+      base.variantName = _v.name;
+      base.variantDesc = _v.desc;
+      base.variantHits = _v.hits || 1;
+      base.variantAdj = _v.adj;
+    }
     return base;
   }
 
@@ -7525,7 +7748,9 @@
     let b = '<div class="small">道基有感，道统池中得一道神通。<b>三选一</b>。上限 ' + lim + '（仙基所限），已有 ' + S.shenTong.length + '。</div>';
     b += divider() + '<ul class="opts">';
     choose.forEach(function (x, i) {
-      b += optRow('ABC'[i], x, { name: '神通', cls: 'chance' }, '战力上升', false, 'do;st:' + encodeURIComponent(x));
+      const _sp = shenTongSpec(x);
+      b += optRow('ABC'[i], x, { name: '神通', cls: 'chance' },
+        '战力上升' + (_sp.variantName ? ' · 变体：' + _sp.variantName : ''), false, 'do;st:' + encodeURIComponent(x));
     });
     b += '</ul>';
     openModal('神通 · 三选一', b, true);
@@ -7910,6 +8135,25 @@
   function hasShenLine() { return isShen() || isBoth(); }
   function hasXianLine() { return isXian() || isBoth(); }
 
+  /* ---------- v11 P0-2：条件解释器（原 eventSlot 内的局部闭包） ----------
+     v9.0 M0 造好时只有 EVENTS 在用，奇遇一条条件都没写，等于管道造了没接水。
+     奇遇分境界要读同一套条件，所以先提出为模块级函数——语义一字未改，
+     只是从「事件专属」变成「凡是带 when 的表都能用」。
+       when: { minRealm, maxRealm, month, place, flag, needSect, needTemple }
+     判断全部走已有状态，不新增存档字段、不引入新状态机。 */
+  const whenOk = function (e) {
+    const w = e.when;
+    if (!w) return true;
+    if (w.minRealm != null && myRealmIdx() < w.minRealm) return false;
+    if (w.maxRealm != null && myRealmIdx() > w.maxRealm) return false;
+    if (w.month != null && S.month !== w.month) return false;
+    if (w.place && S.place !== w.place) return false;
+    if (w.needSect && !S.sect) return false;
+    if (w.needTemple && !(S.miaoSites > 0)) return false;
+    if (w.flag && !(S.flags && S.flags[w.flag])) return false;
+    return true;
+  };
+
   /* ---------- P2-17 事件表：1d100 十二区间 ---------- */
   function eventSlot(roll) {
     /* v8.0：按事件表长度均分 1~100，以后往 EVENTS 里加事件不必再改这张表。
@@ -7944,9 +8188,18 @@
       if (e.path === 'xian') return xian || both;
       return true;
     });
-    if (!list.length) return all[0].id;
-    const idx = clamp(Math.floor((roll - 1) * list.length / 100), 0, list.length - 1);
-    return list[idx].id;
+    /* v11 P1-2：地点要产生内容。旧版 PLACES 只有 danger 门槛与 lingqi 系数，
+       五个洲抽的是同一批事件——「去哪儿都一样」。现在带 when.place 的事件
+       只在本地入池（青岳的灵田虫害不会发生在西漠），并按地点加权：
+       本地条目在池里各占两份、通用条目占一份。
+       这样「换个地方住」才真的会换掉一半的日常，而不是只换灵气数字。
+       本地条目为空时退回原池，不把事件抽空。 */
+    const here = S.place || 'qingyue';
+    const local = list.filter(function (e) { return e.when && e.when.place === here; });
+    const pool = local.length ? list.concat(local) : list;
+    if (!pool.length) return all[0].id;
+    const idx = clamp(Math.floor((roll - 1) * pool.length / 100), 0, pool.length - 1);
+    return pool[idx].id;
   }
 
   /* ---------- P2-18 舆图：真实移动 ---------- */
@@ -8655,17 +8908,30 @@
     const encRate = 18 + (hasDebuff('karma_tangle') ? 6 : 0) + (hasDebuff('marked_rich') ? 4 : 0)
       + gongfaFateAdd();
     if (!force && rnd100() > encRate) return false;
-    const pool = D.ENCOUNTERS.filter(function (e) {
+    const kindOk = D.ENCOUNTERS.filter(function (e) {
       if (e.kind === 'xian') return isXian() || S.cultivation === 'both';
       if (e.kind === 'shen') return isShen() || S.cultivation === 'both';
       return true;
     });
-    if (!pool.length) return false;
+    /* v11 P0-2：奇遇分境界。以前 30 条奇遇没有一条写 when，胎息和道胎
+       遇见的是同一批事——「崖边老者」对一个手握果位的人不该还是机缘。
+       现在先按 when 筛（凡尘 maxRealm:1 / 修行 2~3 / 天机 minRealm:4），
+       筛空了再退回道途池兜底，保证任何境界都有奇遇可抽。 */
+    const pool = kindOk.filter(function (e) { return whenOk(e); });
+    /* v11 P1-2：本地奇遇加权。五洲各补的三条专属奇遇若与 60 条通用奇遇等权，
+       抽中概率只有 4%，玩家搬一次家根本感不到差别——地点就还是白设的。
+       这里把「本地条目」在池里再放一份（= 双倍权重），
+       本地条目占比约 15 条 ×2 /（60+15×2）≈ 33%：
+       住哪个洲，三分之一的机缘是那个洲的事。 */
+    const _here = S.place || 'qingyue';
+    const poolW = pool.concat(pool.filter(function (e) { return e.when && e.when.place === _here; }));
+    const usable = poolW.length ? poolW : kindOk;
+    if (!usable.length) return false;
     // 同一个机缘连着来三次，就不叫机缘了：最近见过的先让开
     const seen = (S.encSeen || []).slice(-3);
-    let pickPool = pool;
-    if (pool.length > 4) {
-      const fresh = pool.filter(function (e) { return seen.indexOf(e.id) < 0; });
+    let pickPool = usable;
+    if (usable.length > 4) {
+      const fresh = usable.filter(function (e) { return seen.indexOf(e.id) < 0; });
       if (fresh.length) pickPool = fresh;
     }
     const e = pickPool[Math.floor(rng() * pickPool.length)];
@@ -8689,10 +8955,97 @@
     e.opts.forEach(function (o, i) {
       b += optRow('ABC'[i], o.t, { name: o.risk === 'risk' ? '风险' : o.risk === 'chance' ? '机缘' : '平和', cls: o.risk }, o.eff, false, o.act);
     });
+    /* v11 P1-1：读完特定道书后，此奇遇多出「以书中之言应对」的选项。
+       书是死物，读进去的话是活的——同一桩机缘，读过书的人多一条路。 */
+    if (e.bookOpt) {
+      const bk = (D.DAOSHU || []).find(function (x) { return x.id === e.bookOpt.book; });
+      const readAll = bk && bookReadCount(e.bookOpt.book) >= bk.layers.length;
+      if (readAll) {
+        b += optRow('D', e.bookOpt.t, { name: '机缘', cls: 'chance' }, e.bookOpt.eff, false, e.bookOpt.act);
+      }
+    }
     b += '</ul>';
     b += '<div class="hint">机缘是自己选的。选错未必死，但会留下痕迹。</div>';
     openModal('机缘 · ' + e.name, b, true);
     logLine('遇「' + e.name + '」。', '');
+  }
+
+  /* ---------- v11 P0-2：奇遇通用结算器 ----------
+     老 30 条每个选项都在 switch 里手写结算；新 30 条若照此再写 90 个分支，
+     do_enc 会翻倍还难查。改为数据驱动：条目上的 res 写清「掷中给什么、
+     没掷中给什么、说什么话」，这里统一解释。所有改账走既有入口
+     （gainXiuwei/addMat/grantTopGongfa/EXT.revealRuin…），不是摆设字段。 */
+  function encOp(op) {
+    const k = op[0], n = op[1] || 0;
+    switch (k) {
+      case 'stones': S.stones = Math.max(0, S.stones + n); break;
+      case 'merit': S.merit = Math.max(0, S.merit + n); break;
+      case 'fame': S.fame = S.fame + n; break;
+      case 'karma': S.karma = Math.max(0, S.karma + n); break;
+      case 'xiuwei': if (n > 0) gainXiuwei(n); else S.xiuwei = Math.max(0, S.xiuwei + n); break;
+      case 'hp': S.hp = Math.max(1, Math.min(S.hpMax, S.hp + n)); break;
+      case 'mp': S.mp = Math.max(0, Math.min(S.mpMax || S.mp, S.mp + n)); break;
+      case 'life': S.lifeMax = Math.max(20, (S.lifeMax || 0) + n); break;
+      case 'xianghuo': S.xianghuo = Math.max(0, Math.min(maxXianghuo(), (S.xianghuo || 0) + n)); break;
+      case 'followers': S.followers = Math.max(0, Math.min(followLimit(), S.followers + n)); break;
+      case 'insight': S.stats.insight = clamp(S.stats.insight + n, 1, 20); break;
+      /* v11 P1-2：悟道点（S.insightXp）与悟性（S.stats.insight）是两样东西。
+         事件侧 applyIntentEff 早就认 insightXp，奇遇侧一直缺这个分支——
+         地点奇遇里写「悟道 +3」会静默落空。补上，与事件同口径。 */
+      case 'insightXp': S.insightXp = (S.insightXp || 0) + n; break;
+      case 'heart': S.stats.heart = clamp(S.stats.heart + n, 1, 20); break;
+      case 'fate': S.stats.fate = clamp(S.stats.fate + n, 1, 20); break;
+      case 'piety': S.piety = clamp((S.piety || 1) + n, 0.5, 2.0); break;
+      case 'craftFu': S.craft.fu = (S.craft.fu || 0) + n; break;
+      case 'craftDan': S.craft.dan = (S.craft.dan || 0) + n; break;
+      /* v11 P1-2：器物一门单列。旧白名单只有 dan/fu，写「炼器 +12」只能借用
+         craftDan，结果练一年锤子涨的是炼丹——四艺面板一查就对不上。
+         这里对齐 S.craft 的既有四键（dan/qi/fu/zhen），补上器道。 */
+      case 'craftQi': S.craft.qi = (S.craft.qi || 0) + n; break;
+      case 'craftZhen': S.craft.zhen = (S.craft.zhen || 0) + n; break;
+      case 'breakBonus': S.breakBonus = (S.breakBonus || 0) + n / 100; break;
+      case 'mat': addMat(op[1], op[2] || 1); break;
+      case 'bagPill': {
+        S.bag = S.bag || {};
+        const p = D.PILL_EXT[0];
+        if (p) S.bag[p.id] = (S.bag[p.id] || 0) + n;
+        break;
+      }
+      case 'gongfa': {
+        const g = grantTopGongfa('xuan');
+        if (g) addGongfa(g.id); else S.stones += 300;   // 全学会了就折钱，不吞
+        break;
+      }
+      case 'loseArt':
+        if (S.arts && S.arts.length) S.arts.splice(Math.floor(rng() * S.arts.length), 1);
+        break;
+      case 'enemy': S.enemy = true; S.enemyName = op[1] || '仇家'; break;
+      case 'flag': S.flags = S.flags || {}; S.flags[op[1]] = 1; break;
+      case 'ruinClue': {
+        const _E = G.WXCS3_EXT;
+        const site = (_E && _E.revealRuin) ? _E.revealRuin() : null;
+        if (site) logLine('你按新得的线索摸到了' + site.name + '的方位。', 'good');
+        else S.stones += 200;   // 遗迹都探过了，线索折成钱
+        break;
+      }
+      case 'stab':
+        if (S.guowei) S.guoweiStab = clamp((S.guoweiStab == null ? 60 : S.guoweiStab) + n, 0, 100);
+        break;
+      case 'natalMark':
+        if (S.natal && typeof S.natal === 'object') S.natal.scratch = (S.natal.scratch || 0) + 1;
+        break;
+      default: break;   // 未知操作不炸结算，check_content 会抓出来
+    }
+  }
+  function applyEncRes(res, R) {
+    const okOps = res.ok || [], missOps = res.miss || [];
+    const won = res.hit == null ? true : R <= res.hit;
+    const ops = won ? okOps : missOps;
+    // 先查灵石够不够付账，不够就明说不吞选项
+    const need = ops.reduce(function (a, o) { return o[0] === 'stones' && o[1] < 0 ? a - o[1] : a; }, 0);
+    if (need > S.stones) return { m: '你身上没有 ' + need + ' 灵石，这桩缘做不成。', cls: '' };
+    ops.forEach(encOp);
+    return { m: (won ? res.m : (res.nm || res.m)) || '事已了结。', cls: won ? (missOps.length ? 'good' : '') : (missOps.length ? 'danger' : '') };
   }
 
   /* ---------- 奇遇结算 ---------- */
@@ -8704,6 +9057,22 @@
     const R = rnd100();
     let msg = '', cls = '';
     const hit = (base) => R <= base;
+
+    /* v11 P0-2：新补的三十条走数据驱动结算（见 applyEncRes），
+       老条目继续在 switch 里手写，两套互不干扰。 */
+    const _ee = D.ENCOUNTERS.find(function (x) { return x.id === eid; });
+    /* v11 P1-1：bookOpt 的 act 也是 enc:<id>:book，与普通选项同格式，
+       一并走数据驱动结算——「以书中之言应对」不是新系统，是奇遇多一条路。 */
+    const _oo = _ee && (_ee.opts || []).concat(_ee.bookOpt ? [_ee.bookOpt] : [])
+      .find(function (o) { return (o.act || '').split(':')[2] === opt; });
+    if (_oo && _oo.res) {
+      const _r = applyEncRes(_oo.res, R);
+      msg = _r.m; cls = _r.cls;
+      if (msg) logLine(msg, cls, 'enc');
+      afterCombatCheck();
+      if (S.phase === 'play') { advanceXun(1); render(); } else render();
+      return;
+    }
 
     switch (eid) {
       /* 崖边老者 */
@@ -9261,25 +9630,33 @@
   /* v8.0 寻仇：仇家真的会来。来的时候给你三条路，每条都有代价。 */
   function openVengeance(src) {
     const isSect = src === 'sect';
-    const nm = isSect ? '宗门执法' : (S.enemyName || '仇家');
+    const isGw = src === 'guowei';
+    const gwDom = S.guowei ? (S.guowei.domain || '') : '';
+    const gwName = S.guowei ? ('觊觎「' + S.guowei.n + '」的人') : '夺位者';
+    const nm = isSect ? '宗门执法' : (isGw ? gwName : (S.enemyName || '仇家'));
     let b = '';
     if (isSect) {
       b += `<div class="small">三个人，一样的衣裳，一样的刀。为首那个把令牌举给你看，说奉命行事，让你自己选个地方。</div>`;
       b += `<div class="small muted" style="margin:6px 0">他们不喊，也不急。宗门办事一向这样。</div>`;
+    } else if (isGw) {
+      b += `<div class="small">${esc(gwName)}到了。他说这一位素来管「${esc(gwDom || '一方')}」，你坐它名不正——他要替天换个主。</div>`;
+      b += `<div class="small muted" style="margin:6px 0">果位虚了，来的人就多了。这一场，是你自己没守稳招来的。</div>`;
     } else {
       b += `<div class="small">${esc(nm)}站在门外，没带兵器，也没带人。他说等这一天很久了。</div>`;
       b += `<div class="small muted" style="margin:6px 0">街上有几家关了窗。没人出来劝。</div>`;
     }
     b += divider() + '<ul class="opts">';
     b += optRow('A', '迎战', { name: '搏', cls: 'risk' },
-      isSect ? '三人，都是内门以上' : '赢了此账两清，输了不一定还有下次', false, 'do;veng:fight');
-    b += optRow('B', isSect ? '交出这些年攒下的东西' : '破财消灾', { name: '忍', cls: 'warn' },
-      '折三成灵石与人望，人还会再来', S.stones < 50, 'do;veng:pay');
-    b += optRow('C', '闭门不见', { name: '避', cls: 'warn' }, '声望 −8，人还会再来', false, 'do;veng:flee');
+      isSect ? '三人，都是内门以上' : (isGw ? '赢了他，位就还稳一分（稳固 +15）；输 −25' : '赢了此账两清，输了不一定还有下次'),
+      false, 'do;veng:fight');
+    b += optRow('B', isSect ? '交出这些年攒下的东西' : (isGw ? '折灵石让他退一步' : '破财消灾'), { name: '忍', cls: 'warn' },
+      isGw ? '花钱买一时太平，位还是虚（稳固 −10）' : '折三成灵石与人望，人还会再来', S.stones < 50, 'do;veng:pay');
+    b += optRow('C', '闭门不见', { name: '避', cls: 'warn' },
+      isGw ? '位无人守，人人可欺（稳固 −15）' : '声望 −8，人还会再来', false, 'do;veng:flee');
     b += '</ul>';
-    b += `<div class="hint">这件事不了结，它就一直挂在那儿。</div>`;
-    S.vengeanceSrc = isSect ? 'sect' : 'person';
-    openModal((isSect ? '追杀 · ' : '寻仇 · ') + nm, b, true);
+    b += `<div class="hint">${isGw ? '果位是抢来的，也是守出来的。这一场不躲。' : '这件事不了结，它就一直挂在那儿。'}</div>`;
+    S.vengeanceSrc = isSect ? 'sect' : (isGw ? 'guowei' : 'person');
+    openModal((isSect ? '追杀 · ' : (isGw ? '夺位 · ' : '寻仇 · ')) + nm, b, true);
   }
 
   ACT.do_veng = (k) => {
@@ -9289,18 +9666,38 @@
       startCombat(true);
       if (S.combat) {
         S.combat.isVengeance = src;
-        S.combat.foe.name = src === 'sect' ? '宗门执法' : (S.enemyName || S.combat.foe.name);
+        S.combat.foe.name = src === 'sect' ? '宗门执法'
+          : (src === 'guowei' ? '夺位者' : (S.enemyName || S.combat.foe.name));
         if (src === 'sect') { S.combat.foe.power = Math.round(S.combat.foe.power * 1.15); S.combat.foe.hpMax = Math.round(S.combat.foe.hpMax * 1.15); S.combat.foe.hp = S.combat.foe.hpMax; }
+        /* v11 P0-4：夺位者的战力略高于普通寻仇——敢来抢果位的不是泛泛之辈，
+           但仍锚在「下风能打赢」区间（startCombat 的 isCounter 已保证不会必死）。 */
+        if (src === 'guowei') { S.combat.foe.power = Math.round(S.combat.foe.power * 1.10); }
       }
       return;
     }
     if (k === 'pay') {
+      /* 果位抢夺的「忍」：折灵石买退兵，但位更虚 */
+      if (S.vengeanceSrc === 'guowei' && guoweiActive()) {
+        const s = Math.round(S.stones * 0.3);
+        S.stones = Math.max(0, S.stones - s);
+        ledgerAdd('out', '果位退兵', s);
+        guoweiGain(-10);
+        logLine('你折了 ' + s + ' 灵石让他退一步。他笑着收了——收钱的意思，是他还会再来。果位稳固 −10。', 'danger');
+        advanceXun(1); render(); return;
+      }
       const s = Math.round(S.stones * 0.3);
       S.stones = Math.max(0, S.stones - s);
       S.followers = Math.round(S.followers * 0.9);
       ledgerAdd('out', '了断旧怨', s);
       logLine(`你把 ${s} 块灵石推过去。他收了，什么也没说，走了。`, '');
     } else {
+      /* 果位抢夺的「避」：位无人守，跌得最狠 */
+      if (S.vengeanceSrc === 'guowei' && guoweiActive()) {
+        S.fame = Math.max(0, S.fame - 8);
+        guoweiGain(-15);
+        logLine('你闭门不见。他在你山头坐了三天，谁都知道这一位没人敢应。果位稳固 −15。', 'danger');
+        advanceXun(1); render(); return;
+      }
       S.fame = Math.max(0, S.fame - 8);
       logLine('你没开门。他在门外站到天黑，才走。', '');
     }
@@ -9356,9 +9753,11 @@
       foeStun: 0, foeCalm: 0, foeGuard: 0, foeCounter: 0,
       meGuard: 0, meGuardTurns: 0, meDodge: false, meMpSave: false, meBurst: false,
       meRegen: 0, mePoison: 0, mePoisonPct: 0, meBurn: 0, meBurnPct: 0, meBurnFresh: false,
-      meSlow: 0, meLock: 0,
+      meSlow: 0, meLock: 0, meFrail: 0,
       pillCount: 0, lastPillId: null, lastPillRound: -9,
-      talCd: {}, foeCd: {}, foeCharging: null, foeIntent: null
+      talCd: {}, foeCd: {}, foeCharging: null, foeIntent: null,
+      /* v11 P1-3：这一场是否已用过「求人助战」。一场一次，用完动作条不再显示。 */
+      favorUsed: false
     };
     S.combat.rankUp = !!(S.preBuff && S.preBuff.rankUp);
     if (S.preBuff) S.preBuff.rankUp = false;
@@ -9472,8 +9871,8 @@
       const sp = shenTongSpec(nm);
       const isOn = stEquipped(nm);
       const note = isOn
-        ? ('−' + sp.cost + ' 灵 · ×' + stMulText(sp.mul) + ' · ' + sp.parts.join('') + '类')
-        : ('已卸 · ' + sp.parts.join('') + '类 · ' + sp.desc);
+        ? ('−' + sp.cost + ' 灵 · ×' + stMulText(sp.mul) + ' · ' + sp.parts.join('') + '类' + (sp.variantName ? ' · ' + sp.variantName : ''))
+        : ('已卸 · ' + sp.parts.join('') + '类' + (sp.variantName ? ' · ' + sp.variantName : '') + ' · ' + sp.desc);
       b += optRow(isOn ? '卸' : '装', stShort(nm),
         { name: sp.kindName, cls: isOn ? 'peace' : 'chance' }, note, false,
         'do;steq:' + encodeURIComponent(nm));
@@ -9654,8 +10053,13 @@
       const note = sk.cost
         ? ('−' + sk.cost + ' 灵 · ×' + sk.mul + (r.txt && r.txt !== '无关' ? ' · ' + r.txt + ' ' + pct(r.mul - 1) : ''))
         : ('无耗 · ×' + sk.mul + (sk.desc ? ' · ' + sk.desc : ''));
-      b += optRow('·', sk.name, { name: SKILL_KIND_NAME[sk.kind] || '术法', cls: sk.kind === 'blood' ? 'risk' : 'chance' },
-        note, dis, 'do;cbt:skill:' + encodeURIComponent(sk.name));
+      /* v11 P0-1：这一招此刻若满足杀招条件，tag 变橙色「杀招·XX」，
+         出招前就能看到，不是打出来才知道。预览与结算同一套 comboCheck。 */
+      const _cbPrev = comboForSkill(sk, c);
+      const _tag = _cbPrev
+        ? { name: '杀招·' + _cbPrev.name, cls: 'combo' }
+        : { name: SKILL_KIND_NAME[sk.kind] || '术法', cls: sk.kind === 'blood' ? 'risk' : 'chance' };
+      b += optRow('·', sk.name, _tag, note, dis, 'do;cbt:skill:' + encodeURIComponent(sk.name));
     });
     b += '</ul>';
 
@@ -9678,7 +10082,8 @@
         let note;
         if (used) note = '本场已出';
         else if (banned) note = '偏执之势：本场禁用（只容' + _focus + '类）';
-        else note = (costShown === 0 ? '免灵' : '−' + costShown + ' 灵') + ' · ×' + stMulText(sp.mul) + ' · ' + sp.desc;
+        else note = (costShown === 0 ? '免灵' : '−' + costShown + ' 灵') + ' · ×' + stMulText(sp.mul) +
+          (sp.variantName ? ' · ' + sp.variantName : '') + ' · ' + sp.desc;
         b += optRow('·', stShort(nm), { name: sp.kindName, cls: 'chance' }, note,
           used || banned || S.mp < costShown, 'do;cbt:shentong:' + encodeURIComponent(nm));
       });
@@ -9745,7 +10150,16 @@
   }
 
   function combatRank(c) {
-    return positionRank() + (c && c.rankUp ? (isShen() ? 4 : 1) : 0);
+    return positionRank() + (c && c.rankUp ? (isShen() ? 4 : 1) : 0) + guoweiStanceRank();
+  }
+  /* v11 P0-4：位格压制。GUOWEI_RANK 的 ×7/×15 此前只在结丹面板露一次脸，
+     没有任何机制读它。这里把它折进「位阶」——金丹果位者在同大境内位阶更高，
+     对低境/低位阶敌人的位格压制更重（do_cbt 里 diff≤−2 那一档 ×1.3）。
+     刻意只加 rank 点数、不加境界档：realmIdxRank 落在金丹区间内不变，
+     gap 不受影响 → 不会跨大境把差距拉崩，只在「同境拼位阶」时兑现果位分量。 */
+  function guoweiStanceRank() {
+    if (!S.guowei || S.xRealm < 4) return 0;
+    return { '余位': 0, '闰位': 1, '正统': 2, '至尊': 3 }[S.guowei.rank] || 0;
   }
   function combatGap(c) {
     return c ? realmIdxRank(c.foe.rank) - realmIdxRank(combatRank(c)) : 0;
@@ -10079,7 +10493,7 @@
       });
       /* 我方状态递减 */
       if (c.talBuffTurns > 0) { c.talBuffTurns--; if (c.talBuffTurns <= 0) { c.talBuffTurns = 0; c.talBuff = 0; } }
-      ['meGuardTurns', 'meSlow', 'meLock'].forEach(function (k) {
+      ['meGuardTurns', 'meSlow', 'meLock', 'meFrail'].forEach(function (k) {
         if (c[k] > 0) c[k]--;
         if (k === 'meGuardTurns' && c.meGuardTurns <= 0) c.meGuard = 0;
       });
@@ -10146,6 +10560,13 @@
     S.stones = Math.floor(S.stones * 0.5);
     S.followers = Math.round(S.followers * 0.6);
     logLine('重伤而仆。及醒，资财尽失。', 'danger');
+    /* v11 P0-4：果位应战输 → 稳固 −25；若因此归零，当场被夺。
+       夺位者打败了你，位当场就换人坐——比等下个月结更符合「位是打没的」。 */
+    if (c && c.isVengeance === 'guowei' && guoweiActive()) {
+      guoweiGain(-25);
+      logLine('你输了这一场。他当着山门取了你的位——果位稳固 −25。', 'danger');
+      if ((S.guoweiStab || 0) <= 0) loseGuowei();
+    }
     toast('重伤 · 财物被劫');
     advanceXun(1);
   }
@@ -10178,6 +10599,49 @@
     if (c.foeBurn <= 0) { c.foeBurnMul = 0; c.burnFresh = false; }
     logLine('雷火引爆余焰 +' + extra + '；灼烧剩余 ' + c.foeBurn + ' 回合。', 'good');
     return extra;
+  }
+
+  /* ============================================================
+     v11 P0-1 · 杀招：招式与招式之间的关系
+     ------------------------------------------------------------
+     上一招（c.prevSkillName，可用 prevKind 泛指一类）→ 这一招 → 条件满足
+     → 一次强化结算。判据全部读已有战斗状态，不新增状态字段。
+     prevSkillRound / lastGuardRound 用「回合距 ≤1」表达「紧接上一手」，
+     中间隔任何一手都会让距离 ≥2 而自然断链——不需要显式清空。
+     cond 取值全是已有状态：foeBurn / foeWeaken / foeShred / foeCalm /
+     hpHigh / hpLow / wasGuard / seq（仅接招序列本身，雷落九霄）。 */
+  function comboCondOk(cond, c) {
+    switch (cond) {
+      case 'foeBurn': return c.foeBurn > 0;
+      case 'foeWeaken': return c.foeWeaken > 0;
+      case 'foeShred': return c.foeShred > 0;
+      case 'foeCalm': return c.foeCalm > 0;
+      case 'hpHigh': return S.hp / Math.max(1, S.hpMax) > 0.7;
+      case 'hpLow': return S.hp / Math.max(1, S.hpMax) < 0.5;
+      case 'wasGuard': return (c.round - (c.lastGuardRound == null ? -9 : c.lastGuardRound)) === 1;
+      case 'seq': return true;
+      default: return false;
+    }
+  }
+  function comboMatch(cb, skName, skKind, c) {
+    const prevOk = (cb.prev ? cb.prev === c.prevSkillName : cb.prevKind === skKind) &&
+      (c.round - (c.prevSkillRound == null ? -9 : c.prevSkillRound)) <= 1;
+    if (!prevOk) return false;
+    const curOk = cb.cur ? cb.cur === skName : cb.curKind === skKind;
+    if (!curOk) return false;
+    return comboCondOk(cb.cond, c);
+  }
+  /* 找出「这一招打出去会不会成杀招」。结算与菜单预览共用，保证看到的=发生的。 */
+  function comboCheck(skName, skKind, c) {
+    const list = D.COMBOS || [];
+    for (let i = 0; i < list.length; i++) {
+      if (comboMatch(list[i], skName, skKind, c)) return list[i];
+    }
+    return null;
+  }
+  /* 菜单预览：直接复用 comboCheck——看到的=发生的，两套逻辑必然漂移。 */
+  function comboForSkill(sk, c) {
+    return comboCheck(sk.name, sk.kind, c);
   }
 
   /* ============================================================
@@ -10461,6 +10925,20 @@
       (it.note ? '<span class="note">' + esc(it.note) + '</span>' : '') + '</li>';
   }
 
+  /* v11 P1-3：助战的三个小判据。抽出来是因为动作条、结算、面板三处都要读，
+     各写一份必然漂移（看见了按不动 / 按得动没反应，都是最坏的体验）。 */
+  function favorHook() {
+    const list = (S.hooksGiven || []).filter(function (x) { return !x.done; });
+    if (!list.length) return null;
+    if (S.favorPending) {
+      const pickd = list.find(function (x) { return x.to === S.favorPending.to; });
+      if (pickd) return pickd;
+    }
+    return null;
+  }
+  function favorReady() { return !!favorHook(); }
+  function favorName() { const h = favorHook(); return h ? h.to + '可来援' : '无人可援'; }
+
   function combatActionList(c) {
     c = c || S.combat;
     if (!c) return [];
@@ -10494,6 +10972,12 @@
       dis: false, act: 'do;cbt:flee' }));
     out.push(combatItem({ txt: '谋', tag: { name: '平和', cls: 'peace' },
       note: '观察 / 交涉', dis: false, act: 'act:openWits' }));
+    /* v11 P1-3：求人·出手助战。只有「有人欠你人情」且这一场还没用过时出现，
+       用过一次就从动作条上消失——支援不是常驻技能，是人情的一次兑现。 */
+    if (favorReady() && !c.favorUsed) {
+      out.push(combatItem({ txt: '援', tag: { name: '机缘', cls: 'chance' },
+        note: favorName() + ' · 一次', dis: false, act: 'do;cbt:favor' }));
+    }
     /* v9.0 M2：兽令三式与本命法技从扩展里追加（do;cbt:ext:* 走同一结算尾巴） */
     const XF = G.WXCS3_EXT;
     if (XF && XF.fightRowsHooks) {
@@ -10640,6 +11124,8 @@
     if (c.foe.trait === 'veteran') base *= 0.90;
     const myDefl = clamp(deflectOf(c, 'me') + fateAdd('defl'), 0, 0.55);
     base *= (1 - myDefl);
+    /* v11 P0-3：反转型神通的「大补反虚」——两回合受击 +25% */
+    if (c.meFrail > 0) base *= 1.25;
     if (c.stance === 'shouzhong' && !(c.stanceUsed && c.stanceUsed.stGuard)) {
       base *= 0.7;
       c.stanceUsed = c.stanceUsed || {};
@@ -10813,6 +11299,8 @@
     else if (diff <= -2) mult = 1.3;
 
     let dmg = 0, hit = true, note = '';
+    c.comboNote = false;   // v11 P0-1：每次出手重置杀招标志，只标真正触发的那一行
+    let _curSkillName = null;   // v11 P0-1：本手出的招名（供公共段记链，块级 nm 在外部不可见）
     /* 出手瞬间是否已有破绽：决定这一击吃不吃 ×1.25（见下方结算处） */
     const _markBefore = (c.foeMark || 0) > 0;
     const ratio = clamp(Math.sqrt(computePower() / Math.max(1, c.foe.power)), 0.2, 2.5);
@@ -10869,6 +11357,7 @@
       const nm = decodeURIComponent(arg || '');
       const sk = artSpecByName(nm);
       if (!sk) { render(); return; }
+      _curSkillName = nm;   // v11 P0-1：记入顶部变量，公共段据此记杀招链
       /* v10.5 P1·C4：术法耗灵按上限百分比兜底。
          v10.7 阶段三：聚灵符（下一门 −50%）与锁灵（+30%）在此兑现。 */
       let _skCost = skillCostOf(sk);
@@ -10918,15 +11407,50 @@
       if (c.foeShred > 0) raw2 *= (1 + (c.foeShredV || 0.2));
       const _fg2 = consumeCombatEffect('foe', 'foeGuard', c);
       if (_fg2 > 0) raw2 *= (1 - _fg2);
-      dmg = Math.round(raw2 * (0.94 + rng() * 0.12));
-      /* 雷火引爆：雷系术法命中灼烧之敌，按剩余灼烧追加伤害并消耗一层（不递归） */
-      if (sk.kind === 'thunder') dmg += detonateBurn(c, 1);
+      /* v11 P0-1：杀招判定——上一招 + 这一招 + 条件（全读已有状态）。
+         不满足条件就什么也不发生，退回普通招式（绝不出现「点了没反应」）。 */
+      const _cb = comboCheck(nm, sk.kind, c);
+      if (_cb) {
+        const fx = _cb.fx || {};
+        if (fx.mul) raw2 *= fx.mul;
+        if (fx.deflZero) { raw2 /= Math.max(0.001, (1 - defl2)); defl2 = 0; }
+        if (fx.shredV) {
+          applyCombatEffect('foe', { type: 'shred', turns: fx.shredTurns || 3, v: fx.shredV }, c);
+        }
+        if (fx.slowTurns) applyCombatEffect('foe', { type: 'slow', turns: fx.slowTurns }, c);
+        if (fx.interrupt) applyCombatEffect('foe', { type: 'interrupt' }, c);
+        if (fx.dodge) {
+          applyCombatEffect('me', { type: 'meDodge' }, c);   // 复用神行符的规避出口
+        }
+        if (fx.natalDmg && S.benming) {
+          S.benming.dmg = Math.max(0, (S.benming.dmg || 0) + fx.natalDmg);
+        }
+        if (fx.selfHp) {
+          const _sc = Math.max(1, Math.round(S.hpMax * fx.selfHp / 100));
+          S.hp = Math.max(1, S.hp - _sc);
+          extra += '（反噬气血 −' + _sc + '）';
+        }
+        dmg = Math.round(raw2 * (0.94 + rng() * 0.12));
+        /* 焚山煮海：引爆全部灼烧层数 ×1.8，清层 */
+        if (fx.burnBurst && c.foeBurn > 0) {
+          const burst = Math.max(1, Math.round(c.foe.hpMax * 0.05 * c.foeBurn * c.foeBurnMul * fx.burnBurst));
+          dmg += burst;
+          c.foeBurn = 0; c.foeBurnMul = 0; c.burnFresh = false;
+        }
+        note = '「' + _cb.name + '」' + _cb.text + extra;
+        c.comboNote = true;   // 日志与战况区据此标色（方案：触发那一行要能认出来）
+      } else {
+        dmg = Math.round(raw2 * (0.94 + rng() * 0.12));
+        /* 雷火引爆：雷系术法命中灼烧之敌，按剩余灼烧追加伤害并消耗一层（不递归） */
+        if (sk.kind === 'thunder') dmg += detonateBurn(c, 1);
+      }
       c.observed = false;
       if (_gk && _gk.text) extra += '（功法 ' + _gk.text + '）';
       if (_hadBoost) extra += '（五雷符 +80%）';
       /* v10.7 阶段三：结构化效果解释器——兑现 SKILLS.effects（灼烧/压制/中毒/破甲/守势/打断/硬控） */
       const _efTag = applySkillEffects(sk, c);
-      note = '「' + nm + '」' + (defl2 >= 0.20 ? '（卸去 ' + Math.round(defl2 * 100) + '%）' : '') + extra + _efTag;
+      if (_cb) { if (_efTag) note += _efTag; }
+      else note = '「' + nm + '」' + (defl2 >= 0.20 ? '（卸去 ' + Math.round(defl2 * 100) + '%）' : '') + extra + _efTag;
     } else if (sub === 'shentong') {
       /* 神通不占装配格、可穿透位格压制的一部分，代价是「一道一场只能出一次」。
          它是大招，不是第二个普攻——所以必中，但消耗高、有次数。 */
@@ -10979,6 +11503,11 @@
           } else {
             stTags.push('自愈 ' + heal);
           }
+          /* v11 P0-3：反转型大补——自愈翻倍，代价（meFrail）在变体段挂 */
+          if (sp.variant === 'fanzhuan') {
+            heal = heal * 2;
+            stTags.push('大补 ×2');
+          }
           S.hp = Math.min(S.hpMax, S.hp + heal);
           c.defending = true;
         } else {
@@ -10991,6 +11520,34 @@
           stTags.push('破绽 ' + _md + '合');
         }
       });
+      /* v11 P0-3：变体效果——在 parts 与气质之后、伤害公式之前结算。
+         全部复用已有状态入口：定神走 applyCombatEffect，凌位走 temperPierce
+         （功法虚空气质同款先例），剥护体直接清 foeGuard（神通本不吃护体，
+         剥掉是替下一门术法铺路），虚弱用战斗级 meFrail（与 meBurn 同族字段）。 */
+      const _vS = sp.variant ? ST_VARIANTS[sp.variant] : null;
+      if (_vS) {
+        if (_vS.hits > 1) {
+          stTags.push('两波叠打');
+        }
+        if (_vS.pierce) {
+          if (c.foeGuard > 0) { c.foeGuard = 0; stTags.push('剥护体'); }
+          c.temperPierce = 1;
+          stTags.push('凌位');
+        }
+        if (_vS.linger) {
+          applyCombatEffect('foe', { type: 'burn', turns: 3, mul: 0.4 }, c);
+          applyCombatEffect('foe', { type: 'weaken', turns: 3 }, c);
+          stTags.push('灼蚀 3 合');
+        }
+        if (_vS.recoil) {
+          c.meFrail = 2;
+          stTags.push('大补反虚 2 合');
+        }
+        if (_vS.stun) {
+          applyCombatEffect('foe', { type: 'stun', turns: 1 }, c);
+          stTags.push('定神 1 合');
+        }
+      }
       /* v10.4 P1·S2：道统气质的附加效果。
          气质只改「这一道打出去之后世界怎么变」，不改基础四类骨架 ——
          在 parts 循环之后追加，保证双属神通仍先按双属结算。 */
@@ -11056,7 +11613,10 @@
         if (_sixMul > 1.001) stTags.push('归元×' + _sixMul.toFixed(2));
       }
       if (stTags.length) sextra = '（' + stTags.join('·') + '）';
-      dmg = Math.round(c.foe.hpMax * Math.max(0.13, 0.26 * ratio) * sp.mul * _pzMul *
+      /* v11 P0-3：sp.mul 是纯净合成倍率（双属/气质已算完），变体作为
+         独立乘区在此单乘 variantAdj——面板 ×N 读合成倍率、变体名单独标注，
+         两者相加才是玩家实际打出的倍率。 */
+      dmg = Math.round(c.foe.hpMax * Math.max(0.13, 0.26 * ratio) * sp.mul * (sp.variantAdj || 1) * _pzMul *
         _fMul * _sixMul * mult * keK * (1 + artBonus('atk')) * fateMul('dmg') * talBuffMul(c));
       c.observed = false;
       note = '神通「' + stShort(snm) + '」' + sextra;
@@ -11210,6 +11770,30 @@
       }
       note = '走不脱';
     } else if (sub === 'observe') { c.observed = true; note = combatLine('observe') + '（看破了破绽）'; }
+    else if (sub === 'favor') {
+      /* v11 P1-3：出手助战。不新增战斗框架——按「一次普通招式级别的外援」结算：
+         伤害按你的战力折算（不按对方血量百分比，省得越境助战变成万能钥匙），
+         且不消耗灵力、不吃杀招链（它不是你的招）。用掉即销账，一场一次。 */
+      const h = favorHook();
+      if (!h) { toast('此刻无人可援'); render(); return; }
+      c.favorUsed = true;
+      const hookWeight = Math.max(1, h.weight || 2);
+      const fPow = Math.max(computePower() * 0.55, h.power || 0);
+      const fRatio = clamp(Math.sqrt(fPow / Math.max(1, c.foe.power)), 0.2, 2.0);
+      const _fg2 = consumeCombatEffect('foe', 'foeGuard', c);
+      let fdmg = Math.round(c.foe.hpMax * Math.max(0.08, 0.15 * fRatio) * hookWeight * 0.6 * (1 - _fg2));
+      fdmg = Math.max(1, fdmg);
+      c.foe.hp = Math.max(0, c.foe.hp - fdmg);
+      /* 销账：这条人情用掉了。情分不清零——它只是不能再拿来打一次。 */
+      h.done = true;
+      h.usedAs = '助战';
+      S.favorPending = null;
+      const n = (S.npcs || {})[h.to];
+      if (n) n.fav = clamp((n.fav || 0) + 4, -100, 120);
+      note = h.to + '来了，一击即退：造成 ' + fdmg;
+      logLine(h.to + '如约而至，替你挡了半式、递了一手。此情已还。', 'combo');
+      if (c.foe.hp <= 0) { settleCombatWin(c); return; }
+    }
     else if (sub === 'pill') {
       /* v10.7 阶段三：丹药每场最多 2 次（pillCount），同种不可连续两回合。
          usedPill 布尔保留供旧成就逻辑。新丹战术效果由 applyCombatEffect 兑现。 */
@@ -11281,7 +11865,20 @@
       c.foe.hp = Math.max(0, c.foe.hp - dmg);
       note = (note ? note + '；' : '') + '造成 ' + dmg;
     }
-    if (note) logLine(note, '');
+    if (note) logLine(note, c.comboNote ? 'combo' : '');
+    /* v11 P0-1：杀招链记录。出手后把这一招记为「上一招」，供下一手判链。
+       触发杀招后 prev 不动——杀招吃的是「上一手」，本手是 cur，链头保持，
+       下一手若又是某条杀招的 cur（如镇压八荒后的直取）仍可接。
+       普攻/符箓/服药等动作会断链：链子必须是两招相连。 */
+    if (['attack', 'skill', 'shentong', 'cast', 'pill', 'defend', 'rest', 'tal', 'quanbing', 'ext'].indexOf(sub) >= 0) {
+      if (sub === 'skill') {
+        if (_curSkillName && !c.comboNote) c.prevSkillName = _curSkillName;
+        c.prevSkillRound = c.round;
+      } else if (sub !== 'shentong') {
+        c.prevSkillName = null;
+      }
+      if (c.defending) c.lastGuardRound = c.round;
+    }
     if (c.foe.hp <= 0) { settleCombatWin(c); return; }
     // 修卡死：foeTurn 返回 false 的两条出口（战死/昏迷）也必须刷新界面
     if (!foeTurn()) { render(); return; }
@@ -12518,6 +13115,8 @@
 
   /* ---------- 道书：同一部书，不同境界读出不同东西 ---------- */
   function bookReadCount(id) { return (S.bookRead || {})[id] || 0; }
+  /* v11 P1-1：重读计数。读尽之后每重读一层记一次，与初读分开。 */
+  function bookRereadCount(id) { return (S.bookReread || {})[id] || 0; }
   function bookLayerOk(layer) {
     const nd = layer.need || {};
     /* v10.6：「悟性够 或 道心够」这种门槛，旧 need 表达不了——它只能全要。
@@ -12550,11 +13149,39 @@
         const bk = (D.DAOSHU || []).find(function (x) { return x.id === id; });
         if (!bk) return;
         const rc = bookReadCount(id);
-        b += optRow('读', bk.name, { name: '第 ' + Math.min(rc + 1, bk.layers.length) + ' 读', cls: 'chance' },
-          rc >= bk.layers.length ? '已读尽' : (bk.layers[rc] ? bk.layers[rc].needText : ''),
-          rc >= bk.layers.length, 'do;readbook:' + id);
+        const rr = bookRereadCount(id);
+        if (rc < bk.layers.length) {
+          b += optRow('读', bk.name, { name: '第 ' + Math.min(rc + 1, bk.layers.length) + ' 读', cls: 'chance' },
+            rc >= bk.layers.length ? '已读尽' : (bk.layers[rc] ? bk.layers[rc].needText : ''),
+            rc >= bk.layers.length, 'do;readbook:' + id);
+        } else {
+          /* v11 P1-1：读尽之后不是结束。重读读出的是前人的注，
+             同一部书，第二遍的意思和第一遍不一样。 */
+          const hasRe = (bk.reread || []).length > 0 && rr < bk.reread.length;
+          b += optRow('读', bk.name, { name: hasRe ? '重读' : '已读尽', cls: hasRe ? 'chance' : 'peace' },
+            hasRe ? '第 ' + (rr + 1) + ' 重读 · ' + bk.reread[rr].needText : '再读亦无新意',
+            !hasRe, 'do;readbook:' + id);
+        }
       });
       b += '</ul>';
+      /* v11 P1-1：以注易注。注疏是重读换来的前人批注，
+         拿自己的注，换别人书里读出来的东西。 */
+      const notes = (S.bagMat || {}).zhuShu || 0;
+      const swapTargets = owned.filter(function (id) {
+        const bk = (D.DAOSHU || []).find(function (x) { return x.id === id; });
+        return bk && (bk.reread || []).length > 0 && bookRereadCount(id) < bk.reread.length;
+      });
+      if (notes > 0 && swapTargets.length) {
+        b += divider() + '<div class="small muted">注疏 ' + notes + ' 份。可易他人之注：</div><ul class="opts">';
+        swapTargets.forEach(function (id) {
+          const bk = (D.DAOSHU || []).find(function (x) { return x.id === id; });
+          b += optRow('易', bk.name, { name: '以注易注', cls: 'chance' },
+            '耗 1 注疏，直读第 ' + (bookRereadCount(id) + 1) + ' 重读', false, 'do;bookswap:' + id);
+        });
+        b += '</ul>';
+      } else if (notes > 0) {
+        b += divider() + '<div class="small muted">注疏 ' + notes + ' 份。暂无可易之书——架上的书都已读尽重读，或尚未读尽。</div>';
+      }
     } else b += '<div class="small muted">还没得到任何道书。坊市有卖的，奇遇里也捡得到。</div>';
     /* 道书按道途分架：邪注本讲的是香火与神位，摆在仙道修士的坊市里不合情理。 */
     const available = (D.DAOSHU || []).filter(function (bk) {
@@ -12592,18 +13219,30 @@
     const bk = (D.DAOSHU || []).find(function (x) { return x.id === id; });
     if (!bk) return;
     const rc = bookReadCount(id);
-    if (rc >= bk.layers.length) { toast('已经读尽了'); return; }
-    const layer = bk.layers[rc];
-    S.bookRead = S.bookRead || {};
-    if (!bookLayerOk(layer)) {
-      // 读不出这一层：不消耗次数，只是读不明白
-      let b = '<div class="npcline">你把这一页翻来覆去看了几遍，什么也没看出来。</div>';
-      b += '<div class="small muted" style="margin-top:8px">需要：' + esc(layer.needText) + '</div>';
-      b += '<div style="margin-top:10px"><button class="btn ghost" data-act="modal:close">合上书</button></div>';
-      openModal('读不出 · ' + bk.name, b);
-      return;
+    /* v11 P1-1：读尽之后不是结束，进入重读。
+       重读读出的是前人的注——同一页文字，第二遍的意思不一样。 */
+    const reread = rc >= bk.layers.length;
+    let layer, rr = 0;
+    if (reread) {
+      if (!(bk.reread || []).length) { toast('已经读尽了'); return; }
+      rr = bookRereadCount(id);
+      if (rr >= bk.reread.length) { toast('重读已尽，再读亦无新意'); return; }
+      layer = bk.reread[rr];
+    } else {
+      if (rc >= bk.layers.length) { toast('已经读尽了'); return; }
+      layer = bk.layers[rc];
+      /* 读不出这一层：不消耗次数，只是读不明白 */
+      if (!bookLayerOk(layer)) {
+        let b = '<div class="npcline">你把这一页翻来覆去看了几遍，什么也没看出来。</div>';
+        b += '<div class="small muted" style="margin-top:8px">需要：' + esc(layer.needText) + '</div>';
+        b += '<div style="margin-top:10px"><button class="btn ghost" data-act="modal:close">合上书</button></div>';
+        openModal('读不出 · ' + bk.name, b);
+        return;
+      }
     }
-    S.bookRead[id] = rc + 1;
+    /* 初读记 bookRead，重读记 bookReread，两条账分开 */
+    if (reread) { S.bookReread = S.bookReread || {}; S.bookReread[id] = rr + 1; }
+    else { S.bookRead = S.bookRead || {}; S.bookRead[id] = rc + 1; }
     /* 读一层道书占一旬。旧版读书不花时间，于是一本道书可以在同一个月里
        从头读到尾——「参悟」这件事就没有重量了。 */
     advanceXun(1);
@@ -12629,24 +13268,69 @@
       if (S.wuXinBuff > 0) { _bookXp += S.wuXinBuff; logLine('悟心丹药力发作，悟道额外 +' + S.wuXinBuff + '。', 'good'); S.wuXinBuff = 0; }
       S.insightXp = (S.insightXp || 0) + _bookXp;
     }
+    /* v11 P1-1：重读额外得一份注疏。注是前人批在页边的东西，
+       可卖（坊市），也可在道书面板「以注易注」换别家书的重读。 */
+    let noteLine = '';
+    if (reread) {
+      addMat('zhuShu', 1);
+      noteLine = '<div class="ds-gain">得注疏一份（可售，可易他人之注）</div>';
+    }
     /* v10.6：有些真意不是数值，是一次改判或一条伏笔。
        写在 fx 里，读的时候一并兑现——gain 那句话才有下文。 */
     const fx = layer.fx || {};
     if (fx.breakBonus) S.breakBonus = (S.breakBonus || 0) + fx.breakBonus;
     if (fx.hook) pushHook(fx.hook);
-    logLine('读 ' + bk.name + ' 第 ' + (rc + 1) + ' 层：' + gain, 'good');
+    logLine('读 ' + bk.name + (reread ? ' 第 ' + (rr + 1) + ' 重读：' : ' 第 ' + (rc + 1) + ' 层：') + gain, 'good');
     /* v9.0 M4：读到第二层起，书里可能夹着一条上古遗迹的方位。 */
     const _XBK = G.WXCS3_EXT;
     if (_XBK && _XBK.onBookRead) _XBK.onBookRead(bk, rc);
     let b = '<div class="daoshu">';
-    b += '<div class="ds-head">' + esc(bk.name) + '　<span class="muted small">第 ' + (rc + 1) + ' 读</span></div>';
+    b += '<div class="ds-head">' + esc(bk.name) + '　<span class="muted small">' +
+      (reread ? '第 ' + (rr + 1) + ' 重读' : '第 ' + (rc + 1) + ' 读') + '</span></div>';
     b += '<div class="ds-text">' + esc(layer.text).replace(/\n/g, '<br>') + '</div>';
     b += '<div class="ds-gain">' + esc(gain) + '</div>';
+    if (noteLine) b += noteLine;
     if (fx.breakBonus) b += '<div class="ds-gain">下次破境 +' + Math.round(fx.breakBonus * 100) + '%</div>';
     if (fx.hook) b += '<div class="ds-gain">此事未了（记入人情）</div>';
     b += '</div>';
-    const nextLayer = bk.layers[rc + 1];
+    const nextLayer = reread
+      ? (bk.reread[rr + 1] || null)
+      : bk.layers[rc + 1];
     if (nextLayer) b += '<div class="small muted" style="margin-top:8px">再读下去需要：' + esc(nextLayer.needText) + '</div>';
+    b += '<div style="margin-top:10px"><button class="btn" data-act="modal:close">合上书</button></div>';
+    openModal('道书 · ' + bk.name, b);
+    render();
+  };
+
+  /* v11 P1-1：以注易注。花一份注疏，直读一部已读尽之书的下一层重读。
+     易注是交易不是参悟——你买的是别人读出来的东西，不占旬
+     （与分档表「买卖不占旬」同一口径）。 */
+  ACT.do_bookswap = (id) => {
+    const bk = (D.DAOSHU || []).find(function (x) { return x.id === id; });
+    if (!bk) return;
+    if ((S.bagMat || {}).zhuShu < 1) { toast('注疏不足'); return; }
+    const rr = bookRereadCount(id);
+    if (!(bk.reread || []).length) { toast('此书无注可读'); return; }
+    if (rr >= bk.reread.length) { toast('此书重读已尽'); return; }
+    if (bookReadCount(id) < bk.layers.length) { toast('此书尚未读尽，何来重读'); return; }
+    S.bagMat.zhuShu -= 1;
+    S.bookReread = S.bookReread || {};
+    S.bookReread[id] = rr + 1;
+    const layer = bk.reread[rr];
+    const gain = layer.gain || '';
+    const heartGain = gain.match(/道心\s*\+\s*(\d+)/);
+    if (heartGain) S.stats.heart = clamp(S.stats.heart + parseInt(heartGain[1], 10), 1, 20);
+    const insGain = gain.match(/悟性\s*\+\s*(\d+)/);
+    if (insGain) S.stats.insight = clamp(S.stats.insight + parseInt(insGain[1], 10), 1, 20);
+    logLine('以注易注：借《' + bk.name + '》第 ' + (rr + 1) + ' 重读，' + gain, 'good');
+    let b = '<div class="daoshu">';
+    b += '<div class="ds-head">' + esc(bk.name) + '　<span class="muted small">第 ' + (rr + 1) + ' 重读（以注易注）</span></div>';
+    b += '<div class="ds-text">' + esc(layer.text).replace(/\n/g, '<br>') + '</div>';
+    b += '<div class="ds-gain">' + esc(gain) + '</div>';
+    b += '<div class="ds-gain">耗注疏 1 份</div>';
+    b += '</div>';
+    const nextLayer = bk.reread[rr + 1] || null;
+    if (nextLayer) b += '<div class="small muted" style="margin-top:8px">再易一次可读：' + esc(nextLayer.needText) + '</div>';
     b += '<div style="margin-top:10px"><button class="btn" data-act="modal:close">合上书</button></div>';
     openModal('道书 · ' + bk.name, b);
     render();
@@ -13872,7 +14556,7 @@
         '　<span class="muted">' + x.y + ' 年</span></div>';
     });
     if (given.length) {
-      b += '<div style="margin-top:8px"><button class="btn ghost" data-act="act:openGiven">去讨一次</button></div>';
+      b += '<div style="margin-top:8px"><button class="btn ghost" data-act="act:openGiven">讨债 · 求人</button></div>';
     }
     const db = hookDebuffIds();
     if (db.length) {
@@ -13885,17 +14569,102 @@
     openModal('人情账', b);
   };
 
-  /* 讨债：债的效力取决于你现在打不打得过他 */
+  /* 讨债 / 求人：债的效力取决于你现在打不打得过他 */
+  /* v11 P1-3：人情只进不出，是这一栏最大的缺口。
+     旧版 12 条钩子只有「还」，玩家握着几个人情什么也做不了——
+     恩义在账上，不在事上。现在一条人情可以拆成三种用法，各有各的代价：
+       借灵石：立刻到手，但情分减半（还不上则反目）
+       代为打听：把一处未知遗迹/线索指给你（情分照扣，但拿到的是消息）
+       出手助战：战斗中一次支援（仅一次，用完即销账）
+     三种用法共用同一条账：用完 done=true，不还就不会再有第二次。 */
+  const FAVOR_USE = {
+    borrow: { name: '借灵石', txt: '开口借一笔' },
+    ask: { name: '代为打听', txt: '托他打听一件事' },
+    fight: { name: '出手助战', txt: '请他助一臂之力' }
+  };
+  /* 一次人情值多少灵石：按「情分 × 120」算，分量重的恩情借得多。
+     不按境界滚雪球——人情是情分，不是钱庄。 */
+  function favorStones(x) { return Math.round(120 * (x.weight || 2)); }
+
   ACT.openGiven = () => {
     const given = (S.hooksGiven || []).filter(function (x) { return !x.done; });
     if (!given.length) { toast('没有人欠你'); return; }
-    let b = '<div class="small">开一次口，可能还回来，也可能连这份情一起没了。</div><ul class="opts">';
+    let b = '<div class="small">别人欠你的，不只是「讨回来」这一种用法。开一次口，可能还回来，也可能连这份情一起没了。</div><ul class="opts">';
     given.forEach(function (x, i) {
-      b += optRow('ABC'[i] || '·', '找' + x.to + '要一次', { name: '机缘', cls: 'chance' },
-        x.what + '（情分 ' + x.weight + '）', false, 'do;claim:' + i);
+      b += '<li class="opt"><div class="opt-h"><span class="k">' + ('ABCD'[i] || '·') + '</span>' +
+        '<span class="t">' + esc(x.to) + '</span>' +
+        '<span class="tag chance">情分 ' + (x.weight || 2) + '</span></div>' +
+        '<div class="opt-d">' + esc(x.what) + '　<span class="muted">' + x.y + ' 年</span></div>' +
+        '<div class="gwbuts">' +
+        '<button class="optbtn" data-act="do;claim:' + i + '">讨回来<span class="muted"> · 灵石 ' + favorStones(x) + '</span></button>' +
+        '<button class="optbtn" data-act="do;favor:borrow:' + i + '">借灵石<span class="muted"> · ' + favorStones(x) + '</span></button>' +
+        '<button class="optbtn" data-act="do;favor:ask:' + i + '">代为打听<span class="muted"> · 一条线索</span></button>' +
+        '<button class="optbtn" data-act="do;favor:fight:' + i + '">出手助战<span class="muted"> · 仅战斗中</span></button>' +
+        '</div></li>';
     });
-    b += '</ul><div class="hint">对方境界若已远超你，他可以不还——而且你不能怎样。</div>';
-    openModal('讨债', b);
+    b += '</ul><div class="hint">对方境界若已远超你，他可以不还——而且你不能怎样。借了不还的人情会反目。</div>';
+    openModal('人情 · 求人', b);
+  };
+
+  /* 求人三式。共同前提：这条账还没销、情分没被耗干。
+     「助战」不在这里结算——它只是把这条人情标成「待用」，
+     真正出手在战斗里（do;cbt:favor），因为支援必须在场上才有意义。 */
+  ACT.do_favor = (kind, i) => {
+    const given = (S.hooksGiven || []).filter(function (x) { return !x.done; });
+    const x = given[parseInt(i, 10)];
+    if (!x) { closeModal(); render(); return; }
+    const n = (S.npcs || {})[x.to];
+    const fav = n ? n.fav : 30;
+    /* 情分不足或对方远超你：开口就是自取其辱 */
+    if ((x.power || 0) > computePower() * 2.2 && kind !== 'ask') {
+      x.weight = Math.max(0, (x.weight || 2) - 1);
+      if (!x.weight) x.done = true;
+      closeModal();
+      logLine(x.to + '笑了笑：「那点小事，你还记得。」——他没答应，你也不能怎样。', 'danger');
+      render();
+      return;
+    }
+    if (kind === 'borrow') {
+      /* 借：立刻到手，情分减半。还不上（这里以「情分耗尽」表达）则反目。 */
+      const amt = favorStones(x);
+      S.stones += amt;
+      ledgerAdd('in', '人情借款', amt);
+      x.weight = Math.max(0, (x.weight || 2) - 1);
+      if (n) n.fav = clamp(n.fav - 6, -100, 120);
+      if (!x.weight) {
+        x.done = true;
+        if (n) n.fav = Math.max(-100, n.fav - 20);
+        closeModal();
+        logLine(x.to + '把钱借了你，说：「这情，就算用完了。」——你们两清了，也生分了。灵石 +' + amt + '。', 'danger');
+      } else {
+        closeModal();
+        logLine(x.to + '借了你 ' + amt + ' 灵石：「不急。」情分只剩 ' + x.weight + ' 分了。', 'good');
+      }
+      render();
+      return;
+    }
+    if (kind === 'ask') {
+      /* 打听：把一条未知的线索指给你。遗迹都探过则折成消息钱，不吞。 */
+      const _E = G.WXCS3_EXT;
+      const site = (_E && _E.revealRuin) ? _E.revealRuin() : null;
+      x.weight = Math.max(0, (x.weight || 2) - 1);
+      if (!x.weight) x.done = true;
+      closeModal();
+      if (site) logLine(x.to + '压低声音，说了一处所在：「' + site.name + '。别说是我说的。」', 'good');
+      else { S.stones += 200; ledgerAdd('in', '人情消息', 200); logLine(x.to + '想了很久，说：「该知道的你都知道了。」折了 200 灵石给你。', ''); }
+      render();
+      return;
+    }
+    if (kind === 'fight') {
+      /* 助战：在战斗中才成立。挂成待用，进战斗时消耗。 */
+      if (S.combat) { toast('已经打起来了——直接在场边用「求援」'); return; }
+      S.favorPending = { to: x.to, weight: x.weight || 2 };
+      closeModal();
+      logLine('你托人带了句话给' + x.to + '：「若我这边动起手来，还请来一趟。」', '');
+      render();
+      return;
+    }
+    toast('不识此用法'); 
   };
 
   ACT.do_claim = (i) => {
@@ -13911,8 +14680,12 @@
       cls = 'danger';
       x.done = true;
     } else if (rnd100() <= 30 + fav / 2) {
-      S.stones += 200; S.fame += 6;
-      msg = x.to + '还了：灵石 200，声望 +6。';
+      /* v11 P1-3：讨回来的数额与人情分量挂钩，不再固定 200——
+         重的恩情与轻的恩情还同一个数，情分就成了摆设。 */
+      const amt = favorStones(x);
+      S.stones += amt; S.fame += 6;
+      ledgerAdd('in', '人情归还', amt);
+      msg = x.to + '还了：灵石 ' + amt + '，声望 +6。';
       cls = 'good';
       x.done = true;
       if (n) n.fav = clamp(n.fav + 5, 0, 120);
@@ -14124,6 +14897,13 @@
          无击杀路径」），但击杀链其实早在 v8.0 就通了——玩法在，计数器没接，
          于是检查器永远报绿。现在接上，白名单那一条同时删掉。 */
       bump('oldGrudge');
+    }
+    /* v11 P0-4：果位应战赢下 → 稳固 +15（方案「应战：被挑战时赢下 +15」）。
+       guowei 是复仇框架的第三类 src，与 sect/person 互斥，单独判。 */
+    if (c.isVengeance === 'guowei' && guoweiActive()) {
+      guoweiGain(15);
+      S.fame += 8;
+      logLine('你挡住了夺位的人。这一位还得由你来坐——消息传开，稳固 +15。', 'good');
     }
     const t = tly();
     t.warWin = (t.warWin || 0) + 1;
@@ -14340,6 +15120,20 @@
        验收要验「同 seed 下批量 N 次 == 手动 N 次」，只能在进程内跑两条路径比对；
        还要验「余额不足自动降档」，需要直接读这一击会买几份。 */
     runBatch, batchN, shopQty, shopBuyQty, craftMaxOf, marketTrendOf,
+    /* v11 P1-2：地点内容探针。验收要验「本地奇遇在池里双倍权重」——
+       池子在 tryEncounter 内部，不给出口就只能靠统计整局，噪声盖过信号。 */
+    tryEncounter, encPoolFor: function (place) {
+      const ids = (D.ENCOUNTERS || []).filter(function (e) {
+        if (e.kind === 'xian' && !(isXian() || S.cultivation === 'both')) return false;
+        if (e.kind === 'shen' && !(isShen() || S.cultivation === 'both')) return false;
+        return whenOk(e);
+      }).map(function (e) { return e.id; });
+      const here = place || S.place;
+      const local = (D.ENCOUNTERS || []).filter(function (e) {
+        return e.when && e.when.place === here && ids.indexOf(e.id) >= 0;
+      }).map(function (e) { return e.id; });
+      return ids.concat(local);
+    },
     logCats: function () { return LOG_CATS; },
     mainTabNow: function () { return _mainTab; },
     chronCatNow: function () { return _chronCat; },
@@ -14353,6 +15147,14 @@
     applyCombatEffect, tickCombatEffects, consumeCombatEffect, renderCombatEffects,
     applySkillEffects, detonateBurn, pickFoeIntent, foeIntentText, foeStyleOf,
     combatLoot, migrateTalismans, combatLose, startCombat,
+    /* v11 P0-3/P0-2：神通变体与条件解释器探针。
+       变体要验「43 道统键全有变体」「倍率真并进 spec」，
+       条件要验「whenOk 真的在筛奇遇」——没有出口就又是验证盲区。 */
+    shenTongSpec, shenTongKind, shenTongVariant, ST_VARIANTS, whenOk,
+    comboCheck, comboForSkill, COMBOS: (typeof COMBOS !== 'undefined' ? COMBOS : (D.COMBOS || [])),
+    /* v11 P0-4：果位经营探针。稳固度增减/被夺掉级/位格压制/月结衰减
+       都要能在进程内直接验，不能只靠「玩到金丹再等几个月」。 */
+    guoweiActive, guoweiGain, loseGuowei, guoweiTick, guoweiStanceRank,
     /* v10.7 阶段二：破境 FIFO 与本命迁移探针。
        测试要验「每一步都能续接」「迁移两次结果一致」，没有出口就只能靠点 UI。 */
     afterBreakDone, afterBreakStepDone, migrateBenming,
