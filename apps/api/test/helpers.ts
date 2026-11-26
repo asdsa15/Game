@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
-import { makeDb, type Connectable, type Queryable } from '../src/db.ts';
+import { makeDb } from '../src/db.ts';
+import { pgliteAdapter } from '../src/db-pglite.ts';
 import { makeTokens } from '../src/lib/tokens.ts';
 import { buildApp } from '../src/app.ts';
 import type { Config } from '../src/env.ts';
@@ -13,7 +14,9 @@ export const testConfig: Config = {
   nodeEnv: 'test',
   host: '127.0.0.1',
   port: 0,
-  databaseUrl: 'pglite://memory',
+  dbDriver: 'pglite',
+  pgliteDir: 'memory',
+  databaseUrl: '',
   jwtSecret: TEST_SECRET,
   accessTtl: 900,
   refreshTtl: 2_592_000,
@@ -24,24 +27,9 @@ export const testConfig: Config = {
 };
 
 /**
- * 测试库用 PGlite（真 Postgres 编译成 WASM）。
- * 不用 pg-mem：jsonb、表达式唯一索引、`for update`、interval 运算它都只支持一部分，
- * 用不完整的模拟库测出来的"通过"没有意义。PGlite 是同一个 PG 引擎，语义一致，且不需要 Docker。
+ * 测试库与运行库是同一个实现（src/db-pglite.ts 的适配器），
+ * 所以测出来的行为就是玩家实际跑出来的行为——不需要 Docker，也不需要装 Postgres。
  */
-export function pgliteAdapter(pg: PGlite): Connectable {
-  const q: Queryable & { release(): void } = {
-    async query(sql: string, params: unknown[] = []) {
-      const r = await pg.query(sql, params as unknown[]);
-      return { rows: r.rows as unknown[], rowCount: r.affectedRows ?? r.rows.length };
-    },
-    release() { /* 单连接，无需释放 */ },
-  };
-  return {
-    query: (sql, params) => q.query(sql, params),
-    connect: async () => q,
-  };
-}
-
 export interface TestCtx {
   app: Awaited<ReturnType<typeof buildApp>>;
   db: ReturnType<typeof makeDb>;

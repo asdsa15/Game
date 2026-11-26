@@ -1,0 +1,25 @@
+{
+  "name": "wendao",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "问道长生 · 本地全栈项目（前端 Vue + 服务端 Fastify + 本地 Postgres/PGlite）",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:api": "npm -w @wendao/api run dev",
+    "dev:web": "npm -w @wendao/web run dev",
+    "build": "npm -w @wendao/web run build",
+    "test": "npm -w @wendao/api test",
+    "typecheck": "npm -w @wendao/api run typecheck && npm -w @wendao/web run typecheck",
+    "db:init": "npm -w @wendao/api run db:init",
+    "db:seed": "npm -w @wendao/api run db:seed",
+    "api": "npm -w @wendao/api run start"
+  }
+}

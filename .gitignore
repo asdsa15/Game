@@ -8,6 +8,7 @@ _backup/
 
 # ===== 可重建产物 =====
 mobile/dist/
+apps/web/dist/
 desktop/app/
 desktop/release*/
 desktop/node_modules/

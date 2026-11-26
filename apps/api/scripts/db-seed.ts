@@ -3,9 +3,8 @@
  * 用途：前端联调、榜单页面不至于永远是空的。
  * 可重复执行：账号已存在就跳过创建，不会覆盖密码。
  */
-import { Pool } from 'pg';
 import { loadConfig } from '../src/env.ts';
-import { makeDb, type Connectable } from '../src/db.ts';
+import { openDatabase } from '../src/open-db.ts';
 import { hashPassword } from '../src/lib/password.ts';
 import { users } from '../src/repo/users.ts';
 import { saves } from '../src/repo/saves.ts';
@@ -16,8 +15,9 @@ const EMAIL = 'demo@wendao.local';
 const PASSWORD = 'demo12345';
 
 const config = loadConfig();
-const pool = new Pool({ connectionString: config.databaseUrl });
-const db = makeDb(pool as unknown as Connectable);
+const opened = await openDatabase(config);
+const db = opened.db;
+console.log(`库：${opened.driver} @ ${opened.location}`);
 
 try {
   let user = await users.byEmail(db, EMAIL);
@@ -74,5 +74,5 @@ try {
   console.log(`  curl -s -X POST localhost:${config.port}/auth/login -H 'content-type: application/json' \\`);
   console.log(`    -d '{"email":"${EMAIL}","password":"${PASSWORD}"}'`);
 } finally {
-  await pool.end();
+  await opened.close();
 }
