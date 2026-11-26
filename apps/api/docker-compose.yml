@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: wendao-db
+    environment:
+      POSTGRES_USER: wendao
+      POSTGRES_PASSWORD: wendao
+      POSTGRES_DB: wendao
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # 首次启动自动建表，省掉手动 npm run db:init
+      - ./db/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wendao -d wendao"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    container_name: wendao-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 8787
+      DATABASE_URL: postgres://wendao:wendao@db:5432/wendao
+      # 生产请覆盖：docker compose run -e JWT_SECRET=... 
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-0123456789abcdef}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    ports:
+      - "8787:8787"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8787/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+volumes:
+  pgdata:

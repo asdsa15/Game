@@ -1,0 +1,36 @@
+{
+  "name": "@wendao/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "问道长生 · 服务端：账号 / 云存档 / 结局榜 / 内容版本",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "node --watch --env-file=.env src/server.ts",
+    "start": "node --env-file=.env src/server.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "db:init": "node --env-file=.env scripts/db-init.ts",
+    "db:seed": "node --env-file=.env scripts/db-seed.ts"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^10.0.1",
+    "@fastify/helmet": "^13.0.1",
+    "@fastify/rate-limit": "^10.2.1",
+    "fastify": "^5.2.0",
+    "jose": "^5.9.6",
+    "pg": "^8.13.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.6.0",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

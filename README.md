@@ -88,6 +88,8 @@
 │   ├── check_ach.js         成就可达性（103 可达 / 5 归档 / 0 待修）
 │   └── check_content.js     奇遇与地点内容校验（75 条 / 五洲各 3 条）
 │
+├── apps/api/                ← 服务端（P4a 已落地）：账号 / 云存档 / 结局榜，Fastify+PG，53 项测试
+│
 ├── _archive/                ← 归档：只增不删
 ├── _backup/                 ← 源码备份
 │
@@ -182,7 +184,7 @@
 
 | 文件 | 内容 | 状态 |
 |---|---|---|
-| `全栈重构方案_20261126.md` | **全栈重构方案**：monorepo 四包、命令+事件流内核、Fastify/PG/Redis 服务端、Vue 前端、内容后台、黄金样本迁移、七阶段十一批次 | 📋 方案稿（未实施） |
+| `全栈重构方案_20261126.md` | **全栈重构方案**：monorepo 四包、命令+事件流内核、Fastify/PG 服务端、Vue 前端、内容后台、黄金样本迁移、七阶段十一批次。**P4a（数据库/账号/云存档/榜单）已落地 → `apps/api/`** | 📋 方案稿（P4a 已落地） |
 | `架构演进总纲_20261126.md` | 架构现状与分层判据、四种扩展模式、当前临界点（**§1.1/§1.2 的"不重写/不拆分"已被上面的全栈重构方案取代**） | ⚠️ 部分被取代 |
 
 > 后端化方案 / 评审 / 源码拆分评估 3 篇已并入总纲，原文在 `docs/99_归档/架构方案_已合并/`。
@@ -479,6 +481,14 @@ python tools/run_all.py
 
 # 手机本地预览
 cd mobile && python -m http.server 8000 --directory dist
+
+# 服务端（apps/api，P4a 已落地）：需要 PostgreSQL
+cd apps/api && cp .env.example .env && npm install
+npm test          # 53 项：账号 / 云存档 / 结局 / 榜单 / 纯函数（测试库是 PGlite，不用 Docker）
+npm run typecheck
+npm run db:init && npm run db:seed && npm run dev
+# 或一把起库+API：
+docker compose up -d --build
 ```
 
 > 打包 APK 时用 `D:\wendao-apk`（纯英文路径副本，`sync_apk.py` 会自动同步过去）。
