@@ -16,7 +16,12 @@ const children = [];
 let closing = false;
 
 for (const job of jobs) {
-  const child = spawn(npm, job.args, { stdio: ['ignore', 'pipe', 'pipe'], shell: false });
+  /* Windows 上 npm 是 .cmd，直接 spawn 会 ENOENT/ErrnoException，必须过 shell。
+     参数都是简单字符串（无空格无引号），过 shell 没有注入风险。 */
+  const child = spawn(npm, job.args, {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    shell: process.platform === 'win32',
+  });
   children.push(child);
 
   const pipe = (stream, isErr) => {
@@ -35,6 +40,11 @@ for (const job of jobs) {
   };
   pipe(child.stdout, false);
   pipe(child.stderr, true);
+
+  child.on('error', err => {
+    console.error(`${job.color}[${job.name}]${reset} 启动失败：${err.message}`);
+    shutdown(1);
+  });
 
   child.on('exit', code => {
     if (closing) return;
