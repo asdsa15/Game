@@ -9,10 +9,14 @@ _backup/
 # ===== 可重建产物 =====
 mobile/dist/
 apps/web/dist/
+packages/*/dist/
 desktop/app/
 desktop/release*/
 desktop/node_modules/
 node_modules/
+
+# ===== 本地数据库（PGlite 落盘目录）=====
+apps/api/data/
 
 # ===== 会话临时文件 =====
 .tmp/

@@ -1,0 +1,24 @@
+{
+  "name": "@wendao/sim",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "问道长生 · 无头模拟：整局快进、黄金对照、平衡回归（P1b 骨架，P2 扩成剧本）",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@wendao/core": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

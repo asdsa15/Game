@@ -1,0 +1,5418 @@
+{
+  "STATS": {
+    "t": "object",
+    "fields": {
+      "qualify": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "desc": {
+            "t": "string"
+          }
+        }
+      },
+      "insight": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "desc": {
+            "t": "string"
+          }
+        }
+      },
+      "sense": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "desc": {
+            "t": "string"
+          }
+        }
+      },
+      "speed": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "desc": {
+            "t": "string"
+          }
+        }
+      },
+      "heart": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "desc": {
+            "t": "string"
+          }
+        }
+      },
+      "fate": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "desc": {
+            "t": "string"
+          }
+        }
+      }
+    }
+  },
+  "CULTIVATION": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "desc": {
+          "t": "string"
+        },
+        "cost": {
+          "t": "string"
+        },
+        "default": {
+          "t": "boolean"
+        }
+      },
+      "optional": [
+        "default"
+      ]
+    }
+  },
+  "LOG_CATS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "TUTORIAL_STEPS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "text": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "ACH_TIERS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "color": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "ACHIEVEMENTS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "cat": {
+          "t": "string"
+        },
+        "tier": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "cond": {
+          "t": "string"
+        },
+        "poem": {
+          "t": "string"
+        },
+        "txt": {
+          "t": "string"
+        },
+        "test": {
+          "t": "any"
+        },
+        "hidden": {
+          "t": "boolean"
+        }
+      },
+      "optional": [
+        "hidden"
+      ]
+    }
+  },
+  "ACH_MEMORY": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "from": {
+          "t": "string"
+        },
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "eff": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "VERSES": {
+    "t": "object",
+    "fields": {
+      "breakXian": {
+        "t": "array",
+        "of": {
+          "t": "object",
+          "fields": {
+            "realm": {
+              "t": "integer"
+            },
+            "line": {
+              "t": "string"
+            }
+          }
+        }
+      },
+      "breakStage": {
+        "t": "array",
+        "of": {
+          "t": "object",
+          "fields": {
+            "realm": {
+              "t": "integer"
+            },
+            "line": {
+              "t": "string"
+            }
+          }
+        }
+      },
+      "fail": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "breakShen": {
+        "t": "array",
+        "of": {
+          "t": "object",
+          "fields": {
+            "pillar": {
+              "t": "integer"
+            },
+            "line": {
+              "t": "string"
+            }
+          }
+        }
+      },
+      "places": {
+        "t": "object",
+        "fields": {
+          "qingyue": {
+            "t": "string"
+          },
+          "nanyue": {
+            "t": "string"
+          },
+          "xisha": {
+            "t": "string"
+          },
+          "beiyuan": {
+            "t": "string"
+          },
+          "zhongzhou": {
+            "t": "string"
+          }
+        }
+      },
+      "ending": {
+        "t": "object",
+        "fields": {
+          "ascend": {
+            "t": "string"
+          },
+          "daotai": {
+            "t": "string"
+          },
+          "zhenjun": {
+            "t": "string"
+          },
+          "guowei": {
+            "t": "string"
+          },
+          "sit": {
+            "t": "string"
+          },
+          "daohua": {
+            "t": "string"
+          },
+          "fall": {
+            "t": "string"
+          },
+          "reinc": {
+            "t": "string"
+          },
+          "xiaoyao": {
+            "t": "string"
+          },
+          "xianzun": {
+            "t": "string"
+          },
+          "modao": {
+            "t": "string"
+          },
+          "shizun": {
+            "t": "string"
+          }
+        }
+      },
+      "gongfa": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "PATHS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "desc": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "GOALS": {
+    "t": "object",
+    "fields": {
+      "xian": {
+        "t": "array",
+        "of": {
+          "t": "object",
+          "fields": {
+            "id": {
+              "t": "string"
+            },
+            "name": {
+              "t": "string"
+            },
+            "hint": {
+              "t": "string"
+            },
+            "kind": {
+              "t": "string"
+            },
+            "n": {
+              "t": "integer"
+            },
+            "reward": {
+              "t": "object",
+              "fields": {
+                "stones": {
+                  "t": "integer"
+                },
+                "pill": {
+                  "t": "string"
+                }
+              },
+              "optional": [
+                "pill"
+              ]
+            }
+          }
+        }
+      },
+      "shen": {
+        "t": "array",
+        "of": {
+          "t": "object",
+          "fields": {
+            "id": {
+              "t": "string"
+            },
+            "name": {
+              "t": "string"
+            },
+            "hint": {
+              "t": "string"
+            },
+            "kind": {
+              "t": "string"
+            },
+            "n": {
+              "t": "integer"
+            },
+            "reward": {
+              "t": "object",
+              "fields": {
+                "stones": {
+                  "t": "integer"
+                },
+                "xianghuo": {
+                  "t": "integer"
+                }
+              },
+              "optional": [
+                "xianghuo"
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "ENDINGS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "kind": {
+          "t": "string"
+        },
+        "cond": {
+          "t": "string"
+        },
+        "text": {
+          "t": "string"
+        },
+        "after": {
+          "t": "string"
+        },
+        "verse": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "UNLOCK_XIAN": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "stage": {
+          "t": "integer"
+        },
+        "name": {
+          "t": "string"
+        },
+        "show": {
+          "t": "array",
+          "of": {
+            "t": "string"
+          }
+        },
+        "phrase": {
+          "t": "string"
+        },
+        "hide": {
+          "t": "array",
+          "of": {
+            "t": "string"
+          }
+        }
+      }
+    }
+  },
+  "UNLOCK_SHEN": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "stage": {
+          "t": "integer"
+        },
+        "name": {
+          "t": "string"
+        },
+        "show": {
+          "t": "array",
+          "of": {
+            "t": "string"
+          }
+        },
+        "phrase": {
+          "t": "string"
+        },
+        "hide": {
+          "t": "array",
+          "of": {
+            "t": "string"
+          }
+        }
+      }
+    }
+  },
+  "XIAN_REALMS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "idx": {
+          "t": "integer"
+        },
+        "name": {
+          "t": "string"
+        },
+        "ancient": {
+          "t": "string"
+        },
+        "stages": {
+          "t": "array",
+          "of": {
+            "t": "string"
+          }
+        },
+        "stageLabel": {
+          "t": "string"
+        },
+        "need": {
+          "t": "integer"
+        },
+        "base": {
+          "t": "integer"
+        },
+        "life": {
+          "t": "integer",
+          "nullable": true
+        },
+        "power": {
+          "t": "integer"
+        },
+        "key": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "XIANJI": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "name": {
+          "t": "string"
+        },
+        "cond": {
+          "t": "string"
+        },
+        "limit": {
+          "t": "integer"
+        },
+        "note": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "LINGQI": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "name": {
+          "t": "string"
+        },
+        "v": {
+          "t": "number"
+        }
+      }
+    }
+  },
+  "BREAK_BASE": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "from": {
+          "t": "integer"
+        },
+        "to": {
+          "t": "integer"
+        },
+        "self": {
+          "t": "integer"
+        },
+        "borrow": {
+          "t": "integer"
+        },
+        "seize": {
+          "t": "integer"
+        }
+      }
+    }
+  },
+  "QUENCH": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "name": {
+          "t": "string"
+        },
+        "stones": {
+          "t": "integer"
+        },
+        "herb": {
+          "t": "object",
+          "fields": {
+            "id": {
+              "t": "string"
+            },
+            "n": {
+              "t": "integer"
+            }
+          }
+        },
+        "hpMul": {
+          "t": "number"
+        },
+        "block": {
+          "t": "number"
+        }
+      }
+    }
+  },
+  "CAP_BASE": {
+    "t": "object",
+    "fields": {
+      "xian": {
+        "t": "object",
+        "fields": {
+          "hp": {
+            "t": "array",
+            "of": {
+              "t": "integer"
+            }
+          },
+          "mp": {
+            "t": "array",
+            "of": {
+              "t": "integer"
+            }
+          }
+        }
+      },
+      "shen": {
+        "t": "object",
+        "fields": {
+          "hp": {
+            "t": "array",
+            "of": {
+              "t": "integer"
+            }
+          },
+          "mp": {
+            "t": "array",
+            "of": {
+              "t": "integer"
+            }
+          }
+        }
+      }
+    }
+  },
+  "CAP_STAGE_STEP": {
+    "t": "number"
+  },
+  "GUOWEI": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "n": {
+          "t": "string"
+        },
+        "gz": {
+          "t": "string"
+        },
+        "img": {
+          "t": "string"
+        },
+        "rank": {
+          "t": "string"
+        },
+        "domain": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "GUOWEI_RANK": {
+    "t": "object",
+    "fields": {
+      "闰位": {
+        "t": "object",
+        "fields": {
+          "mul": {
+            "t": "number"
+          },
+          "power": {
+            "t": "integer"
+          },
+          "rate": {
+            "t": "integer"
+          },
+          "cost": {
+            "t": "string"
+          }
+        }
+      },
+      "余位": {
+        "t": "object",
+        "fields": {
+          "mul": {
+            "t": "integer"
+          },
+          "power": {
+            "t": "integer"
+          },
+          "rate": {
+            "t": "integer"
+          },
+          "cost": {
+            "t": "string"
+          }
+        }
+      },
+      "正统": {
+        "t": "object",
+        "fields": {
+          "mul": {
+            "t": "integer"
+          },
+          "power": {
+            "t": "integer"
+          },
+          "rate": {
+            "t": "integer"
+          },
+          "cost": {
+            "t": "string"
+          }
+        }
+      },
+      "至尊": {
+        "t": "object",
+        "fields": {
+          "mul": {
+            "t": "integer"
+          },
+          "power": {
+            "t": "integer"
+          },
+          "rate": {
+            "t": "integer"
+          },
+          "cost": {
+            "t": "string"
+          }
+        }
+      }
+    }
+  },
+  "ANCHOR_TYPES": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "xian": {
+          "t": "string"
+        },
+        "shen": {
+          "t": "string"
+        },
+        "solid": {
+          "t": "string"
+        },
+        "fixStones": {
+          "t": "integer"
+        },
+        "fixCost": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "ANCHOR_STATES": {
+    "t": "object",
+    "fields": {
+      "solid": {
+        "t": "object",
+        "fields": {
+          "v": {
+            "t": "integer"
+          },
+          "name": {
+            "t": "string"
+          }
+        }
+      },
+      "loose": {
+        "t": "object",
+        "fields": {
+          "v": {
+            "t": "number"
+          },
+          "name": {
+            "t": "string"
+          }
+        }
+      },
+      "broken": {
+        "t": "object",
+        "fields": {
+          "v": {
+            "t": "integer"
+          },
+          "name": {
+            "t": "string"
+          }
+        }
+      }
+    }
+  },
+  "ANCHOR_STATUS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "min": {
+          "t": "number"
+        },
+        "max": {
+          "t": "number"
+        },
+        "name": {
+          "t": "string"
+        },
+        "eff": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "DAOGONG_CAP": {
+    "t": "object",
+    "fields": {
+      "huang": {
+        "t": "object",
+        "fields": {
+          "cap": {
+            "t": "integer"
+          },
+          "to": {
+            "t": "string"
+          },
+          "why": {
+            "t": "string"
+          }
+        }
+      },
+      "xuan": {
+        "t": "object",
+        "fields": {
+          "cap": {
+            "t": "integer"
+          },
+          "to": {
+            "t": "string"
+          },
+          "why": {
+            "t": "string"
+          }
+        }
+      },
+      "di": {
+        "t": "object",
+        "fields": {
+          "cap": {
+            "t": "integer"
+          },
+          "to": {
+            "t": "string"
+          },
+          "why": {
+            "t": "string"
+          }
+        }
+      },
+      "tian": {
+        "t": "object",
+        "fields": {
+          "cap": {
+            "t": "integer"
+          },
+          "to": {
+            "t": "string"
+          },
+          "why": {
+            "t": "string"
+          }
+        }
+      },
+      "xian": {
+        "t": "object",
+        "fields": {
+          "cap": {
+            "t": "integer"
+          },
+          "to": {
+            "t": "string"
+          },
+          "why": {
+            "t": "string"
+          }
+        }
+      }
+    }
+  },
+  "SHENTONG_GRANT": {
+    "t": "object",
+    "fields": {
+      "xian": {
+        "t": "object",
+        "fields": {
+          "fromRealm": {
+            "t": "integer"
+          },
+          "perBreak": {
+            "t": "integer"
+          },
+          "perStage": {
+            "t": "integer"
+          },
+          "pool": {
+            "t": "string"
+          }
+        }
+      },
+      "shen": {
+        "t": "object",
+        "fields": {
+          "fromPillar": {
+            "t": "integer"
+          },
+          "perBreak": {
+            "t": "integer"
+          },
+          "perStage": {
+            "t": "integer"
+          },
+          "pool": {
+            "t": "string"
+          }
+        }
+      }
+    }
+  },
+  "STAT_TIER": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "key": {
+          "t": "string"
+        },
+        "min": {
+          "t": "integer"
+        },
+        "label": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "INSIGHT_LINES": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "stat": {
+          "t": "string"
+        },
+        "min": {
+          "t": "integer"
+        },
+        "text": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "RENCAI": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "name": {
+          "t": "string"
+        },
+        "cond": {
+          "t": "string"
+        },
+        "value": {
+          "t": "integer"
+        }
+      }
+    }
+  },
+  "ROOTS": {
+    "t": "object",
+    "fields": {
+      "heaven": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "load": {
+            "t": "integer"
+          },
+          "mul": {
+            "t": "integer"
+          },
+          "els": {
+            "t": "integer"
+          },
+          "desc": {
+            "t": "string"
+          }
+        }
+      },
+      "earth": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "load": {
+            "t": "number"
+          },
+          "mul": {
+            "t": "number"
+          },
+          "els": {
+            "t": "integer"
+          },
+          "desc": {
+            "t": "string"
+          }
+        }
+      },
+      "true_": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "load": {
+            "t": "number"
+          },
+          "mul": {
+            "t": "number"
+          },
+          "els": {
+            "t": "integer"
+          },
+          "desc": {
+            "t": "string"
+          }
+        }
+      },
+      "pseudo": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "load": {
+            "t": "integer"
+          },
+          "mul": {
+            "t": "integer"
+          },
+          "els": {
+            "t": "integer"
+          },
+          "desc": {
+            "t": "string"
+          }
+        }
+      },
+      "mutate": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "load": {
+            "t": "number"
+          },
+          "mul": {
+            "t": "number"
+          },
+          "els": {
+            "t": "integer"
+          },
+          "desc": {
+            "t": "string"
+          }
+        }
+      }
+    }
+  },
+  "ELEMENTS": {
+    "t": "object",
+    "fields": {
+      "metal": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "color": {
+            "t": "string"
+          },
+          "ke": {
+            "t": "string"
+          }
+        }
+      },
+      "wood": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "color": {
+            "t": "string"
+          },
+          "ke": {
+            "t": "string"
+          }
+        }
+      },
+      "water": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "color": {
+            "t": "string"
+          },
+          "ke": {
+            "t": "string"
+          }
+        }
+      },
+      "fire": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "color": {
+            "t": "string"
+          },
+          "ke": {
+            "t": "string"
+          }
+        }
+      },
+      "earth": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "color": {
+            "t": "string"
+          },
+          "ke": {
+            "t": "string"
+          }
+        }
+      }
+    }
+  },
+  "MUT_ELEMENTS": {
+    "t": "object",
+    "fields": {
+      "thunder": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "color": {
+            "t": "string"
+          }
+        }
+      },
+      "wind": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "color": {
+            "t": "string"
+          }
+        }
+      },
+      "ice": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "color": {
+            "t": "string"
+          }
+        }
+      },
+      "yin": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "color": {
+            "t": "string"
+          }
+        }
+      },
+      "yang": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "color": {
+            "t": "string"
+          }
+        }
+      }
+    }
+  },
+  "BODIES": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "eff": {
+          "t": "string"
+        },
+        "mul": {
+          "t": "number"
+        },
+        "pow": {
+          "t": "number"
+        },
+        "fire": {
+          "t": "number"
+        },
+        "ice": {
+          "t": "number"
+        },
+        "both": {
+          "t": "number"
+        },
+        "rare": {
+          "t": "boolean"
+        },
+        "keFloor": {
+          "t": "number"
+        },
+        "quenchMul": {
+          "t": "integer"
+        }
+      },
+      "optional": [
+        "pow",
+        "fire",
+        "ice",
+        "both",
+        "rare",
+        "keFloor",
+        "quenchMul"
+      ]
+    }
+  },
+  "TALENTS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "cost": {
+          "t": "integer"
+        },
+        "apply": {
+          "t": "object",
+          "fields": {
+            "qualify": {
+              "t": "integer"
+            },
+            "insight": {
+              "t": "integer"
+            },
+            "speed": {
+              "t": "integer"
+            },
+            "heart": {
+              "t": "integer"
+            },
+            "fate": {
+              "t": "integer"
+            },
+            "sense": {
+              "t": "integer"
+            },
+            "mpFlat": {
+              "t": "integer"
+            },
+            "hpFlat": {
+              "t": "integer"
+            },
+            "alchemy": {
+              "t": "integer"
+            },
+            "love": {
+              "t": "number"
+            }
+          },
+          "optional": [
+            "qualify",
+            "insight",
+            "speed",
+            "heart",
+            "fate",
+            "sense",
+            "mpFlat",
+            "hpFlat",
+            "alchemy",
+            "love"
+          ]
+        },
+        "desc": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "ORIGINS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "desc": {
+          "t": "string"
+        },
+        "apply": {
+          "t": "object",
+          "fields": {
+            "heart": {
+              "t": "integer"
+            },
+            "hpFlat": {
+              "t": "integer"
+            },
+            "stones": {
+              "t": "integer"
+            },
+            "fate": {
+              "t": "integer"
+            },
+            "fame": {
+              "t": "integer"
+            },
+            "insight": {
+              "t": "integer"
+            },
+            "scroll": {
+              "t": "boolean"
+            },
+            "speed": {
+              "t": "integer"
+            },
+            "qualify": {
+              "t": "integer"
+            },
+            "ritual": {
+              "t": "boolean"
+            },
+            "halfDemon": {
+              "t": "boolean"
+            }
+          },
+          "optional": [
+            "heart",
+            "hpFlat",
+            "stones",
+            "fate",
+            "fame",
+            "insight",
+            "scroll",
+            "speed",
+            "qualify",
+            "ritual",
+            "halfDemon"
+          ]
+        },
+        "rare": {
+          "t": "boolean"
+        }
+      },
+      "optional": [
+        "rare"
+      ]
+    }
+  },
+  "FAXIANG": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "zodiac": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "kw": {
+          "t": "string"
+        },
+        "opening": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "ZODIAC_CLASH": {
+    "t": "object",
+    "fields": {
+      "龙": {
+        "t": "string"
+      },
+      "狗": {
+        "t": "string"
+      },
+      "蛇": {
+        "t": "string"
+      },
+      "猪": {
+        "t": "string"
+      },
+      "马": {
+        "t": "string"
+      },
+      "鼠": {
+        "t": "string"
+      },
+      "羊": {
+        "t": "string"
+      },
+      "牛": {
+        "t": "string"
+      },
+      "猴": {
+        "t": "string"
+      },
+      "虎": {
+        "t": "string"
+      },
+      "鸡": {
+        "t": "string"
+      },
+      "兔": {
+        "t": "string"
+      }
+    }
+  },
+  "QI_TO_DAOTONG": {
+    "t": "object",
+    "fields": {
+      "metal": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "wood": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "water": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "fire": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "earth": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "GONGFA": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "tier": {
+          "t": "string"
+        },
+        "el": {
+          "t": "string",
+          "nullable": true
+        },
+        "role": {
+          "t": "string"
+        },
+        "eff": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "GONGFA_TIERS": {
+    "t": "object",
+    "fields": {
+      "huang": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "mul": {
+            "t": "integer"
+          },
+          "color": {
+            "t": "string"
+          }
+        }
+      },
+      "xuan": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "mul": {
+            "t": "number"
+          },
+          "color": {
+            "t": "string"
+          }
+        }
+      },
+      "di": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "mul": {
+            "t": "number"
+          },
+          "color": {
+            "t": "string"
+          }
+        }
+      },
+      "tian": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "mul": {
+            "t": "number"
+          },
+          "color": {
+            "t": "string"
+          }
+        }
+      },
+      "xian": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "mul": {
+            "t": "integer"
+          },
+          "color": {
+            "t": "string"
+          }
+        }
+      }
+    }
+  },
+  "GONGFA_EXT": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "tier": {
+          "t": "string"
+        },
+        "el": {
+          "t": "string",
+          "nullable": true
+        },
+        "price": {
+          "t": "integer"
+        },
+        "role": {
+          "t": "string"
+        },
+        "eff": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "DAOTONG": {
+    "t": "object",
+    "fields": {
+      "d6": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "jin": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "mu": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "shui": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "huo": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "tu": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "qi12": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "lei3": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "gudu": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "DAOTONG_CLASS": {
+    "t": "object",
+    "fields": {
+      "d6": {
+        "t": "string"
+      },
+      "jin": {
+        "t": "string"
+      },
+      "mu": {
+        "t": "string"
+      },
+      "shui": {
+        "t": "string"
+      },
+      "huo": {
+        "t": "string"
+      },
+      "tu": {
+        "t": "string"
+      },
+      "qi12": {
+        "t": "string"
+      },
+      "lei3": {
+        "t": "string"
+      },
+      "gudu": {
+        "t": "string"
+      }
+    }
+  },
+  "DAOTONG_TEMPER": {
+    "t": "object",
+    "fields": {
+      "刚烈": {
+        "t": "object",
+        "fields": {
+          "daotong": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "mul": {
+            "t": "number"
+          },
+          "cost": {
+            "t": "integer"
+          },
+          "desc": {
+            "t": "string"
+          },
+          "text": {
+            "t": "string"
+          }
+        }
+      },
+      "幽微": {
+        "t": "object",
+        "fields": {
+          "daotong": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "mul": {
+            "t": "number"
+          },
+          "cost": {
+            "t": "integer"
+          },
+          "desc": {
+            "t": "string"
+          },
+          "text": {
+            "t": "string"
+          }
+        }
+      },
+      "转换": {
+        "t": "object",
+        "fields": {
+          "daotong": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "mul": {
+            "t": "integer"
+          },
+          "cost": {
+            "t": "integer"
+          },
+          "desc": {
+            "t": "string"
+          },
+          "text": {
+            "t": "string"
+          }
+        }
+      },
+      "生养": {
+        "t": "object",
+        "fields": {
+          "daotong": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "mul": {
+            "t": "number"
+          },
+          "cost": {
+            "t": "integer"
+          },
+          "desc": {
+            "t": "string"
+          },
+          "text": {
+            "t": "string"
+          }
+        }
+      },
+      "润下": {
+        "t": "object",
+        "fields": {
+          "daotong": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "mul": {
+            "t": "integer"
+          },
+          "cost": {
+            "t": "integer"
+          },
+          "desc": {
+            "t": "string"
+          },
+          "text": {
+            "t": "string"
+          }
+        }
+      },
+      "炎上": {
+        "t": "object",
+        "fields": {
+          "daotong": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "mul": {
+            "t": "number"
+          },
+          "cost": {
+            "t": "integer"
+          },
+          "desc": {
+            "t": "string"
+          },
+          "text": {
+            "t": "string"
+          }
+        }
+      },
+      "虚空": {
+        "t": "object",
+        "fields": {
+          "daotong": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "mul": {
+            "t": "integer"
+          },
+          "cost": {
+            "t": "integer"
+          },
+          "desc": {
+            "t": "string"
+          },
+          "text": {
+            "t": "string"
+          }
+        }
+      }
+    }
+  },
+  "SANXUAN": {
+    "t": "object",
+    "fields": {
+      "qing": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "eff": {
+            "t": "string"
+          }
+        }
+      },
+      "tong": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "eff": {
+            "t": "string"
+          }
+        }
+      },
+      "dou": {
+        "t": "object",
+        "fields": {
+          "name": {
+            "t": "string"
+          },
+          "eff": {
+            "t": "string"
+          }
+        }
+      }
+    }
+  },
+  "SHENTONG": {
+    "t": "object",
+    "fields": {
+      "太阳": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "少阳": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "明阳": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "太阴": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "少阴": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "厥阴": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "兑金": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "逍金": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "齐金": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "库金": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "庚金": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "正木": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "保木": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "集木": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "角木": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "更木": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "坎水": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "府水": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "合水": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "牝水": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "渌水": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "离火": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "真火": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "并火": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "牡火": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "灴火": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "艮土": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "戊土": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "归土": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "宝土": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "宣土": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "青宣": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "清炁": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "邃炁": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "紫炁": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "真炁": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "寒炁": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "晞炁": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "瑞炁": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "煞炁": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "谪炁": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "华炁": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "上仪": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "下仪": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "玄雷": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "霄雷": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "神雷": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "荒": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "无相": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "SKILLS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "cost": {
+          "t": "integer"
+        },
+        "mul": {
+          "t": "number"
+        },
+        "kind": {
+          "t": "string"
+        },
+        "lvl": {
+          "t": "string"
+        },
+        "desc": {
+          "t": "string"
+        },
+        "effects": {
+          "t": "array",
+          "of": {
+            "t": "object",
+            "fields": {
+              "type": {
+                "t": "string"
+              },
+              "turns": {
+                "t": "integer"
+              },
+              "mul": {
+                "t": "integer"
+              },
+              "v": {
+                "t": "number"
+              },
+              "pct": {
+                "t": "number"
+              }
+            },
+            "optional": [
+              "turns",
+              "mul",
+              "v",
+              "pct"
+            ]
+          }
+        },
+        "hpCostPct": {
+          "t": "number"
+        },
+        "natalDmg": {
+          "t": "integer"
+        }
+      },
+      "optional": [
+        "effects",
+        "hpCostPct",
+        "natalDmg"
+      ]
+    }
+  },
+  "SKILL_PRICE": {
+    "t": "object",
+    "fields": {
+      "wai": {
+        "t": "integer"
+      },
+      "nei": {
+        "t": "integer"
+      },
+      "zhen": {
+        "t": "integer"
+      }
+    }
+  },
+  "COMBOS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "prev": {
+          "t": "string"
+        },
+        "cur": {
+          "t": "string"
+        },
+        "cond": {
+          "t": "string"
+        },
+        "fx": {
+          "t": "object",
+          "fields": {
+            "burnBurst": {
+              "t": "number"
+            },
+            "selfHp": {
+              "t": "integer"
+            },
+            "mul": {
+              "t": "number"
+            },
+            "interrupt": {
+              "t": "boolean"
+            },
+            "deflZero": {
+              "t": "boolean"
+            },
+            "shredV": {
+              "t": "number"
+            },
+            "shredTurns": {
+              "t": "integer"
+            },
+            "slowTurns": {
+              "t": "integer"
+            },
+            "natalDmg": {
+              "t": "integer"
+            },
+            "dodge": {
+              "t": "boolean"
+            }
+          },
+          "optional": [
+            "burnBurst",
+            "selfHp",
+            "mul",
+            "interrupt",
+            "deflZero",
+            "shredV",
+            "shredTurns",
+            "slowTurns",
+            "natalDmg",
+            "dodge"
+          ]
+        },
+        "text": {
+          "t": "string"
+        },
+        "curKind": {
+          "t": "string"
+        }
+      },
+      "optional": [
+        "cur",
+        "curKind"
+      ]
+    }
+  },
+  "SHIXIU": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "pos": {
+          "t": "string"
+        },
+        "equal": {
+          "t": "string"
+        },
+        "power": {
+          "t": "integer"
+        },
+        "special": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "INTENTS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "keys": {
+          "t": "array",
+          "of": {
+            "t": "string"
+          }
+        },
+        "soft": {
+          "t": "array",
+          "of": {
+            "t": "string"
+          }
+        },
+        "outs": {
+          "t": "array",
+          "of": {
+            "t": "object",
+            "fields": {
+              "w": {
+                "t": "integer"
+              },
+              "eff": {
+                "t": "object",
+                "fields": {
+                  "xiuweiMul": {
+                    "t": "number"
+                  },
+                  "heart": {
+                    "t": "integer"
+                  },
+                  "hpPct": {
+                    "t": "number"
+                  },
+                  "insight": {
+                    "t": "integer"
+                  },
+                  "sense": {
+                    "t": "integer"
+                  },
+                  "mat": {
+                    "t": "array",
+                    "of": {
+                      "t": "any"
+                    }
+                  },
+                  "hp": {
+                    "t": "integer"
+                  },
+                  "stones": {
+                    "t": "integer"
+                  },
+                  "fame": {
+                    "t": "integer"
+                  },
+                  "karma": {
+                    "t": "integer"
+                  },
+                  "fav": {
+                    "t": "integer"
+                  },
+                  "insightXp": {
+                    "t": "integer"
+                  },
+                  "merit": {
+                    "t": "integer"
+                  },
+                  "followers": {
+                    "t": "integer"
+                  },
+                  "piety": {
+                    "t": "number"
+                  }
+                },
+                "optional": [
+                  "xiuweiMul",
+                  "heart",
+                  "hpPct",
+                  "insight",
+                  "sense",
+                  "mat",
+                  "hp",
+                  "stones",
+                  "fame",
+                  "karma",
+                  "fav",
+                  "insightXp",
+                  "merit",
+                  "followers",
+                  "piety"
+                ]
+              },
+              "text": {
+                "t": "string"
+              },
+              "minT": {
+                "t": "integer"
+              }
+            },
+            "optional": [
+              "minT"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "COMBAT_TEXT": {
+    "t": "object",
+    "fields": {
+      "pHit": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "pDefl": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "fHit": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "fDefl": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "guard": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "observe": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "kill": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "down": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "foeFlee": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "FOE_STYLES": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "el": {
+          "t": "string"
+        },
+        "actions": {
+          "t": "array",
+          "of": {
+            "t": "object",
+            "fields": {
+              "id": {
+                "t": "string"
+              },
+              "name": {
+                "t": "string"
+              },
+              "type": {
+                "t": "string"
+              },
+              "weight": {
+                "t": "integer"
+              },
+              "mul": {
+                "t": "number"
+              },
+              "intent": {
+                "t": "string"
+              },
+              "cd": {
+                "t": "integer"
+              },
+              "hits": {
+                "t": "integer"
+              },
+              "cond": {
+                "t": "string"
+              },
+              "effects": {
+                "t": "array",
+                "of": {
+                  "t": "object",
+                  "fields": {
+                    "type": {
+                      "t": "string"
+                    },
+                    "turns": {
+                      "t": "integer"
+                    },
+                    "pct": {
+                      "t": "number"
+                    },
+                    "v": {
+                      "t": "number"
+                    }
+                  },
+                  "optional": [
+                    "pct",
+                    "v"
+                  ]
+                }
+              },
+              "v": {
+                "t": "number"
+              }
+            },
+            "optional": [
+              "mul",
+              "cd",
+              "hits",
+              "cond",
+              "effects",
+              "v"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "FOE_LOOT": {
+    "t": "object",
+    "fields": {
+      "sword": {
+        "t": "object",
+        "fields": {
+          "mats": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "w": {
+            "t": "array",
+            "of": {
+              "t": "integer"
+            }
+          }
+        }
+      },
+      "body": {
+        "t": "object",
+        "fields": {
+          "mats": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "w": {
+            "t": "array",
+            "of": {
+              "t": "integer"
+            }
+          }
+        }
+      },
+      "fa": {
+        "t": "object",
+        "fields": {
+          "mats": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "w": {
+            "t": "array",
+            "of": {
+              "t": "integer"
+            }
+          }
+        }
+      },
+      "gui": {
+        "t": "object",
+        "fields": {
+          "mats": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "w": {
+            "t": "array",
+            "of": {
+              "t": "integer"
+            }
+          }
+        }
+      },
+      "basic": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "TRIBULATION": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "test": {
+          "t": "string"
+        },
+        "line": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "TRIB_WEIGHT": {
+    "t": "object",
+    "fields": {
+      "lei": {
+        "t": "integer"
+      },
+      "shui": {
+        "t": "integer"
+      },
+      "huo": {
+        "t": "integer"
+      },
+      "feng": {
+        "t": "integer"
+      },
+      "gu": {
+        "t": "integer"
+      }
+    }
+  },
+  "TIANJIANG": {
+    "t": "array",
+    "of": {
+      "t": "string"
+    }
+  },
+  "DIZHA": {
+    "t": "array",
+    "of": {
+      "t": "string"
+    }
+  },
+  "RECIPES": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "kind": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "tier": {
+          "t": "string"
+        },
+        "lv": {
+          "t": "integer"
+        },
+        "mats": {
+          "t": "object",
+          "fields": {
+            "lanyouCao": {
+              "t": "integer"
+            },
+            "buqiCao": {
+              "t": "integer"
+            },
+            "heshenHua": {
+              "t": "integer"
+            },
+            "gulingHua": {
+              "t": "integer"
+            },
+            "yuhuaYu": {
+              "t": "integer"
+            },
+            "wuxingling": {
+              "t": "integer"
+            },
+            "mudanYao": {
+              "t": "integer"
+            },
+            "fuZhi": {
+              "t": "integer"
+            },
+            "zhuSha": {
+              "t": "integer"
+            },
+            "jinLing": {
+              "t": "integer"
+            },
+            "huanShi": {
+              "t": "integer"
+            },
+            "starSand": {
+              "t": "integer"
+            },
+            "tieMu": {
+              "t": "integer"
+            },
+            "longYan": {
+              "t": "integer"
+            },
+            "zhenQi": {
+              "t": "integer"
+            }
+          },
+          "optional": [
+            "lanyouCao",
+            "buqiCao",
+            "heshenHua",
+            "gulingHua",
+            "yuhuaYu",
+            "wuxingling",
+            "mudanYao",
+            "fuZhi",
+            "zhuSha",
+            "jinLing",
+            "huanShi",
+            "starSand",
+            "tieMu",
+            "longYan",
+            "zhenQi"
+          ]
+        },
+        "out": {
+          "t": "string"
+        },
+        "need": {
+          "t": "integer"
+        },
+        "base": {
+          "t": "number"
+        },
+        "risk": {
+          "t": "string"
+        },
+        "note": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "MATERIAL_EXT": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "price": {
+          "t": "integer"
+        },
+        "tier": {
+          "t": "string"
+        },
+        "eff": {
+          "t": "string"
+        },
+        "place": {
+          "t": "string"
+        }
+      },
+      "optional": [
+        "place"
+      ]
+    }
+  },
+  "PILL_EXT": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "price": {
+          "t": "integer"
+        },
+        "tier": {
+          "t": "string"
+        },
+        "type": {
+          "t": "string"
+        },
+        "v": {
+          "t": "number"
+        },
+        "desc": {
+          "t": "string"
+        },
+        "turns": {
+          "t": "integer"
+        },
+        "combat": {
+          "t": "boolean"
+        },
+        "place": {
+          "t": "string"
+        }
+      },
+      "optional": [
+        "v",
+        "turns",
+        "combat",
+        "place"
+      ]
+    }
+  },
+  "TALISMANS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "tier": {
+          "t": "string"
+        },
+        "price": {
+          "t": "integer"
+        },
+        "use": {
+          "t": "string"
+        },
+        "cat": {
+          "t": "string"
+        },
+        "kind": {
+          "t": "string"
+        },
+        "v": {
+          "t": "number"
+        },
+        "el": {
+          "t": "string"
+        },
+        "scale": {
+          "t": "string"
+        },
+        "eff": {
+          "t": "string"
+        },
+        "effect": {
+          "t": "object",
+          "fields": {
+            "type": {
+              "t": "string"
+            },
+            "turns": {
+              "t": "integer"
+            },
+            "mul": {
+              "t": "integer"
+            },
+            "v": {
+              "t": "number"
+            },
+            "interrupt": {
+              "t": "boolean"
+            }
+          },
+          "optional": [
+            "turns",
+            "mul",
+            "v",
+            "interrupt"
+          ]
+        }
+      },
+      "optional": [
+        "v",
+        "el",
+        "scale"
+      ]
+    }
+  },
+  "ARTIFACT_EXT": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "price": {
+          "t": "integer"
+        },
+        "tier": {
+          "t": "string"
+        },
+        "slot": {
+          "t": "string"
+        },
+        "bonus": {
+          "t": "object",
+          "fields": {
+            "move": {
+              "t": "number"
+            },
+            "body": {
+              "t": "number"
+            },
+            "atk": {
+              "t": "number"
+            },
+            "hpCost": {
+              "t": "integer"
+            },
+            "hit": {
+              "t": "number"
+            }
+          },
+          "optional": [
+            "move",
+            "body",
+            "atk",
+            "hpCost",
+            "hit"
+          ]
+        },
+        "eff": {
+          "t": "string"
+        }
+      },
+      "optional": [
+        "bonus"
+      ]
+    }
+  },
+  "ARRAY_DISKS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "tier": {
+          "t": "string"
+        },
+        "eff": {
+          "t": "string"
+        },
+        "upkeep": {
+          "t": "integer"
+        }
+      }
+    }
+  },
+  "NATAL_FORMS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "icon": {
+          "t": "string"
+        },
+        "passive": {
+          "t": "string"
+        },
+        "skill": {
+          "t": "string"
+        },
+        "skillCost": {
+          "t": "integer"
+        },
+        "skillDmg": {
+          "t": "number"
+        },
+        "skillNote": {
+          "t": "string"
+        },
+        "desc": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "DIVINE_ARTIFACTS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "price": {
+          "t": "integer"
+        },
+        "max": {
+          "t": "integer"
+        },
+        "upkeep": {
+          "t": "integer"
+        },
+        "eff": {
+          "t": "string"
+        },
+        "desc": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "VOTIVE_ITEMS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "price": {
+          "t": "integer"
+        },
+        "out": {
+          "t": "integer"
+        },
+        "stones": {
+          "t": "integer"
+        },
+        "xianghuo": {
+          "t": "integer"
+        },
+        "mats": {
+          "t": "object",
+          "fields": {
+            "xiangHui": {
+              "t": "integer"
+            }
+          },
+          "optional": [
+            "xiangHui"
+          ]
+        },
+        "eff": {
+          "t": "string"
+        },
+        "desc": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "CRAFT_LEVELS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "lv": {
+          "t": "integer"
+        },
+        "need": {
+          "t": "integer"
+        },
+        "rate": {
+          "t": "number"
+        },
+        "tier": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "CRAFT_REALM_GATE": {
+    "t": "object",
+    "fields": {
+      "huang": {
+        "t": "integer"
+      },
+      "xuan": {
+        "t": "integer"
+      },
+      "di": {
+        "t": "integer"
+      },
+      "tian": {
+        "t": "integer"
+      },
+      "xian": {
+        "t": "integer"
+      }
+    }
+  },
+  "CRAFT_BOOKS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "art": {
+          "t": "string"
+        },
+        "tier": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "price": {
+          "t": "integer"
+        }
+      }
+    }
+  },
+  "CRAFT_ARTS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "stat": {
+          "t": "string"
+        },
+        "desc": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "QUALITY": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "mul": {
+          "t": "number"
+        },
+        "rate": {
+          "t": "number"
+        },
+        "color": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "SHOP": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "cat": {
+          "t": "string"
+        },
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "price": {
+          "t": "integer"
+        },
+        "tier": {
+          "t": "string"
+        },
+        "type": {
+          "t": "string"
+        },
+        "v": {
+          "t": "number"
+        },
+        "desc": {
+          "t": "string"
+        },
+        "turns": {
+          "t": "integer"
+        },
+        "combat": {
+          "t": "boolean"
+        },
+        "place": {
+          "t": "string"
+        },
+        "slot": {
+          "t": "string"
+        },
+        "bonus": {
+          "t": "object",
+          "fields": {
+            "move": {
+              "t": "number"
+            },
+            "body": {
+              "t": "number"
+            },
+            "atk": {
+              "t": "number"
+            },
+            "hpCost": {
+              "t": "integer"
+            },
+            "hit": {
+              "t": "number"
+            }
+          },
+          "optional": [
+            "move",
+            "body",
+            "atk",
+            "hpCost",
+            "hit"
+          ]
+        },
+        "eff": {
+          "t": "string"
+        },
+        "use": {
+          "t": "string"
+        },
+        "kind": {
+          "t": "string"
+        },
+        "el": {
+          "t": "string"
+        },
+        "scale": {
+          "t": "string"
+        },
+        "effect": {
+          "t": "object",
+          "fields": {
+            "type": {
+              "t": "string"
+            },
+            "turns": {
+              "t": "integer"
+            },
+            "mul": {
+              "t": "integer"
+            },
+            "v": {
+              "t": "number"
+            },
+            "interrupt": {
+              "t": "boolean"
+            }
+          },
+          "optional": [
+            "turns",
+            "mul",
+            "v",
+            "interrupt"
+          ]
+        },
+        "talCat": {
+          "t": "string"
+        }
+      },
+      "optional": [
+        "tier",
+        "v",
+        "desc",
+        "turns",
+        "combat",
+        "place",
+        "slot",
+        "bonus",
+        "eff",
+        "use",
+        "kind",
+        "el",
+        "scale",
+        "effect",
+        "talCat"
+      ]
+    }
+  },
+  "SHOP_GONGFA": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "cat": {
+          "t": "string"
+        },
+        "type": {
+          "t": "string"
+        },
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "tier": {
+          "t": "string"
+        },
+        "el": {
+          "t": "string",
+          "nullable": true
+        },
+        "price": {
+          "t": "integer"
+        },
+        "role": {
+          "t": "string"
+        },
+        "eff": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "SHOP_CATS": {
+    "t": "object",
+    "fields": {
+      "pill": {
+        "t": "string"
+      },
+      "tal": {
+        "t": "string"
+      },
+      "art": {
+        "t": "string"
+      },
+      "mat": {
+        "t": "string"
+      },
+      "gongfa": {
+        "t": "string"
+      },
+      "sell": {
+        "t": "string"
+      }
+    }
+  },
+  "SELL_CHANNELS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "mul": {
+          "t": "number"
+        },
+        "need": {
+          "t": "string",
+          "nullable": true
+        },
+        "desc": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "FIXED_COST": {
+    "t": "object",
+    "fields": {
+      "sectDueNeedDiv": {
+        "t": "integer"
+      },
+      "sectCashPerContrib": {
+        "t": "integer"
+      },
+      "sectArrearsMax": {
+        "t": "integer"
+      },
+      "clanFoodPerPop": {
+        "t": "number"
+      },
+      "templeBase": {
+        "t": "integer"
+      },
+      "caveBase": {
+        "t": "integer"
+      },
+      "cavePerFacility": {
+        "t": "integer"
+      },
+      "arrearsFloor": {
+        "t": "number"
+      },
+      "arrearsStep": {
+        "t": "number"
+      }
+    }
+  },
+  "EXCHANGE": {
+    "t": "object",
+    "fields": {
+      "xiangPerStone": {
+        "t": "integer"
+      },
+      "outPerStone": {
+        "t": "integer"
+      },
+      "buyCapRatio": {
+        "t": "number"
+      },
+      "outCapBase": {
+        "t": "integer"
+      },
+      "outCapPer": {
+        "t": "integer"
+      },
+      "outCapBox": {
+        "t": "integer"
+      }
+    }
+  },
+  "MIAO_UP": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "price": {
+          "t": "integer"
+        },
+        "max": {
+          "t": "integer"
+        },
+        "eff": {
+          "t": "string"
+        },
+        "desc": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "XIANG_GONG": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "price": {
+          "t": "integer"
+        },
+        "xiang": {
+          "t": "integer"
+        },
+        "desc": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "CLAN_INDUSTRIES": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "eff": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "NPC_POOL": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "gender": {
+          "t": "string"
+        },
+        "role": {
+          "t": "string"
+        },
+        "age": {
+          "t": "integer"
+        },
+        "look": {
+          "t": "string"
+        },
+        "likes": {
+          "t": "array",
+          "of": {
+            "t": "string"
+          }
+        },
+        "approach": {
+          "t": "string"
+        },
+        "taboo": {
+          "t": "string"
+        },
+        "realm": {
+          "t": "integer"
+        },
+        "inner": {
+          "t": "string"
+        },
+        "meet": {
+          "t": "array",
+          "of": {
+            "t": "string"
+          }
+        },
+        "stages": {
+          "t": "array",
+          "of": {
+            "t": "object",
+            "fields": {
+              "min": {
+                "t": "integer"
+              },
+              "lines": {
+                "t": "array",
+                "of": {
+                  "t": "string"
+                }
+              }
+            }
+          }
+        },
+        "ctx": {
+          "t": "object",
+          "fields": {
+            "break": {
+              "t": "array",
+              "of": {
+                "t": "string"
+              }
+            },
+            "hurt": {
+              "t": "array",
+              "of": {
+                "t": "string"
+              }
+            },
+            "part": {
+              "t": "array",
+              "of": {
+                "t": "string"
+              }
+            },
+            "together": {
+              "t": "array",
+              "of": {
+                "t": "string"
+              }
+            },
+            "birthday": {
+              "t": "array",
+              "of": {
+                "t": "string"
+              }
+            }
+          },
+          "optional": [
+            "birthday"
+          ]
+        },
+        "ask": {
+          "t": "object",
+          "fields": {
+            "q": {
+              "t": "string"
+            },
+            "opts": {
+              "t": "array",
+              "of": {
+                "t": "object",
+                "fields": {
+                  "t": {
+                    "t": "string"
+                  },
+                  "reply": {
+                    "t": "string"
+                  },
+                  "fav": {
+                    "t": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "zodiac": {
+          "t": "string"
+        }
+      },
+      "optional": [
+        "zodiac"
+      ]
+    }
+  },
+  "FAVOR_TIERS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "min": {
+          "t": "integer"
+        },
+        "max": {
+          "t": "integer"
+        },
+        "name": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "SECT": {
+    "t": "object",
+    "fields": {
+      "name": {
+        "t": "string"
+      },
+      "halls": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "peaks": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "ranks": {
+        "t": "array",
+        "of": {
+          "t": "object",
+          "fields": {
+            "id": {
+              "t": "integer"
+            },
+            "name": {
+              "t": "string"
+            },
+            "need": {
+              "t": "integer"
+            },
+            "pay": {
+              "t": "integer"
+            },
+            "due": {
+              "t": "integer"
+            },
+            "lvl": {
+              "t": "array",
+              "of": {
+                "t": "string"
+              }
+            },
+            "equip": {
+              "t": "integer"
+            },
+            "desc": {
+              "t": "string"
+            }
+          }
+        }
+      },
+      "tasks": {
+        "t": "array",
+        "of": {
+          "t": "object",
+          "fields": {
+            "id": {
+              "t": "string"
+            },
+            "name": {
+              "t": "string"
+            },
+            "contrib": {
+              "t": "integer"
+            },
+            "risk": {
+              "t": "number"
+            },
+            "desc": {
+              "t": "string"
+            }
+          }
+        }
+      },
+      "lib": {
+        "t": "array",
+        "of": {
+          "t": "object",
+          "fields": {
+            "tier": {
+              "t": "string"
+            },
+            "who": {
+              "t": "string"
+            },
+            "price": {
+              "t": "integer"
+            }
+          }
+        }
+      },
+      "oath": {
+        "t": "string"
+      },
+      "betray": {
+        "t": "object",
+        "fields": {
+          "realm": {
+            "t": "integer"
+          },
+          "heart": {
+            "t": "integer"
+          },
+          "fame": {
+            "t": "integer"
+          }
+        }
+      }
+    }
+  },
+  "CLAN": {
+    "t": "object",
+    "fields": {
+      "foundCost": {
+        "t": "integer"
+      },
+      "foundRealm": {
+        "t": "integer"
+      },
+      "hallRanks": {
+        "t": "array",
+        "of": {
+          "t": "object",
+          "fields": {
+            "lv": {
+              "t": "integer"
+            },
+            "name": {
+              "t": "string"
+            },
+            "pop": {
+              "t": "integer"
+            },
+            "luck": {
+              "t": "integer"
+            },
+            "gongfa": {
+              "t": "string"
+            },
+            "cost": {
+              "t": "integer"
+            }
+          }
+        }
+      },
+      "idents": {
+        "t": "array",
+        "of": {
+          "t": "object",
+          "fields": {
+            "id": {
+              "t": "string"
+            },
+            "name": {
+              "t": "string"
+            },
+            "desc": {
+              "t": "string"
+            },
+            "mul": {
+              "t": "number"
+            }
+          }
+        }
+      },
+      "elders": {
+        "t": "array",
+        "of": {
+          "t": "object",
+          "fields": {
+            "id": {
+              "t": "string"
+            },
+            "name": {
+              "t": "string"
+            },
+            "stance": {
+              "t": "string"
+            },
+            "bias": {
+              "t": "string"
+            },
+            "eff": {
+              "t": "string"
+            }
+          }
+        }
+      },
+      "rules": {
+        "t": "array",
+        "of": {
+          "t": "object",
+          "fields": {
+            "id": {
+              "t": "string"
+            },
+            "name": {
+              "t": "string"
+            },
+            "eff": {
+              "t": "string"
+            },
+            "karma": {
+              "t": "integer"
+            }
+          }
+        }
+      },
+      "income": {
+        "t": "object",
+        "fields": {
+          "stonePerPop": {
+            "t": "number"
+          },
+          "luckPerPop": {
+            "t": "number"
+          }
+        }
+      }
+    }
+  },
+  "GATE": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "cost": {
+          "t": "integer"
+        },
+        "desc": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "HOOKS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "from": {
+          "t": "string"
+        },
+        "fromRank": {
+          "t": "integer"
+        },
+        "given": {
+          "t": "string"
+        },
+        "hint": {
+          "t": "string"
+        },
+        "known": {
+          "t": "boolean"
+        },
+        "due": {
+          "t": "object",
+          "fields": {
+            "kind": {
+              "t": "string"
+            },
+            "at": {
+              "t": "integer"
+            }
+          },
+          "optional": [
+            "at"
+          ]
+        },
+        "claim": {
+          "t": "object",
+          "fields": {
+            "text": {
+              "t": "string"
+            },
+            "want": {
+              "t": "string"
+            },
+            "effect": {
+              "t": "object",
+              "fields": {
+                "xiuweiPct": {
+                  "t": "number"
+                },
+                "karma": {
+                  "t": "integer"
+                },
+                "die": {
+                  "t": "string"
+                },
+                "lifePct": {
+                  "t": "number"
+                },
+                "hpPct": {
+                  "t": "number"
+                },
+                "merit": {
+                  "t": "integer"
+                },
+                "takeGuowei": {
+                  "t": "boolean"
+                },
+                "fame": {
+                  "t": "integer"
+                }
+              },
+              "optional": [
+                "xiuweiPct",
+                "karma",
+                "die",
+                "lifePct",
+                "hpPct",
+                "merit",
+                "takeGuowei",
+                "fame"
+              ]
+            },
+            "refuse": {
+              "t": "object",
+              "fields": {
+                "karma": {
+                  "t": "integer"
+                },
+                "hpPct": {
+                  "t": "number"
+                },
+                "debuff": {
+                  "t": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "HOOK_DEBUFF": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "sign": {
+          "t": "string"
+        },
+        "eff": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "LITURGY": {
+    "t": "object",
+    "fields": {
+      "breakXian": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "breakShen": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "fail": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "TRANSMISSIONS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "tier": {
+          "t": "string"
+        },
+        "needRealm": {
+          "t": "integer"
+        },
+        "poem": {
+          "t": "string"
+        },
+        "verse": {
+          "t": "string"
+        },
+        "hint": {
+          "t": "string"
+        },
+        "opts": {
+          "t": "array",
+          "of": {
+            "t": "object",
+            "fields": {
+              "t": {
+                "t": "string"
+              },
+              "eff": {
+                "t": "string"
+              },
+              "act": {
+                "t": "string"
+              },
+              "risk": {
+                "t": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "DISCIPLE_LIMIT": {
+    "t": "integer"
+  },
+  "DISCIPLE_TEACH": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "cost": {
+          "t": "integer"
+        },
+        "need": {
+          "t": "string"
+        },
+        "gain": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "DISCIPLE_STAGE": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "key": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "need": {
+          "t": "integer"
+        },
+        "note": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "BEAST_STOCK": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "el": {
+          "t": "string"
+        },
+        "desc": {
+          "t": "string"
+        },
+        "atk": {
+          "t": "number"
+        },
+        "hp": {
+          "t": "number"
+        },
+        "gated": {
+          "t": "integer"
+        }
+      }
+    }
+  },
+  "BEAST_BARN": {
+    "t": "array",
+    "of": {
+      "t": "integer"
+    }
+  },
+  "BEAST_BOND": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "min": {
+          "t": "integer"
+        },
+        "name": {
+          "t": "string"
+        },
+        "guard": {
+          "t": "number"
+        },
+        "bite": {
+          "t": "number"
+        },
+        "note": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "BEAST_CARE": {
+    "t": "object",
+    "fields": {
+      "feedStone": {
+        "t": "integer"
+      },
+      "feedBond": {
+        "t": "integer"
+      },
+      "trainXun": {
+        "t": "integer"
+      },
+      "trainPower": {
+        "t": "number"
+      },
+      "trainBond": {
+        "t": "integer"
+      },
+      "powerCap": {
+        "t": "number"
+      }
+    }
+  },
+  "REGIONS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "danger": {
+          "t": "integer"
+        },
+        "suggest": {
+          "t": "string"
+        },
+        "desc": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "SCENES": {
+    "t": "object",
+    "fields": {
+      "cave": {
+        "t": "object",
+        "fields": {
+          "spring": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "summer": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "autumn": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "winter": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          }
+        }
+      },
+      "market": {
+        "t": "object",
+        "fields": {
+          "spring": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "summer": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "autumn": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "winter": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          }
+        }
+      },
+      "wild": {
+        "t": "object",
+        "fields": {
+          "spring": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "summer": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "autumn": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "winter": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          }
+        }
+      },
+      "sect": {
+        "t": "object",
+        "fields": {
+          "spring": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "summer": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "autumn": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "winter": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          }
+        }
+      },
+      "temple": {
+        "t": "object",
+        "fields": {
+          "spring": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "summer": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "autumn": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "winter": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          }
+        }
+      },
+      "dongtian": {
+        "t": "object",
+        "fields": {
+          "spring": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "summer": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "autumn": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          },
+          "winter": {
+            "t": "array",
+            "of": {
+              "t": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "SCENES_SPECIAL": {
+    "t": "object",
+    "fields": {
+      "breakXian": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "breakShen": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "hurt": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "closure": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "visitor": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "drought": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "demon": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      },
+      "enemy": {
+        "t": "array",
+        "of": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "DAOSHU": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "price": {
+          "t": "integer"
+        },
+        "intro": {
+          "t": "string"
+        },
+        "layers": {
+          "t": "array",
+          "of": {
+            "t": "object",
+            "fields": {
+              "need": {
+                "t": "object",
+                "fields": {
+                  "insight": {
+                    "t": "integer"
+                  },
+                  "realm": {
+                    "t": "integer"
+                  },
+                  "heart": {
+                    "t": "integer"
+                  },
+                  "pillar": {
+                    "t": "integer"
+                  },
+                  "or": {
+                    "t": "array",
+                    "of": {
+                      "t": "object",
+                      "fields": {
+                        "insight": {
+                          "t": "integer"
+                        },
+                        "heart": {
+                          "t": "integer"
+                        }
+                      },
+                      "optional": [
+                        "insight",
+                        "heart"
+                      ]
+                    }
+                  }
+                },
+                "optional": [
+                  "insight",
+                  "realm",
+                  "heart",
+                  "pillar",
+                  "or"
+                ]
+              },
+              "needText": {
+                "t": "string"
+              },
+              "text": {
+                "t": "string"
+              },
+              "gain": {
+                "t": "string"
+              },
+              "fx": {
+                "t": "object",
+                "fields": {
+                  "breakBonus": {
+                    "t": "number"
+                  }
+                }
+              }
+            },
+            "optional": [
+              "fx"
+            ]
+          }
+        },
+        "reread": {
+          "t": "array",
+          "of": {
+            "t": "object",
+            "fields": {
+              "needText": {
+                "t": "string"
+              },
+              "text": {
+                "t": "string"
+              },
+              "gain": {
+                "t": "string"
+              }
+            }
+          }
+        },
+        "path": {
+          "t": "string"
+        }
+      },
+      "optional": [
+        "path"
+      ]
+    }
+  },
+  "ENCOUNTERS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "kind": {
+          "t": "string"
+        },
+        "when": {
+          "t": "object",
+          "fields": {
+            "maxRealm": {
+              "t": "integer"
+            },
+            "minRealm": {
+              "t": "integer"
+            },
+            "place": {
+              "t": "string"
+            }
+          },
+          "optional": [
+            "maxRealm",
+            "minRealm",
+            "place"
+          ]
+        },
+        "poem": {
+          "t": "string"
+        },
+        "text": {
+          "t": "string"
+        },
+        "opts": {
+          "t": "array",
+          "of": {
+            "t": "object",
+            "fields": {
+              "t": {
+                "t": "string"
+              },
+              "risk": {
+                "t": "string"
+              },
+              "eff": {
+                "t": "string"
+              },
+              "act": {
+                "t": "string"
+              },
+              "res": {
+                "t": "object",
+                "fields": {
+                  "ok": {
+                    "t": "array",
+                    "of": {
+                      "t": "array",
+                      "of": {
+                        "t": "any"
+                      }
+                    }
+                  },
+                  "m": {
+                    "t": "string"
+                  },
+                  "hit": {
+                    "t": "integer"
+                  },
+                  "miss": {
+                    "t": "array",
+                    "of": {
+                      "t": "array",
+                      "of": {
+                        "t": "any"
+                      }
+                    }
+                  },
+                  "nm": {
+                    "t": "string"
+                  }
+                },
+                "optional": [
+                  "hit",
+                  "miss",
+                  "nm"
+                ]
+              }
+            },
+            "optional": [
+              "res"
+            ]
+          }
+        },
+        "bookOpt": {
+          "t": "object",
+          "fields": {
+            "book": {
+              "t": "string"
+            },
+            "t": {
+              "t": "string"
+            },
+            "eff": {
+              "t": "string"
+            },
+            "act": {
+              "t": "string"
+            },
+            "res": {
+              "t": "object",
+              "fields": {
+                "hit": {
+                  "t": "integer"
+                },
+                "ok": {
+                  "t": "array",
+                  "of": {
+                    "t": "array",
+                    "of": {
+                      "t": "any"
+                    }
+                  }
+                },
+                "miss": {
+                  "t": "array",
+                  "of": {
+                    "t": "array",
+                    "of": {
+                      "t": "any"
+                    }
+                  }
+                },
+                "m": {
+                  "t": "string"
+                },
+                "nm": {
+                  "t": "string"
+                }
+              }
+            }
+          }
+        },
+        "gx": {
+          "t": "integer"
+        }
+      },
+      "optional": [
+        "bookOpt",
+        "gx"
+      ]
+    }
+  },
+  "EVENTS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "kind": {
+          "t": "string"
+        },
+        "path": {
+          "t": "string"
+        },
+        "followers": {
+          "t": "integer"
+        },
+        "text": {
+          "t": "string"
+        },
+        "after": {
+          "t": "string"
+        },
+        "log": {
+          "t": "string"
+        },
+        "eff": {
+          "t": "object",
+          "fields": {
+            "hpPct": {
+              "t": "number"
+            },
+            "stones": {
+              "t": "integer"
+            },
+            "fame": {
+              "t": "integer"
+            },
+            "fav": {
+              "t": "integer"
+            },
+            "insight": {
+              "t": "integer"
+            },
+            "karma": {
+              "t": "integer"
+            },
+            "merit": {
+              "t": "integer"
+            },
+            "hp": {
+              "t": "integer"
+            },
+            "heart": {
+              "t": "integer"
+            },
+            "sense": {
+              "t": "integer"
+            },
+            "insightXp": {
+              "t": "integer"
+            },
+            "xiuweiMul": {
+              "t": "number"
+            },
+            "mat": {
+              "t": "array",
+              "of": {
+                "t": "any"
+              }
+            },
+            "piety": {
+              "t": "number"
+            },
+            "followers": {
+              "t": "integer"
+            },
+            "xh": {
+              "t": "integer"
+            },
+            "flag": {
+              "t": "string"
+            },
+            "art": {
+              "t": "string"
+            },
+            "ruinClue": {
+              "t": "integer"
+            },
+            "fate": {
+              "t": "integer"
+            }
+          },
+          "optional": [
+            "hpPct",
+            "stones",
+            "fame",
+            "fav",
+            "insight",
+            "karma",
+            "merit",
+            "hp",
+            "heart",
+            "sense",
+            "insightXp",
+            "xiuweiMul",
+            "mat",
+            "piety",
+            "followers",
+            "xh",
+            "flag",
+            "art",
+            "ruinClue",
+            "fate"
+          ]
+        },
+        "when": {
+          "t": "object",
+          "fields": {
+            "needSect": {
+              "t": "boolean"
+            },
+            "minRealm": {
+              "t": "integer"
+            },
+            "maxRealm": {
+              "t": "integer"
+            },
+            "place": {
+              "t": "string"
+            },
+            "flag": {
+              "t": "string"
+            },
+            "needTemple": {
+              "t": "boolean"
+            }
+          },
+          "optional": [
+            "needSect",
+            "minRealm",
+            "maxRealm",
+            "place",
+            "flag",
+            "needTemple"
+          ]
+        }
+      },
+      "optional": [
+        "path",
+        "followers",
+        "log",
+        "eff",
+        "when"
+      ]
+    }
+  },
+  "SCRIPTS": {
+    "t": "array",
+    "of": {
+      "t": "string"
+    }
+  },
+  "PIETY": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "v": {
+          "t": "number"
+        },
+        "name": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "PILLARS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "idx": {
+          "t": "integer"
+        },
+        "name": {
+          "t": "string"
+        },
+        "title": {
+          "t": "string"
+        },
+        "need": {
+          "t": "integer"
+        },
+        "power": {
+          "t": "integer"
+        },
+        "life": {
+          "t": "integer",
+          "nullable": true
+        },
+        "miao": {
+          "t": "string"
+        },
+        "coeff": {
+          "t": "number"
+        }
+      }
+    }
+  },
+  "POSITIONS": {
+    "t": "array",
+    "of": {
+      "t": "string"
+    }
+  },
+  "MIAO_COEFF": {
+    "t": "object",
+    "fields": {
+      "野祀": {
+        "t": "number"
+      },
+      "私祀": {
+        "t": "number"
+      },
+      "乡祀": {
+        "t": "integer"
+      },
+      "郡祀": {
+        "t": "number"
+      },
+      "州祀": {
+        "t": "number"
+      },
+      "国祀": {
+        "t": "integer"
+      },
+      "天下祀": {
+        "t": "number"
+      },
+      "敕封": {
+        "t": "integer"
+      }
+    }
+  },
+  "QIHE": {
+    "t": "object",
+    "fields": {
+      "benming": {
+        "t": "object",
+        "fields": {
+          "v": {
+            "t": "number"
+          },
+          "name": {
+            "t": "string"
+          }
+        }
+      },
+      "guest": {
+        "t": "object",
+        "fields": {
+          "v": {
+            "t": "number"
+          },
+          "name": {
+            "t": "string"
+          }
+        }
+      },
+      "clash": {
+        "t": "object",
+        "fields": {
+          "v": {
+            "t": "number"
+          },
+          "name": {
+            "t": "string"
+          }
+        }
+      }
+    }
+  },
+  "LU": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "rank": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "eff": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "SHENWEI": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "rank": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "salary": {
+          "t": "integer"
+        }
+      }
+    }
+  },
+  "ZHENJUN": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "zodiac": {
+          "t": "string"
+        },
+        "keywords": {
+          "t": "string"
+        },
+        "temples": {
+          "t": "array",
+          "of": {
+            "t": "object",
+            "fields": {
+              "tier": {
+                "t": "integer"
+              },
+              "name": {
+                "t": "string"
+              },
+              "scope": {
+                "t": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "RITUALS": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "id": {
+          "t": "string"
+        },
+        "name": {
+          "t": "string"
+        },
+        "owner": {
+          "t": "string"
+        },
+        "period": {
+          "t": "string"
+        },
+        "duration": {
+          "t": "string"
+        },
+        "note": {
+          "t": "string"
+        }
+      }
+    }
+  },
+  "SHENG": {
+    "t": "object",
+    "fields": {
+      "metal": {
+        "t": "string"
+      },
+      "water": {
+        "t": "string"
+      },
+      "wood": {
+        "t": "string"
+      },
+      "fire": {
+        "t": "string"
+      },
+      "earth": {
+        "t": "string"
+      },
+      "thunder": {
+        "t": "string"
+      },
+      "ice": {
+        "t": "string"
+      },
+      "wind": {
+        "t": "string"
+      },
+      "yin": {
+        "t": "string"
+      },
+      "yang": {
+        "t": "string"
+      }
+    }
+  },
+  "FOLLOW_LIMIT": {
+    "t": "array",
+    "of": {
+      "t": "object",
+      "fields": {
+        "name": {
+          "t": "string"
+        },
+        "max": {
+          "t": "integer"
+        }
+      }
+    }
+  }
+}

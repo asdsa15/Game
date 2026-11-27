@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node", "vitest/globals"],
+    "baseUrl": ".",
+    "paths": {
+      "@wendao/contracts": ["../contracts/src/index.ts"]
+    }
+  },
+  "include": ["src", "test"]
+}

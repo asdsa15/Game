@@ -1,0 +1,42 @@
+name: ci
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+# 合并门槛（方案 §10）：
+#   lint  —— 含 core 的边界规则（DOM / Math.random / fetch / node:* 一律禁）
+#   format:check —— 只查新架构（apps + packages），旧单文件版不参与
+#   typecheck —— 四包 + 两个应用
+#   test —— api 53 项 + 四个包
+#   content —— 116 表的类型快照与语义校验，且必须与 wxcs3-data.js 一致
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.18'
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 代码风格与边界
+        run: |
+          npm run lint
+          npm run format:check
+
+      - name: 类型检查（四包 + 两应用）
+        run: npm run typecheck
+
+      - name: 单元与集成测试
+        run: npm test
+
+      - name: 内容校验（116 表）
+        run: |
+          npm run check:content
+          npm run check:content:fresh

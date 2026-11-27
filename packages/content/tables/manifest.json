@@ -1,0 +1,19 @@
+{
+  "contentVersion": "0.1.0",
+  "digest": "ce7cca50c29007f7",
+  "tables": 116,
+  "records": 1092,
+  "textChars": 90370,
+  "domains": {
+    "meta": 13,
+    "realm": 17,
+    "char": 9,
+    "gongfa": 12,
+    "combat": 8,
+    "craft": 14,
+    "economy": 9,
+    "social": 16,
+    "world": 7,
+    "shinto": 11
+  }
+}

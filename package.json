@@ -2,12 +2,15 @@
   "name": "wendao",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
-  "description": "问道长生 · 本地全栈项目（前端 Vue + 服务端 Fastify + 本地 Postgres/PGlite）",
+  "description": "问道长生 · 本地全栈项目（前端 Vue + 规则内核 TS + 服务端 Fastify + 本地 Postgres/PGlite）",
   "engines": {
     "node": ">=22.18"
   },
   "workspaces": [
+    "packages/contracts",
+    "packages/content",
+    "packages/core",
+    "packages/sim",
     "apps/api",
     "apps/web"
   ],
@@ -15,11 +18,29 @@
     "dev": "node scripts/dev.mjs",
     "dev:api": "npm -w @wendao/api run dev",
     "dev:web": "npm -w @wendao/web run dev",
-    "build": "npm -w @wendao/web run build",
-    "test": "npm -w @wendao/api test",
-    "typecheck": "npm -w @wendao/api run typecheck && npm -w @wendao/web run typecheck",
+    "build": "npm run build:packages && npm run build:web",
+    "build:packages": "npm -w @wendao/contracts run build && npm -w @wendao/core run build",
+    "build:web": "npm -w @wendao/web run build",
+    "typecheck": "npm run typecheck:packages && npm run typecheck:apps",
+    "typecheck:packages": "npm -w @wendao/contracts run typecheck && npm -w @wendao/content run typecheck && npm -w @wendao/core run typecheck && npm -w @wendao/sim run typecheck",
+    "typecheck:apps": "npm -w @wendao/api run typecheck && npm -w @wendao/web run typecheck",
+    "lint": "eslint packages eslint.config.mjs",
+    "lint:fix": "npm run lint -- --fix",
+    "format": "prettier --write packages *.json *.mjs",
+    "format:check": "prettier --check packages *.json *.mjs",
+    "test": "npm test --workspaces --if-present",
+    "check:content": "npm -w @wendao/content run validate",
+    "check:content:fresh": "node tools/extract-content.mjs --check",
+    "verify": "npm run lint && npm run format:check && npm run typecheck && npm run test && npm run check:content && npm run check:content:fresh",
     "db:init": "npm -w @wendao/api run db:init",
     "db:seed": "npm -w @wendao/api run db:seed",
     "api": "npm -w @wendao/api run start"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0"
   }
 }

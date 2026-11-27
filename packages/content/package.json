@@ -1,0 +1,26 @@
+{
+  "name": "@wendao/content",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "问道长生 · 内容包：116 张表（JSON）+ 类型快照 + zod 校验 + 交叉引用检查",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tables/*": "./tables/*"
+  },
+  "scripts": {
+    "build": "node ../../tools/extract-content.mjs && tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "validate": "node src/cli-validate.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

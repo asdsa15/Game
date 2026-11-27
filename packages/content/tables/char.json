@@ -1,0 +1,455 @@
+{
+  "ROOTS": {
+    "heaven": {
+      "name": "天灵根",
+      "load": 2,
+      "mul": 2,
+      "els": 1,
+      "desc": "单系，万中无一"
+    },
+    "earth": {
+      "name": "地灵根",
+      "load": 1.6,
+      "mul": 1.6,
+      "els": 2,
+      "desc": "双系，主次分明"
+    },
+    "true_": {
+      "name": "真灵根",
+      "load": 1.3,
+      "mul": 1.3,
+      "els": 3,
+      "desc": "三系，均衡"
+    },
+    "pseudo": {
+      "name": "伪灵根",
+      "load": 1,
+      "mul": 1,
+      "els": 4,
+      "desc": "四/五系，杂而不精"
+    },
+    "mutate": {
+      "name": "变异灵根",
+      "load": 1.8,
+      "mul": 1.8,
+      "els": 1,
+      "desc": "雷/风/冰/阴/阳"
+    }
+  },
+  "ELEMENTS": {
+    "metal": {
+      "name": "金",
+      "color": "#C9A45C",
+      "ke": "wood"
+    },
+    "wood": {
+      "name": "木",
+      "color": "#6BA38E",
+      "ke": "earth"
+    },
+    "water": {
+      "name": "水",
+      "color": "#5E8FAE",
+      "ke": "fire"
+    },
+    "fire": {
+      "name": "火",
+      "color": "#C05F55",
+      "ke": "metal"
+    },
+    "earth": {
+      "name": "土",
+      "color": "#B08A4E",
+      "ke": "water"
+    }
+  },
+  "MUT_ELEMENTS": {
+    "thunder": {
+      "name": "雷",
+      "color": "#8B6FA8"
+    },
+    "wind": {
+      "name": "风",
+      "color": "#7F9C9C"
+    },
+    "ice": {
+      "name": "冰",
+      "color": "#7FA8C9"
+    },
+    "yin": {
+      "name": "阴",
+      "color": "#6E5E86"
+    },
+    "yang": {
+      "name": "阳",
+      "color": "#C98F3C"
+    }
+  },
+  "BODIES": [
+    {
+      "id": "dao",
+      "name": "先天道体",
+      "eff": "修为、香火之化 +50%",
+      "mul": 1.5
+    },
+    {
+      "id": "sword",
+      "name": "剑灵体",
+      "eff": "斗法亲和：战力 +10%",
+      "mul": 1,
+      "pow": 1.1
+    },
+    {
+      "id": "nine",
+      "name": "九阳圣体",
+      "eff": "火属法术 +30%",
+      "mul": 1,
+      "fire": 1.3
+    },
+    {
+      "id": "ice",
+      "name": "冰魄灵体",
+      "eff": "冰属水：主修水时招式 +15%",
+      "mul": 1,
+      "ice": 1.15
+    },
+    {
+      "id": "xuan",
+      "name": "玄阴体",
+      "eff": "双修之益 +25%",
+      "mul": 1,
+      "both": 1.25
+    },
+    {
+      "id": "chun",
+      "name": "纯阳体",
+      "eff": "双修有益；首度反噬可免",
+      "mul": 1,
+      "both": 1.25
+    },
+    {
+      "id": "chaos",
+      "name": "混沌体",
+      "eff": "世所罕有：五行皆通，不受反克",
+      "mul": 1.1,
+      "rare": true,
+      "keFloor": 1.15
+    },
+    {
+      "id": "plain",
+      "name": "凡体",
+      "eff": "无所长：淬体之费三倍",
+      "mul": 1,
+      "quenchMul": 3
+    }
+  ],
+  "TALENTS": [
+    {
+      "id": "smart",
+      "name": "天资聪颖",
+      "cost": 1,
+      "apply": {
+        "qualify": 3
+      },
+      "desc": "资质 +3"
+    },
+    {
+      "id": "memory",
+      "name": "过目不忘",
+      "cost": 1,
+      "apply": {
+        "insight": 3
+      },
+      "desc": "悟性 +3"
+    },
+    {
+      "id": "light",
+      "name": "身轻如燕",
+      "cost": 1,
+      "apply": {
+        "speed": 3
+      },
+      "desc": "遁速 +3"
+    },
+    {
+      "id": "heartT",
+      "name": "天生道心",
+      "cost": 1,
+      "apply": {
+        "heart": 3
+      },
+      "desc": "道心 +3"
+    },
+    {
+      "id": "luck",
+      "name": "气运加身",
+      "cost": 1,
+      "apply": {
+        "fate": 3
+      },
+      "desc": "仙缘 +3"
+    },
+    {
+      "id": "senseT",
+      "name": "神识过人",
+      "cost": 1,
+      "apply": {
+        "sense": 3
+      },
+      "desc": "神识 +3"
+    },
+    {
+      "id": "merid",
+      "name": "百脉俱通",
+      "cost": 1,
+      "apply": {
+        "mpFlat": 50
+      },
+      "desc": "灵力上限 +50"
+    },
+    {
+      "id": "iron",
+      "name": "钢筋铁骨",
+      "cost": 1,
+      "apply": {
+        "hpFlat": 80
+      },
+      "desc": "气血上限 +80"
+    },
+    {
+      "id": "pill",
+      "name": "药理通神",
+      "cost": 1,
+      "apply": {
+        "alchemy": 1
+      },
+      "desc": "炼丹 +1 级"
+    },
+    {
+      "id": "peach",
+      "name": "桃花运",
+      "cost": 1,
+      "apply": {
+        "love": 0.2
+      },
+      "desc": "初始好感 +20%"
+    },
+    {
+      "id": "weak",
+      "name": "体弱多病",
+      "cost": -2,
+      "apply": {
+        "hpFlat": -50
+      },
+      "desc": "负面：气血 -50，换回 2 点"
+    }
+  ],
+  "ORIGINS": [
+    {
+      "id": "farm",
+      "name": "农家子",
+      "desc": "道心 +2，孑然无依",
+      "apply": {
+        "heart": 2
+      }
+    },
+    {
+      "id": "hunt",
+      "name": "猎户之后",
+      "desc": "气血上限 +20，习于山林",
+      "apply": {
+        "hpFlat": 20
+      }
+    },
+    {
+      "id": "merch",
+      "name": "商贾之家",
+      "desc": "灵石 +300，仙缘 +1",
+      "apply": {
+        "stones": 300,
+        "fate": 1
+      }
+    },
+    {
+      "id": "office",
+      "name": "官宦子弟",
+      "desc": "声望 +20，可入大夏祀部",
+      "apply": {
+        "fame": 20
+      }
+    },
+    {
+      "id": "army",
+      "name": "将门之后",
+      "desc": "道心 +1、悟性 +1",
+      "apply": {
+        "heart": 1,
+        "insight": 1
+      }
+    },
+    {
+      "id": "fallen",
+      "name": "没落世家",
+      "desc": "怀先祖残卷（玄阶功法一，随机）",
+      "apply": {
+        "scroll": true
+      }
+    },
+    {
+      "id": "orphan",
+      "name": "市井孤儿",
+      "desc": "遁速 +2，三教九流皆识",
+      "apply": {
+        "speed": 2
+      }
+    },
+    {
+      "id": "scholar",
+      "name": "书香门第",
+      "desc": "悟性 +3，过目成诵",
+      "apply": {
+        "insight": 3
+      }
+    },
+    {
+      "id": "monk",
+      "name": "方外遗孤",
+      "desc": "资质 +2，通科仪",
+      "apply": {
+        "qualify": 2,
+        "ritual": true
+      }
+    },
+    {
+      "id": "demon",
+      "name": "妖族后裔",
+      "desc": "罕有：半妖之身",
+      "apply": {
+        "halfDemon": true
+      },
+      "rare": true
+    }
+  ],
+  "FAXIANG": [
+    {
+      "id": "g1",
+      "zodiac": "龙",
+      "name": "山河障市真君",
+      "kw": "君，帝王，尊贵，龙，江山，地域，空间",
+      "opening": "香火易积，拓境速，然见效缓"
+    },
+    {
+      "id": "g2",
+      "zodiac": "狗",
+      "name": "市井江湖真君",
+      "kw": "民，九流，烟火，人，饮食，风俗，时间",
+      "opening": "信众易集，精微处难工"
+    },
+    {
+      "id": "g3",
+      "zodiac": "鸡",
+      "name": "关外北马真君",
+      "kw": "乱，村野，苦难，贼，畜生，动荡，迷信",
+      "opening": "起于乱世，世愈乱而势愈张"
+    },
+    {
+      "id": "g4",
+      "zodiac": "马",
+      "name": "侠武乱禁真君",
+      "kw": "侠，武术，劳力，镖，功夫，宗师，乱禁",
+      "opening": "斗法称雄，香火独薄"
+    },
+    {
+      "id": "g5",
+      "zodiac": "猴",
+      "name": "生死岐黄真君",
+      "kw": "医，诊病，医官，药，手术，接骨，济世",
+      "opening": "显圣最灵，济人即聚香火"
+    },
+    {
+      "id": "g6",
+      "zodiac": "蛇",
+      "name": "南洋邪灵真君",
+      "kw": "毒，诅咒，邪神，巫，蛊毒，灵媒，左道",
+      "opening": "灵验甚速，业力亦甚"
+    },
+    {
+      "id": "g7",
+      "zodiac": "虎",
+      "name": "西传密藏真君",
+      "kw": "佛，密宗，普渡，藏，皈依，因果，轮回",
+      "opening": "护身度亡，邪祟不侵"
+    },
+    {
+      "id": "g8",
+      "zodiac": "羊",
+      "name": "天师法道真君",
+      "kw": "道，五行，长生，天，无为，出世，自然",
+      "opening": "法脉至正，符箓称尊"
+    },
+    {
+      "id": "g9",
+      "zodiac": "牛",
+      "name": "神工百匠真君",
+      "kw": "匠，工艺，美，行，工业，造物，科学",
+      "opening": "造物生财，营庙最速"
+    },
+    {
+      "id": "g10",
+      "zodiac": "猪",
+      "name": "百无禁忌真君",
+      "kw": "脏，邪祟，尸体，死，葬，风水，忌讳",
+      "opening": "阴事专精，正祀所不容"
+    },
+    {
+      "id": "g11",
+      "zodiac": "鼠",
+      "name": "福宝衰运真君",
+      "kw": "命，生辰，商贾，运，八字，命理，玄学",
+      "opening": "财气独旺"
+    },
+    {
+      "id": "g12",
+      "zodiac": "兔",
+      "name": "天外逐岁真君",
+      "kw": "妙，悖论，星宿，理，太空，哲学，神秘",
+      "opening": "权柄最奇"
+    }
+  ],
+  "ZODIAC_CLASH": {
+    "龙": "狗",
+    "狗": "龙",
+    "蛇": "猪",
+    "猪": "蛇",
+    "马": "鼠",
+    "鼠": "马",
+    "羊": "牛",
+    "牛": "羊",
+    "猴": "虎",
+    "虎": "猴",
+    "鸡": "兔",
+    "兔": "鸡"
+  },
+  "QI_TO_DAOTONG": {
+    "metal": [
+      "兑金",
+      "庚金"
+    ],
+    "wood": [
+      "正木",
+      "保木"
+    ],
+    "water": [
+      "坎水",
+      "府水"
+    ],
+    "fire": [
+      "离火",
+      "真火"
+    ],
+    "earth": [
+      "艮土",
+      "戊土"
+    ]
+  }
+}

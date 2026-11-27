@@ -1,0 +1,1887 @@
+{
+  "RECIPES": [
+    {
+      "id": "dan_huichun",
+      "kind": "dan",
+      "name": "回春丹",
+      "tier": "huang",
+      "lv": 1,
+      "mats": {
+        "lanyouCao": 1,
+        "buqiCao": 1
+      },
+      "out": "pillHp",
+      "need": 1,
+      "base": 0.75,
+      "risk": "explode",
+      "note": "疗伤之基。习此一方，终身无缺药之虞"
+    },
+    {
+      "id": "dan_juhui",
+      "kind": "dan",
+      "name": "聚气丹",
+      "tier": "huang",
+      "lv": 1,
+      "mats": {
+        "buqiCao": 2
+      },
+      "out": "pillMp",
+      "need": 1,
+      "base": 0.75,
+      "risk": "explode",
+      "note": "补灵之物。散修入门，先习此方"
+    },
+    {
+      "id": "dan_qingxin",
+      "kind": "dan",
+      "name": "清心丹",
+      "tier": "huang",
+      "lv": 2,
+      "mats": {
+        "heshenHua": 1,
+        "lanyouCao": 1
+      },
+      "out": "clear",
+      "need": 1,
+      "base": 0.7,
+      "risk": "explode",
+      "note": "道心动摇，服一丸以定"
+    },
+    {
+      "id": "dan_shengji",
+      "kind": "dan",
+      "name": "生肌续骨丹",
+      "tier": "xuan",
+      "lv": 3,
+      "mats": {
+        "lanyouCao": 2,
+        "gulingHua": 1
+      },
+      "out": "xiaoSheng",
+      "need": 1,
+      "base": 0.65,
+      "risk": "explode",
+      "note": "续骨生肌，虽重伤亦可挽"
+    },
+    {
+      "id": "dan_yuhua",
+      "kind": "dan",
+      "name": "玉华灵水",
+      "tier": "di",
+      "lv": 5,
+      "mats": {
+        "buqiCao": 1,
+        "heshenHua": 1,
+        "yuhuaYu": 1
+      },
+      "out": "yuhuaShui",
+      "need": 1,
+      "base": 0.55,
+      "risk": "explode",
+      "note": "三味同炉，灵力顷刻复满"
+    },
+    {
+      "id": "dan_liaoshang",
+      "kind": "dan",
+      "name": "疗伤药",
+      "tier": "huang",
+      "lv": 1,
+      "mats": {
+        "lanyouCao": 2
+      },
+      "out": "heal",
+      "need": 1,
+      "base": 0.78,
+      "risk": "explode",
+      "note": "蓝幽草为主，新手段可及"
+    },
+    {
+      "id": "dan_jiegu",
+      "kind": "dan",
+      "name": "接骨膏",
+      "tier": "xuan",
+      "lv": 2,
+      "mats": {
+        "lanyouCao": 1,
+        "gulingHua": 1
+      },
+      "out": "jiebang",
+      "need": 1,
+      "base": 0.68,
+      "risk": "explode",
+      "note": "断肢可续，重伤转轻"
+    },
+    {
+      "id": "dan_fuyuan",
+      "kind": "dan",
+      "name": "复原丹",
+      "tier": "xuan",
+      "lv": 3,
+      "mats": {
+        "lanyouCao": 1,
+        "gulingHua": 1,
+        "buqiCao": 1
+      },
+      "out": "shengji",
+      "need": 1,
+      "base": 0.62,
+      "risk": "explode",
+      "note": "三味同炉，复气血五成"
+    },
+    {
+      "id": "dan_huiling",
+      "kind": "dan",
+      "name": "回灵散",
+      "tier": "xuan",
+      "lv": 3,
+      "mats": {
+        "buqiCao": 2,
+        "heshenHua": 1
+      },
+      "out": "huiLing",
+      "need": 1,
+      "base": 0.62,
+      "risk": "explode",
+      "note": "补气草合神花，复灵力四成"
+    },
+    {
+      "id": "dan_xiaopo",
+      "kind": "dan",
+      "name": "小破障丹",
+      "tier": "xuan",
+      "lv": 4,
+      "mats": {
+        "heshenHua": 2,
+        "wuxingling": 1
+      },
+      "out": "xiaoPo",
+      "need": 1,
+      "base": 0.55,
+      "risk": "explode",
+      "note": "破境之机 +12%，材料不菲"
+    },
+    {
+      "id": "dan_zhuji",
+      "kind": "dan",
+      "name": "筑基丹",
+      "tier": "xuan",
+      "lv": 5,
+      "mats": {
+        "heshenHua": 2,
+        "wuxingling": 1,
+        "mudanYao": 1
+      },
+      "out": "zhuji",
+      "need": 1,
+      "base": 0.5,
+      "risk": "explode",
+      "note": "助筑基 +15%。妖丹为引，不能廉价量产"
+    },
+    {
+      "id": "dan_humai",
+      "kind": "dan",
+      "name": "护脉丹",
+      "tier": "huang",
+      "lv": 2,
+      "mats": {
+        "lanyouCao": 1,
+        "buqiCao": 1
+      },
+      "out": "huMai",
+      "need": 1,
+      "base": 0.72,
+      "risk": "explode",
+      "note": "护住经脉，受击减伤两成"
+    },
+    {
+      "id": "dan_qingshen",
+      "kind": "dan",
+      "name": "清神丹",
+      "tier": "huang",
+      "lv": 2,
+      "mats": {
+        "heshenHua": 1,
+        "buqiCao": 1
+      },
+      "out": "qingShen",
+      "need": 1,
+      "base": 0.72,
+      "risk": "explode",
+      "note": "清控制、复灵力，针对锁灵迟滞"
+    },
+    {
+      "id": "dan_jiedu",
+      "kind": "dan",
+      "name": "解毒丹",
+      "tier": "huang",
+      "lv": 1,
+      "mats": {
+        "lanyouCao": 2
+      },
+      "out": "jieDu",
+      "need": 1,
+      "base": 0.78,
+      "risk": "explode",
+      "note": "解百毒，兼清余焰"
+    },
+    {
+      "id": "dan_lieyuan",
+      "kind": "dan",
+      "name": "烈元丹",
+      "tier": "xuan",
+      "lv": 3,
+      "mats": {
+        "buqiCao": 2,
+        "mudanYao": 1
+      },
+      "out": "lieYuan",
+      "need": 1,
+      "base": 0.6,
+      "risk": "explode",
+      "note": "爆发有代价：服时损气血上限 5%"
+    },
+    {
+      "id": "dan_shengsheng",
+      "kind": "dan",
+      "name": "生生丹",
+      "tier": "xuan",
+      "lv": 3,
+      "mats": {
+        "lanyouCao": 2,
+        "heshenHua": 1
+      },
+      "out": "shengSheng",
+      "need": 1,
+      "base": 0.62,
+      "risk": "explode",
+      "note": "生生不息，三回合缓复气血"
+    },
+    {
+      "id": "dan_guiyuan",
+      "kind": "dan",
+      "name": "归元丹",
+      "tier": "di",
+      "lv": 4,
+      "mats": {
+        "buqiCao": 2,
+        "heshenHua": 1,
+        "gulingHua": 1
+      },
+      "out": "guiYuan",
+      "need": 1,
+      "base": 0.55,
+      "risk": "explode",
+      "note": "气血灵力同复各 18%"
+    },
+    {
+      "id": "dan_kaimai",
+      "kind": "dan",
+      "name": "开脉丹",
+      "tier": "xuan",
+      "lv": 3,
+      "mats": {
+        "buqiCao": 2,
+        "wuxingling": 1
+      },
+      "out": "kaiMai",
+      "need": 1,
+      "base": 0.6,
+      "risk": "explode",
+      "note": "开脉三旬，修炼收益 +20%"
+    },
+    {
+      "id": "dan_wuxin",
+      "kind": "dan",
+      "name": "悟心丹",
+      "tier": "xuan",
+      "lv": 3,
+      "mats": {
+        "heshenHua": 2,
+        "lanyouCao": 1
+      },
+      "out": "wuXin",
+      "need": 1,
+      "base": 0.6,
+      "risk": "explode",
+      "note": "下一次读书论道，悟道 +3"
+    },
+    {
+      "id": "fu_huo",
+      "kind": "fu",
+      "name": "火符",
+      "tier": "huang",
+      "lv": 1,
+      "mats": {
+        "fuZhi": 1,
+        "zhuSha": 1
+      },
+      "out": "fuHuo",
+      "need": 3,
+      "base": 0.72,
+      "risk": "ruin",
+      "note": "一炉三纸，工省而成速"
+    },
+    {
+      "id": "fu_jin",
+      "kind": "fu",
+      "name": "金刚符",
+      "tier": "huang",
+      "lv": 2,
+      "mats": {
+        "fuZhi": 1,
+        "zhuSha": 2
+      },
+      "out": "fuJin",
+      "need": 3,
+      "base": 0.7,
+      "risk": "ruin",
+      "note": "佩一纸，当一击"
+    },
+    {
+      "id": "fu_dun",
+      "kind": "fu",
+      "name": "遁符",
+      "tier": "huang",
+      "lv": 2,
+      "mats": {
+        "fuZhi": 2,
+        "zhuSha": 1
+      },
+      "out": "fuDun",
+      "need": 3,
+      "base": 0.68,
+      "risk": "ruin",
+      "note": "势不可敌，则遁。能遁者，得长生"
+    },
+    {
+      "id": "fu_zeng",
+      "kind": "fu",
+      "name": "增益符",
+      "tier": "xuan",
+      "lv": 3,
+      "mats": {
+        "fuZhi": 2,
+        "zhuSha": 2,
+        "heshenHua": 1
+      },
+      "out": "fuZeng",
+      "need": 3,
+      "base": 0.6,
+      "risk": "ruin",
+      "note": "三回合增伤三成，越阶取胜之资"
+    },
+    {
+      "id": "fu_lei",
+      "kind": "fu",
+      "name": "雷符",
+      "tier": "xuan",
+      "lv": 4,
+      "mats": {
+        "fuZhi": 3,
+        "zhuSha": 3,
+        "jinLing": 1
+      },
+      "out": "fuLei",
+      "need": 3,
+      "base": 0.55,
+      "risk": "ruin",
+      "note": "必中破甲，诸符之贵者"
+    },
+    {
+      "id": "fu_bing",
+      "kind": "fu",
+      "name": "冰封符",
+      "tier": "xuan",
+      "lv": 3,
+      "mats": {
+        "fuZhi": 2,
+        "zhuSha": 2,
+        "lanyouCao": 1
+      },
+      "out": "fuBing",
+      "need": 3,
+      "base": 0.6,
+      "risk": "ruin",
+      "note": "寒水凝符，迟滞其身"
+    },
+    {
+      "id": "fu_fu",
+      "kind": "fu",
+      "name": "缚灵符",
+      "tier": "xuan",
+      "lv": 3,
+      "mats": {
+        "fuZhi": 2,
+        "zhuSha": 2,
+        "heshenHua": 1
+      },
+      "out": "fuFu",
+      "need": 3,
+      "base": 0.6,
+      "risk": "ruin",
+      "note": "缚其灵台，压其出手；蓄力者直接打断"
+    },
+    {
+      "id": "fu_po",
+      "kind": "fu",
+      "name": "破甲符",
+      "tier": "xuan",
+      "lv": 4,
+      "mats": {
+        "fuZhi": 2,
+        "zhuSha": 3,
+        "jinLing": 1
+      },
+      "out": "fuPo",
+      "need": 3,
+      "base": 0.56,
+      "risk": "ruin",
+      "note": "金灵导气，破其甲防"
+    },
+    {
+      "id": "fu_jing",
+      "kind": "fu",
+      "name": "净符",
+      "tier": "huang",
+      "lv": 2,
+      "mats": {
+        "fuZhi": 1,
+        "zhuSha": 1,
+        "lanyouCao": 1
+      },
+      "out": "fuJing",
+      "need": 3,
+      "base": 0.7,
+      "risk": "ruin",
+      "note": "低阶净秽，解一重负面"
+    },
+    {
+      "id": "fu_ju",
+      "kind": "fu",
+      "name": "聚灵符",
+      "tier": "xuan",
+      "lv": 3,
+      "mats": {
+        "fuZhi": 2,
+        "zhuSha": 2,
+        "buqiCao": 1
+      },
+      "out": "fuJu",
+      "need": 3,
+      "base": 0.6,
+      "risk": "ruin",
+      "note": "聚气于符，下一门术法省灵一半"
+    },
+    {
+      "id": "fu_shen",
+      "kind": "fu",
+      "name": "神行符",
+      "tier": "xuan",
+      "lv": 3,
+      "mats": {
+        "fuZhi": 2,
+        "zhuSha": 2,
+        "huanShi": 1
+      },
+      "out": "fuShen",
+      "need": 3,
+      "base": 0.6,
+      "risk": "ruin",
+      "note": "幻属迷踪，避一刀之厄"
+    },
+    {
+      "id": "fu_leihuo",
+      "kind": "fu",
+      "name": "雷火符",
+      "tier": "di",
+      "lv": 5,
+      "mats": {
+        "fuZhi": 3,
+        "zhuSha": 3,
+        "jinLing": 1,
+        "mudanYao": 1
+      },
+      "out": "fuLeiHuo",
+      "need": 3,
+      "base": 0.5,
+      "risk": "ruin",
+      "note": "雷火相激，引余焰而爆之。高阶制符/寻仇所得"
+    },
+    {
+      "id": "fu_huoyun",
+      "kind": "fu",
+      "name": "火云符",
+      "tier": "huang",
+      "lv": 2,
+      "mats": {
+        "fuZhi": 1,
+        "zhuSha": 2
+      },
+      "out": "huoyuyuan",
+      "need": 3,
+      "base": 0.68,
+      "risk": "ruin",
+      "note": "战前焚符，火系术法增威六成"
+    },
+    {
+      "id": "fu_wuyun",
+      "kind": "fu",
+      "name": "五雷符",
+      "tier": "xuan",
+      "lv": 4,
+      "mats": {
+        "fuZhi": 3,
+        "zhuSha": 3,
+        "jinLing": 1
+      },
+      "out": "wuyun",
+      "need": 3,
+      "base": 0.54,
+      "risk": "ruin",
+      "note": "五雷正法，首击必中增伤八成"
+    },
+    {
+      "id": "fu_juxian",
+      "kind": "fu",
+      "name": "拘仙敕神符",
+      "tier": "di",
+      "lv": 5,
+      "mats": {
+        "fuZhi": 3,
+        "zhuSha": 3,
+        "heshenHua": 2,
+        "starSand": 1
+      },
+      "out": "juxian",
+      "need": 3,
+      "base": 0.48,
+      "risk": "ruin",
+      "note": "敕令位格，压其一档。材料极贵"
+    },
+    {
+      "id": "fu_jinchuan",
+      "kind": "fu",
+      "name": "传音符",
+      "tier": "huang",
+      "lv": 1,
+      "mats": {
+        "fuZhi": 1,
+        "zhuSha": 1
+      },
+      "out": "jinchuan",
+      "need": 3,
+      "base": 0.75,
+      "risk": "ruin",
+      "note": "传讯故人之用，平时即焚"
+    },
+    {
+      "id": "fu_hanhuo",
+      "kind": "fu",
+      "name": "祈雨符箓",
+      "tier": "huang",
+      "lv": 2,
+      "mats": {
+        "fuZhi": 1,
+        "zhuSha": 2,
+        "lanyouCao": 1
+      },
+      "out": "hanhuo",
+      "need": 3,
+      "base": 0.68,
+      "risk": "ruin",
+      "note": "神道祈雨，下一场显圣不耗香火"
+    },
+    {
+      "id": "qi_qingye",
+      "kind": "qi",
+      "name": "青叶舟",
+      "tier": "huang",
+      "lv": 2,
+      "mats": {
+        "tieMu": 2,
+        "jinLing": 1
+      },
+      "out": "qingyezhou",
+      "need": 1,
+      "base": 0.65,
+      "risk": "ruin",
+      "note": "器胚一成，刻阵可再"
+    },
+    {
+      "id": "qi_hushen",
+      "kind": "qi",
+      "name": "护身玉符",
+      "tier": "huang",
+      "lv": 3,
+      "mats": {
+        "tieMu": 1,
+        "jinLing": 2,
+        "huanShi": 1
+      },
+      "out": "guixibao",
+      "need": 1,
+      "base": 0.6,
+      "risk": "ruin",
+      "note": "常驻减伤，佩之无时或离"
+    },
+    {
+      "id": "qi_jiuzhuan",
+      "kind": "qi",
+      "name": "九转飞剑",
+      "tier": "di",
+      "lv": 5,
+      "mats": {
+        "longYan": 1,
+        "jinLing": 3,
+        "starSand": 1
+      },
+      "out": "jiuzhuan",
+      "need": 1,
+      "base": 0.5,
+      "risk": "ruin",
+      "note": "九转淬锋，攻击 +25%（普通法器，非本命）"
+    },
+    {
+      "id": "zhen_juling",
+      "kind": "zhen",
+      "name": "聚灵阵",
+      "tier": "huang",
+      "lv": 2,
+      "mats": {
+        "jinLing": 2,
+        "buqiCao": 2
+      },
+      "out": "zhenJuLing",
+      "need": 1,
+      "base": 0.7,
+      "risk": "ruin",
+      "note": "洞府灵气 +1 档，岁糜灵石以养之"
+    },
+    {
+      "id": "zhen_mizong",
+      "kind": "zhen",
+      "name": "迷踪阵",
+      "tier": "xuan",
+      "lv": 3,
+      "mats": {
+        "huanShi": 3,
+        "zhenQi": 1
+      },
+      "out": "zhenMiZong",
+      "need": 1,
+      "base": 0.62,
+      "risk": "ruin",
+      "note": "藏形洞府，人莫能窥"
+    },
+    {
+      "id": "zhen_wuxing",
+      "kind": "zhen",
+      "name": "五行轮杀阵",
+      "tier": "di",
+      "lv": 5,
+      "mats": {
+        "jinLing": 1,
+        "buqiCao": 1,
+        "huanShi": 1,
+        "zhenQi": 1,
+        "longYan": 1
+      },
+      "out": "zhenWuXing",
+      "need": 1,
+      "base": 0.52,
+      "risk": "ruin",
+      "note": "五行各一，环镇洞府，犯者伤"
+    },
+    {
+      "id": "zhen_suoling",
+      "kind": "zhen",
+      "name": "锁灵阵",
+      "tier": "xuan",
+      "lv": 4,
+      "mats": {
+        "zhenQi": 1,
+        "jinLing": 2,
+        "huanShi": 1
+      },
+      "out": "zhenSuoLing",
+      "need": 1,
+      "base": 0.58,
+      "risk": "ruin",
+      "note": "斗法之际，锁其去路"
+    }
+  ],
+  "MATERIAL_EXT": [
+    {
+      "id": "buqiCao",
+      "name": "补气草",
+      "price": 60,
+      "tier": "huang",
+      "eff": "炼丹主材：回灵诸丹"
+    },
+    {
+      "id": "heshenHua",
+      "name": "合神花",
+      "price": 90,
+      "tier": "huang",
+      "eff": "炼丹主材：宁神诸丹"
+    },
+    {
+      "id": "yuhuaYu",
+      "name": "玉华宝鱼汁",
+      "price": 220,
+      "tier": "xuan",
+      "eff": "炼丹主材：玉华灵水"
+    },
+    {
+      "id": "gulingHua",
+      "name": "骨灵花",
+      "price": 380,
+      "tier": "xuan",
+      "eff": "疗伤诸丹之引"
+    },
+    {
+      "id": "tianying",
+      "name": "天婴果",
+      "price": 900,
+      "tier": "di",
+      "eff": "凝婴丹主材"
+    },
+    {
+      "id": "jidaoGuo",
+      "name": "剑道果",
+      "price": 1100,
+      "tier": "di",
+      "eff": "剑修大成之果，剑属功法之效 +20%"
+    },
+    {
+      "id": "wuxingling",
+      "name": "五行灵果",
+      "price": 660,
+      "tier": "xuan",
+      "eff": "五行俱备，补灵根之偏"
+    },
+    {
+      "id": "starSand",
+      "name": "天璇星砂",
+      "price": 1500,
+      "tier": "di",
+      "eff": "炼器主材：法器品阶 +1"
+    },
+    {
+      "id": "mudanYao",
+      "name": "妖丹",
+      "price": 800,
+      "tier": "xuan",
+      "eff": "妖兽内丹，器丹两用"
+    },
+    {
+      "id": "qunfangSui",
+      "name": "群芳髓",
+      "price": 420,
+      "tier": "xuan",
+      "eff": "双修、驻颜之物"
+    },
+    {
+      "id": "wulianXue",
+      "name": "万炼血",
+      "price": 1300,
+      "tier": "di",
+      "eff": "魔门血炼主材，业力 +5，其威亦可观"
+    },
+    {
+      "id": "lanyouCao",
+      "name": "蓝幽草",
+      "price": 140,
+      "tier": "huang",
+      "eff": "疗伤常草，山野多有"
+    },
+    {
+      "id": "fuZhi",
+      "name": "符纸",
+      "price": 20,
+      "tier": "huang",
+      "eff": "制符所载，一纸一符"
+    },
+    {
+      "id": "zhuSha",
+      "name": "朱砂",
+      "price": 30,
+      "tier": "huang",
+      "eff": "制符定属，赤者最灵"
+    },
+    {
+      "id": "zhenQi",
+      "name": "阵旗",
+      "price": 260,
+      "tier": "xuan",
+      "eff": "布阵所必需，可再用"
+    },
+    {
+      "id": "huanShi",
+      "name": "幻属石",
+      "price": 180,
+      "tier": "xuan",
+      "eff": "迷踪阵主材"
+    },
+    {
+      "id": "jinLing",
+      "name": "金灵砂",
+      "price": 200,
+      "tier": "xuan",
+      "eff": "炼器刻阵所用，善导灵气"
+    },
+    {
+      "id": "tieMu",
+      "name": "铁木心",
+      "price": 150,
+      "tier": "huang",
+      "eff": "器胚主材，坚而韧"
+    },
+    {
+      "id": "longYan",
+      "name": "龙岩铁",
+      "price": 700,
+      "tier": "di",
+      "eff": "地阶器胚主材"
+    },
+    {
+      "id": "zhuShu",
+      "name": "注疏",
+      "price": 260,
+      "tier": "huang",
+      "eff": "道书重读所得。可售，亦可易他人之注"
+    },
+    {
+      "id": "yueYunZhi",
+      "name": "岳云芝",
+      "price": 240,
+      "tier": "xuan",
+      "place": "qingyue",
+      "eff": "东洲青岳所产，炼宁神诸丹之引"
+    },
+    {
+      "id": "chiYangSha",
+      "name": "赤阳砂",
+      "price": 320,
+      "tier": "xuan",
+      "place": "nanyue",
+      "eff": "南疆火脉所凝，火系器料"
+    },
+    {
+      "id": "liuShaJing",
+      "name": "流沙晶",
+      "price": 280,
+      "tier": "xuan",
+      "place": "xisha",
+      "eff": "西漠流沙所结，布阵之材"
+    },
+    {
+      "id": "hanYuanYu",
+      "name": "寒渊玉",
+      "price": 460,
+      "tier": "di",
+      "place": "beiyuan",
+      "eff": "北原寒渊所孕，疗伤诸丹之引"
+    },
+    {
+      "id": "tianQueJin",
+      "name": "天阙金",
+      "price": 880,
+      "tier": "di",
+      "place": "zhongzhou",
+      "eff": "中州天阙所铸，高阶器胚主材"
+    }
+  ],
+  "PILL_EXT": [
+    {
+      "id": "pillHp",
+      "name": "回春丹",
+      "price": 50,
+      "tier": "huang",
+      "type": "hp",
+      "v": 50,
+      "desc": "复气血 50"
+    },
+    {
+      "id": "xiaoSheng",
+      "name": "生肌续骨丹",
+      "price": 140,
+      "tier": "xuan",
+      "type": "hp",
+      "v": 160,
+      "desc": "复气血 160，续骨生肌"
+    },
+    {
+      "id": "shengji",
+      "name": "复原丹",
+      "price": 480,
+      "tier": "xuan",
+      "type": "hpPct",
+      "v": 0.5,
+      "desc": "复气血 50%（依上限计）"
+    },
+    {
+      "id": "fuYuan",
+      "name": "大还丹",
+      "price": 1600,
+      "tier": "di",
+      "type": "hpFull",
+      "desc": "气血尽复，重伤立瘳"
+    },
+    {
+      "id": "huichun",
+      "name": "九转回春散",
+      "price": 3600,
+      "tier": "di",
+      "type": "hpFull",
+      "desc": "气血尽复，诸伤悉除"
+    },
+    {
+      "id": "heal",
+      "name": "疗伤药",
+      "price": 80,
+      "tier": "huang",
+      "type": "cure",
+      "desc": "疗轻重之伤"
+    },
+    {
+      "id": "xuming",
+      "name": "续命丹",
+      "price": 2200,
+      "tier": "di",
+      "type": "life",
+      "v": 20,
+      "desc": "寿元 +20 年（一时所续，不复增）"
+    },
+    {
+      "id": "jiebang",
+      "name": "接骨膏",
+      "price": 260,
+      "tier": "xuan",
+      "type": "cure",
+      "desc": "断肢可续，重伤转轻"
+    },
+    {
+      "id": "pillMp",
+      "name": "聚气丹",
+      "price": 40,
+      "tier": "huang",
+      "type": "mp",
+      "v": 40,
+      "desc": "复灵力 40"
+    },
+    {
+      "id": "huiLing",
+      "name": "回灵散",
+      "price": 180,
+      "tier": "xuan",
+      "type": "mpPct",
+      "v": 0.4,
+      "desc": "复灵力 40%"
+    },
+    {
+      "id": "yuhuaShui",
+      "name": "玉华灵水",
+      "price": 760,
+      "tier": "di",
+      "type": "mpFull",
+      "desc": "灵力尽复（补气草、合神花、玉华宝鱼汁所炼）"
+    },
+    {
+      "id": "clear",
+      "name": "清心丹",
+      "price": 120,
+      "tier": "huang",
+      "type": "heart",
+      "v": 2,
+      "desc": "道心 +2"
+    },
+    {
+      "id": "ningShen",
+      "name": "凝神散",
+      "price": 320,
+      "tier": "xuan",
+      "type": "heart",
+      "v": 4,
+      "desc": "道心 +4，渡关前宜服"
+    },
+    {
+      "id": "xiaoPo",
+      "name": "小破障丹",
+      "price": 900,
+      "tier": "xuan",
+      "type": "break",
+      "v": 0.12,
+      "desc": "破境之机 +12%"
+    },
+    {
+      "id": "zhuji",
+      "name": "筑基丹",
+      "price": 1500,
+      "tier": "xuan",
+      "type": "break",
+      "v": 0.15,
+      "desc": "助筑基，成事 +15%"
+    },
+    {
+      "id": "daPo",
+      "name": "大破障丹",
+      "price": 6800,
+      "tier": "di",
+      "type": "break",
+      "v": 0.28,
+      "desc": "破境之机 +28%"
+    },
+    {
+      "id": "ningYing",
+      "name": "凝婴丹",
+      "price": 12000,
+      "tier": "di",
+      "type": "break",
+      "v": 0.35,
+      "desc": "金丹证元婴一关，成事 +35%"
+    },
+    {
+      "id": "xiaoXuan",
+      "name": "日月玄浆",
+      "price": 2400,
+      "tier": "di",
+      "type": "cult",
+      "desc": "服之，闭关所得 +30%（一月）"
+    },
+    {
+      "id": "xiang",
+      "name": "信香",
+      "price": 30,
+      "tier": "huang",
+      "type": "xiang",
+      "v": 20,
+      "desc": "香火 +20（神道用）"
+    },
+    {
+      "id": "huMai",
+      "name": "护脉丹",
+      "price": 160,
+      "tier": "huang",
+      "type": "guard",
+      "v": 0.2,
+      "turns": 2,
+      "combat": true,
+      "desc": "2 回合受击伤害 −20%（与守势取强，不叠乘）"
+    },
+    {
+      "id": "qingShen",
+      "name": "清神丹",
+      "price": 150,
+      "tier": "huang",
+      "type": "cleanseCtl",
+      "combat": true,
+      "desc": "清除锁灵/迟滞等控制，并恢复少量灵力"
+    },
+    {
+      "id": "jieDu",
+      "name": "解毒丹",
+      "price": 130,
+      "tier": "huang",
+      "type": "antidote",
+      "combat": true,
+      "desc": "清除中毒与灼烧，恢复少量气血（平时亦可服）"
+    },
+    {
+      "id": "lieYuan",
+      "name": "烈元丹",
+      "price": 380,
+      "tier": "xuan",
+      "type": "burst",
+      "v": 0.35,
+      "combat": true,
+      "desc": "下一门攻击术法 +35%；服用时损失气血上限 5%（不致死）"
+    },
+    {
+      "id": "shengSheng",
+      "name": "生生丹",
+      "price": 320,
+      "tier": "xuan",
+      "type": "regen",
+      "v": 0.04,
+      "turns": 3,
+      "combat": true,
+      "desc": "3 回合内每回合恢复气血上限 4%（战斗结束清除）"
+    },
+    {
+      "id": "guiYuan",
+      "name": "归元丹",
+      "price": 520,
+      "tier": "di",
+      "type": "mix",
+      "v": 0.18,
+      "combat": true,
+      "desc": "同时恢复气血与灵力各 18%（单项弱于专用高阶丹）"
+    },
+    {
+      "id": "kaiMai",
+      "name": "开脉丹",
+      "price": 280,
+      "tier": "xuan",
+      "type": "cultXun",
+      "v": 0.2,
+      "turns": 3,
+      "desc": "接下来 3 旬修炼收益 +20%（与日月玄浆取强，不叠加）"
+    },
+    {
+      "id": "wuXin",
+      "name": "悟心丹",
+      "price": 300,
+      "tier": "xuan",
+      "type": "insight",
+      "v": 3,
+      "desc": "下一次读书或论道的悟道收益 +3（接入悟道点，不加破境率）"
+    },
+    {
+      "id": "qyPeiyuan",
+      "name": "青岳培元丹",
+      "price": 120,
+      "tier": "huang",
+      "type": "mp",
+      "v": 60,
+      "place": "qingyue",
+      "desc": "青岳宗门丹房所制，复灵力 60"
+    },
+    {
+      "id": "nyHuodan",
+      "name": "赤炎火丹",
+      "price": 160,
+      "tier": "huang",
+      "type": "hp",
+      "v": 100,
+      "place": "nanyue",
+      "desc": "南疆火脉所炼，复气血 100"
+    },
+    {
+      "id": "xsJingxin",
+      "name": "流沙净心丹",
+      "price": 200,
+      "tier": "xuan",
+      "type": "heart",
+      "v": 3,
+      "place": "xisha",
+      "desc": "西漠佛门所传，道心 +3"
+    },
+    {
+      "id": "byHumai",
+      "name": "寒渊护脉丹",
+      "price": 240,
+      "tier": "xuan",
+      "type": "guard",
+      "v": 0.15,
+      "turns": 2,
+      "combat": true,
+      "place": "beiyuan",
+      "desc": "2 回合受击伤害 −15%（与守势取强，不叠乘）"
+    },
+    {
+      "id": "zzJuling",
+      "name": "天阙聚灵丹",
+      "price": 320,
+      "tier": "xuan",
+      "type": "mpPct",
+      "v": 0.3,
+      "place": "zhongzhou",
+      "desc": "中州天阙所聚，复灵力 30%"
+    }
+  ],
+  "TALISMANS": [
+    {
+      "id": "fuHuo",
+      "name": "火符",
+      "tier": "huang",
+      "price": 110,
+      "use": "combat",
+      "cat": "攻",
+      "kind": "atk",
+      "v": 0.9,
+      "el": "fire",
+      "scale": "realm",
+      "eff": "火伤 ×0.9，附灼烧 2 回合（刷新不叠层），不耗灵力",
+      "effect": {
+        "type": "burn",
+        "turns": 2,
+        "mul": 1
+      }
+    },
+    {
+      "id": "fuJin",
+      "name": "金刚符",
+      "tier": "huang",
+      "price": 130,
+      "use": "combat",
+      "cat": "防",
+      "kind": "def",
+      "v": 0.6,
+      "eff": "下一次受击总减伤 60%（与守势取强，不叠乘）",
+      "effect": {
+        "type": "shield",
+        "v": 0.6
+      }
+    },
+    {
+      "id": "fuDun",
+      "name": "遁符",
+      "tier": "huang",
+      "price": 150,
+      "use": "combat",
+      "cat": "助",
+      "kind": "escape",
+      "eff": "必遁，境界之压不能阻（遁走无战利品）",
+      "effect": {
+        "type": "escape"
+      }
+    },
+    {
+      "id": "fuZeng",
+      "name": "增益符",
+      "tier": "xuan",
+      "price": 240,
+      "use": "combat",
+      "cat": "助",
+      "kind": "buff",
+      "v": 0.3,
+      "eff": "三回合内直接伤害 +30%（刷新不叠层）",
+      "effect": {
+        "type": "buff",
+        "v": 0.3,
+        "turns": 3
+      }
+    },
+    {
+      "id": "fuLei",
+      "name": "雷符",
+      "tier": "xuan",
+      "price": 320,
+      "use": "combat",
+      "cat": "攻",
+      "kind": "atk",
+      "v": 1.3,
+      "el": "thunder",
+      "scale": "realm",
+      "eff": "雷伤 ×1.3，必中半无视卸力，可打断蓄力；对灼烧之敌引爆余焰",
+      "effect": {
+        "type": "interrupt"
+      }
+    },
+    {
+      "id": "fuBing",
+      "name": "冰封符",
+      "tier": "xuan",
+      "price": 260,
+      "use": "combat",
+      "cat": "控",
+      "kind": "atk",
+      "v": 0.7,
+      "el": "water",
+      "scale": "realm",
+      "eff": "水伤 ×0.7，迟滞 2 回合（其出手 ×0.85）",
+      "effect": {
+        "type": "slow",
+        "turns": 2
+      }
+    },
+    {
+      "id": "fuFu",
+      "name": "缚灵符",
+      "tier": "xuan",
+      "price": 280,
+      "use": "combat",
+      "cat": "控",
+      "kind": "ctrl",
+      "eff": "压制 2 回合（其出手 ×0.7）；对蓄力目标改为打断",
+      "effect": {
+        "type": "weaken",
+        "turns": 2,
+        "v": 0.3,
+        "interrupt": true
+      }
+    },
+    {
+      "id": "fuPo",
+      "name": "破甲符",
+      "tier": "xuan",
+      "price": 300,
+      "use": "combat",
+      "cat": "攻",
+      "kind": "ctrl",
+      "eff": "破甲 2 回合：敌方受到伤害 +20%",
+      "effect": {
+        "type": "shred",
+        "turns": 2,
+        "v": 0.2
+      }
+    },
+    {
+      "id": "fuJing",
+      "name": "净符",
+      "tier": "huang",
+      "price": 120,
+      "use": "combat",
+      "cat": "助",
+      "kind": "cleanse",
+      "eff": "清除自身一个可净化负面（中毒/灼烧/迟滞/锁灵）；无负面时不可用",
+      "effect": {
+        "type": "cleanse"
+      }
+    },
+    {
+      "id": "fuJu",
+      "name": "聚灵符",
+      "tier": "xuan",
+      "price": 250,
+      "use": "combat",
+      "cat": "助",
+      "kind": "buff",
+      "eff": "下一门术法耗灵降低 50%（不叠加）",
+      "effect": {
+        "type": "mpSave",
+        "v": 0.5
+      }
+    },
+    {
+      "id": "fuShen",
+      "name": "神行符",
+      "tier": "xuan",
+      "price": 270,
+      "use": "combat",
+      "cat": "防",
+      "kind": "def",
+      "eff": "规避下一次直接攻击（对持续伤害无效，不等于必遁）",
+      "effect": {
+        "type": "dodge"
+      }
+    },
+    {
+      "id": "fuLeiHuo",
+      "name": "雷火符",
+      "tier": "di",
+      "price": 620,
+      "use": "combat",
+      "cat": "攻",
+      "kind": "atk",
+      "v": 1.5,
+      "el": "thunder",
+      "scale": "realm",
+      "eff": "雷火伤 ×1.5；有灼烧时引爆剩余层数追加伤害，无灼烧时为普通雷火",
+      "effect": {
+        "type": "detonate"
+      }
+    },
+    {
+      "id": "huoyuyuan",
+      "name": "火云符",
+      "tier": "huang",
+      "price": 180,
+      "use": "preCombat",
+      "cat": "助",
+      "kind": "pre",
+      "eff": "战前用：本场火系术法伤害 +60%（限一次）",
+      "effect": {
+        "type": "preFire",
+        "v": 0.6
+      }
+    },
+    {
+      "id": "wuyun",
+      "name": "五雷符",
+      "tier": "xuan",
+      "price": 520,
+      "use": "preCombat",
+      "cat": "助",
+      "kind": "pre",
+      "eff": "战前用：本场首击必中（无视卸力），伤害 +80%",
+      "effect": {
+        "type": "preBoost",
+        "v": 0.8
+      }
+    },
+    {
+      "id": "juxian",
+      "name": "拘仙敕神符",
+      "tier": "di",
+      "price": 2800,
+      "use": "preCombat",
+      "cat": "助",
+      "kind": "pre",
+      "eff": "战前用：本场位格压制 +1 档（仙道 +1 阶／神道 +1 位），限一场",
+      "effect": {
+        "type": "preRank"
+      }
+    },
+    {
+      "id": "jinchuan",
+      "name": "传音符",
+      "tier": "huang",
+      "price": 90,
+      "use": "outCombat",
+      "cat": "助",
+      "kind": "out",
+      "eff": "平时用：传讯相识之人，好感 +5（占一旬）",
+      "effect": {
+        "type": "favor",
+        "v": 5
+      }
+    },
+    {
+      "id": "hanhuo",
+      "name": "祈雨符箓",
+      "tier": "huang",
+      "price": 160,
+      "use": "outCombat",
+      "cat": "助",
+      "kind": "out",
+      "eff": "神道平时用：下一场显圣不耗香火",
+      "effect": {
+        "type": "freeXiansheng"
+      }
+    }
+  ],
+  "ARTIFACT_EXT": [
+    {
+      "id": "qingyezhou",
+      "name": "青叶舟",
+      "price": 400,
+      "tier": "huang",
+      "slot": "move",
+      "bonus": {
+        "move": 0.1
+      },
+      "eff": "遁走 +10，行路不耗灵力"
+    },
+    {
+      "id": "guixibao",
+      "name": "护身玉符",
+      "price": 600,
+      "tier": "huang",
+      "slot": "body",
+      "bonus": {
+        "body": 0.08
+      },
+      "eff": "斗法减伤 8%，常驻"
+    },
+    {
+      "id": "duzuo",
+      "name": "破宝锥",
+      "price": 1200,
+      "tier": "xuan",
+      "slot": "once",
+      "eff": "一用：破境界之压，必开生路，可遁"
+    },
+    {
+      "id": "wanyePiu",
+      "name": "百魂幡",
+      "price": 2400,
+      "tier": "xuan",
+      "slot": "atk",
+      "bonus": {
+        "atk": 0.15,
+        "hpCost": 5
+      },
+      "eff": "斗法伤害 +15%，耗气血 5"
+    },
+    {
+      "id": "jiuzhuan",
+      "name": "九转飞剑",
+      "price": 3200,
+      "tier": "di",
+      "slot": "atk",
+      "bonus": {
+        "atk": 0.25
+      },
+      "eff": "九转淬锋，攻击 +25%"
+    },
+    {
+      "id": "taiyinBao",
+      "name": "太阴宝鉴",
+      "price": 4600,
+      "tier": "di",
+      "slot": "body",
+      "bonus": {
+        "hit": 0.1
+      },
+      "eff": "照见虚妄，命中 +10，幻术立破"
+    },
+    {
+      "id": "wanlingfan",
+      "name": "万灵幡",
+      "price": 8600,
+      "tier": "tian",
+      "slot": "atk",
+      "bonus": {
+        "atk": 0.4
+      },
+      "eff": "万灵归幡，斗法伤害 +40%，可收妖"
+    }
+  ],
+  "ARRAY_DISKS": [
+    {
+      "id": "zhenJuLing",
+      "name": "聚灵阵",
+      "tier": "huang",
+      "eff": "洞府灵气 +1 档",
+      "upkeep": 20
+    },
+    {
+      "id": "zhenMiZong",
+      "name": "迷踪阵",
+      "tier": "xuan",
+      "eff": "藏形洞府，人莫能窥",
+      "upkeep": 40
+    },
+    {
+      "id": "zhenSuoLing",
+      "name": "锁灵阵",
+      "tier": "xuan",
+      "eff": "斗法时锁敌去路",
+      "upkeep": 50
+    },
+    {
+      "id": "zhenWuXing",
+      "name": "五行轮杀阵",
+      "tier": "di",
+      "eff": "环镇洞府，犯者受伤",
+      "upkeep": 90
+    }
+  ],
+  "NATAL_FORMS": [
+    {
+      "id": "sword",
+      "name": "本命飞剑",
+      "icon": "jiuzhuan",
+      "passive": "剑系术法伤害 +12%",
+      "skill": "剑魄斩",
+      "skillCost": 12,
+      "skillDmg": 0.18,
+      "skillNote": "单体高伤；目标已有破绽时追加收益",
+      "desc": "三尺青锋，与你同息。剑在人在，剑折人亡。"
+    },
+    {
+      "id": "seal",
+      "name": "本命法印",
+      "icon": "taiyinBao",
+      "passive": "所施加的压制延长 1 回合",
+      "skill": "镇岳印",
+      "skillCost": 10,
+      "skillDmg": 0.1,
+      "skillNote": "小额伤害 + 压制；对负隅之敌更稳",
+      "desc": "一方小印，压得住山，也压得住人。"
+    },
+    {
+      "id": "mirror",
+      "name": "本命宝镜",
+      "icon": "taiyinBao",
+      "passive": "开战即照见敌方破绽",
+      "skill": "照影",
+      "skillCost": 8,
+      "skillDmg": 0.06,
+      "skillNote": "看破破绽（下一击无视卸力并增伤）",
+      "desc": "镜里照见的不是脸，是破口。"
+    },
+    {
+      "id": "bell",
+      "name": "本命神钟",
+      "icon": "guixibao",
+      "passive": "常驻减伤 6%（受全局减伤上限约束）",
+      "skill": "钟鸣护体",
+      "skillCost": 10,
+      "skillDmg": 0,
+      "skillNote": "获得一次护体（下次受击减伤 30%）",
+      "desc": "钟不轻鸣，一鸣便是替你挡了一劫。"
+    },
+    {
+      "id": "banner",
+      "name": "本命魂幡",
+      "icon": "wanyePiu",
+      "passive": "对灼烧之敌伤害 +15%",
+      "skill": "摄魂幡",
+      "skillCost": 12,
+      "skillDmg": 0.12,
+      "skillNote": "施加灼烧 2 回合；可耗自身气血增势",
+      "desc": "幡上无名，招来的都是你自己欠下的。"
+    }
+  ],
+  "DIVINE_ARTIFACTS": [
+    {
+      "id": "staff",
+      "name": "摄心神杖",
+      "price": 1200,
+      "max": 3,
+      "upkeep": 60,
+      "eff": "显圣所得信众每级 +20%",
+      "desc": "杖头悬一枚旧铃，响时只让愿听的人听见。"
+    },
+    {
+      "id": "mirror",
+      "name": "照愿法镜",
+      "price": 1800,
+      "max": 3,
+      "upkeep": 80,
+      "eff": "显圣香火消耗每级 −8%，并照见来访者来意",
+      "desc": "镜面不照人，只照人跪在蒲团上时想的那件事。"
+    },
+    {
+      "id": "seal",
+      "name": "牧土神印",
+      "price": 2600,
+      "max": 3,
+      "upkeep": 110,
+      "eff": "香火上限每级 +15%，权柄斗法每级 +12%",
+      "desc": "印面刻山川河道，落印之处，便是你要担的责。"
+    }
+  ],
+  "VOTIVE_ITEMS": [
+    {
+      "id": "xiangHui",
+      "name": "净香灰",
+      "price": 8,
+      "out": 3,
+      "stones": 5,
+      "xianghuo": 20,
+      "mats": {},
+      "eff": "平安符的底料，也可直接卖给香客",
+      "desc": "取晨课时第一炉冷灰，筛去木骨。"
+    },
+    {
+      "id": "fuShui",
+      "name": "清净符水",
+      "price": 24,
+      "out": 2,
+      "stones": 12,
+      "xianghuo": 40,
+      "mats": {},
+      "eff": "香客求去小病小灾；每卖一份另积功德 1",
+      "desc": "符纸化在水中，澄清三次，只留一点淡金。"
+    },
+    {
+      "id": "pingAn",
+      "name": "平安符",
+      "price": 42,
+      "out": 2,
+      "stones": 18,
+      "xianghuo": 55,
+      "mats": {
+        "xiangHui": 1
+      },
+      "eff": "香客最常求的小物，不沾染黑市业力",
+      "desc": "不写真君全号，只写一个「安」字，免得凡人受不住。"
+    }
+  ],
+  "CRAFT_LEVELS": [
+    {
+      "lv": 1,
+      "need": 0,
+      "rate": 0,
+      "tier": "huang"
+    },
+    {
+      "lv": 2,
+      "need": 100,
+      "rate": 0.03,
+      "tier": "huang"
+    },
+    {
+      "lv": 3,
+      "need": 300,
+      "rate": 0.06,
+      "tier": "xuan"
+    },
+    {
+      "lv": 4,
+      "need": 600,
+      "rate": 0.09,
+      "tier": "xuan"
+    },
+    {
+      "lv": 5,
+      "need": 1200,
+      "rate": 0.12,
+      "tier": "di"
+    },
+    {
+      "lv": 6,
+      "need": 1800,
+      "rate": 0.14,
+      "tier": "di"
+    },
+    {
+      "lv": 7,
+      "need": 3000,
+      "rate": 0.17,
+      "tier": "tian"
+    },
+    {
+      "lv": 8,
+      "need": 4500,
+      "rate": 0.19,
+      "tier": "tian"
+    },
+    {
+      "lv": 9,
+      "need": 6500,
+      "rate": 0.22,
+      "tier": "xian"
+    }
+  ],
+  "CRAFT_REALM_GATE": {
+    "huang": 1,
+    "xuan": 2,
+    "di": 3,
+    "tian": 4,
+    "xian": 5
+  },
+  "CRAFT_BOOKS": [
+    {
+      "id": "bk_dan_huang",
+      "art": "dan",
+      "tier": "huang",
+      "name": "青囊丹经",
+      "price": 200
+    },
+    {
+      "id": "bk_dan_xuan",
+      "art": "dan",
+      "tier": "xuan",
+      "name": "九转还丹法",
+      "price": 900
+    },
+    {
+      "id": "bk_dan_di",
+      "art": "dan",
+      "tier": "di",
+      "name": "造化丹经残卷",
+      "price": 3000
+    },
+    {
+      "id": "bk_fu_huang",
+      "art": "fu",
+      "tier": "huang",
+      "name": "灵符辑要",
+      "price": 200
+    },
+    {
+      "id": "bk_fu_xuan",
+      "art": "fu",
+      "tier": "xuan",
+      "name": "朱文玉章",
+      "price": 900
+    },
+    {
+      "id": "bk_fu_di",
+      "art": "fu",
+      "tier": "di",
+      "name": "五雷符法",
+      "price": 3000
+    },
+    {
+      "id": "bk_qi_huang",
+      "art": "qi",
+      "tier": "huang",
+      "name": "器道入门",
+      "price": 200
+    },
+    {
+      "id": "bk_qi_xuan",
+      "art": "qi",
+      "tier": "xuan",
+      "name": "百炼匠录",
+      "price": 900
+    },
+    {
+      "id": "bk_qi_di",
+      "art": "qi",
+      "tier": "di",
+      "name": "铸山手记",
+      "price": 3000
+    },
+    {
+      "id": "bk_zhen_huang",
+      "art": "zhen",
+      "tier": "huang",
+      "name": "阵法初解",
+      "price": 200
+    },
+    {
+      "id": "bk_zhen_xuan",
+      "art": "zhen",
+      "tier": "xuan",
+      "name": "奇门三才图",
+      "price": 900
+    },
+    {
+      "id": "bk_zhen_di",
+      "art": "zhen",
+      "tier": "di",
+      "name": "五行轮杀阵图",
+      "price": 3000
+    }
+  ],
+  "CRAFT_ARTS": [
+    {
+      "id": "dan",
+      "name": "炼丹",
+      "stat": "insight",
+      "desc": "自服省药资，出市亦有恒需"
+    },
+    {
+      "id": "qi",
+      "name": "炼器",
+      "stat": "qualify",
+      "desc": "所费最巨，而成器之效尤胜"
+    },
+    {
+      "id": "fu",
+      "name": "制符",
+      "stat": "sense",
+      "desc": "工省而效速，越阶制敌之资"
+    },
+    {
+      "id": "zhen",
+      "name": "阵法",
+      "stat": "insight",
+      "desc": "一设而长久，可决胜负"
+    }
+  ],
+  "QUALITY": [
+    {
+      "id": "fei",
+      "name": "废",
+      "mul": 0,
+      "rate": 0.15,
+      "color": "#9A9088"
+    },
+    {
+      "id": "xia",
+      "name": "下品",
+      "mul": 0.7,
+      "rate": 0.35,
+      "color": "#B0A48C"
+    },
+    {
+      "id": "zhong",
+      "name": "中品",
+      "mul": 1,
+      "rate": 0.35,
+      "color": "#7FA8C9"
+    },
+    {
+      "id": "shang",
+      "name": "上品",
+      "mul": 1.6,
+      "rate": 0.12,
+      "color": "#8B6FA8"
+    },
+    {
+      "id": "ji",
+      "name": "极品",
+      "mul": 3,
+      "rate": 0.03,
+      "color": "#C9A45C"
+    }
+  ]
+}

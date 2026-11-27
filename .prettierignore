@@ -1,0 +1,24 @@
+# 旧单文件版（P6 才下线，不参与格式化：一改就是 26,000 行 diff）
+wxcs3-*.js
+问道长生v6.html
+mobile/
+desktop/
+docs/
+_archive/
+_backup/
+art/
+
+# 生成物：由 tools/extract-content.mjs 产出，格式由脚本决定（改格式改脚本）
+packages/content/tables/
+packages/content/tables.schema.json
+packages/content/src/tables.generated.ts
+
+# 产物与依赖
+node_modules/
+dist/
+apps/api/data/
+package-lock.json
+
+# 遗留脚本
+tools/*.js
+tools/*.py

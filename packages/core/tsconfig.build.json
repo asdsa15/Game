@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": ["node"],
+    // 源码里写 `./x.ts`（Node 直跑要靠它），发出去必须是 `./x.js`
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": ["src"]
+}
